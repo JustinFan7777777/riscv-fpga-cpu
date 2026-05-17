@@ -43,11 +43,11 @@
 
 ```
 Data Segment 手动写入:
-  [0x4000] = CaseID
-  [0x4004] = OperandA
-  [0x4008] = OperandB
+  [0x1000] = CaseID
+  [0x1004] = OperandA
+  [0x1008] = OperandB
 → Run (F5)
-→ 查看 [0x400C] 的值
+→ 查看 [0x100C] 的值
 → 与期望值比对 → PASS/FAIL
 → Reset (F12)
 → 下一组
