@@ -83,7 +83,10 @@ module TopDebug (
     // ===========================
     // 时钟分频: 100MHz → 25MHz
     // ===========================
-    // 2-bit 计数器: bit0=50MHz, bit1=25MHz
+    // 2-bit 自由运行计数器:
+    //   clk_div[0]: 每周期翻转 → 50MHz (占空比50%)
+    //   clk_div[1]: 每2周期翻转 → 25MHz (占空比50%)
+    // 取 clk_div[1] 作为CPU时钟源
     reg [1:0] clk_div;
 
     always @(posedge clk or negedge rst_n) begin
@@ -96,8 +99,10 @@ module TopDebug (
     // clk_div[1]: 100MHz / 4 = 25MHz
     wire clk_25mhz = clk_div[1];
 
-    // BUFG: 全局时钟 Buffer (Vivado 综合时会自动识别并推上全局时钟树)
-    // 将分频后的25MHz信号提升为高质量低skew全局时钟
+    // BUFG: 全局时钟 Buffer (Xilinx 原语)
+    // 分频器输出的 clk_25mhz 是普通逻辑信号 (高skew),
+    // 经过 BUFG 后推上 FPGA 全局时钟树 (低skew), 才能可靠驱动所有触发器
+    // 不加 BUFG 会导致各模块时钟到达时间不一致 → setup/hold 违规
     wire cpu_clk;
     BUFG BUFG_cpu_clk (
         .O(cpu_clk),      // 全局时钟输出 (低skew)
@@ -107,6 +112,10 @@ module TopDebug (
     // ===========================
     // 复位合并: 物理复位 OR 软复位
     // ===========================
+    // rst_n:          EGO1板载按键P15 (按下=低, 物理复位)
+    // cpu_reset:      DebugController 发出的软复位脉冲 (CMD_RESET=0x01)
+    // rst_n_combined: 任意一个有效 → CPU复位
+    // 注: UART和DebugController用 rst_n (不复位调试通道), CPU用 rst_n_combined
     wire cpu_reset;
     wire rst_n_combined = rst_n & ~cpu_reset;
 

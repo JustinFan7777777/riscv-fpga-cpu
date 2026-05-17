@@ -75,8 +75,10 @@ module DataMemory (
     reg [7:0]  seg_data1_reg;  // 数码管段选组1
 
     // ===========================
-    // 跨时钟域同步 Debug 信号
+    // 跨时钟域同步 Debug 信号 (negedge clk: 与CPU时钟错半拍, 改善时序)
     // ===========================
+    // DebugController@100MHz → CPU@25MHz, 打一拍同步消除亚稳态
+    // 使用 negedge: Debug写发生在clk下降沿, BRAM在上升沿之前有半拍setup
     reg         dmem_dbg_en_sync,   dmem_wr_en_sync;
     reg [31:0] dmem_dbg_addr_sync, dmem_wr_data_sync;
 
@@ -95,13 +97,15 @@ module DataMemory (
     end
 
     // ===========================
-    // MMIO 地址译码
+    // MMIO 地址译码 — 两级译码
     // ===========================
-    // isMMIO: 地址[31:16] == 16'hFFFF → 外设访问
+    // 第一级: Addr[31:16]==0xFFFF → 外设区域, 否则→DMem BRAM
+    // 第二级: Addr[3:0] 选具体外设, 见下方映射表
     wire isMMIO_CPU = (Addr[31:16] == 16'hFFFF);
     wire isMMIO_DBG = (dmem_dbg_addr_sync[31:16] == 16'hFFFF);
 
-    // CPU 侧 MMIO 读 (返回32bit值, 实际外设位宽不足32bit的零扩展)
+    // CPU 侧 MMIO 读 (返回32bit值, 外设位宽不足的零扩展填满)
+    // 注: LW指令始终取32-bit, 所以需要将窄外设零扩展
     wire [31:0] mmio_read_cpu;
     assign mmio_read_cpu = (Addr[3:0] == 4'h0) ? {16'b0, SwitchIn}       :  // 0xFFFF0000: 开关
                            (Addr[3:0] == 4'h4) ? {27'b0, ButtonIn}       :  // 0xFFFF0004: 按键
@@ -111,7 +115,8 @@ module DataMemory (
                            (Addr[3:0] == 4'h14)? {24'b0, seg_data1_reg}  :  // 0xFFFF0014: 数码管段选1
                            32'd0;
 
-    // MMIO 写 (CPU侧: 只有 MemWrite=1 且地址命中MMIO时才写外设寄存器)
+    // MMIO 写 (CPU侧: posedge clk 触发)
+    // MemWrite=1 且 isMMIO=1 时, 根据地址写对应外设寄存器
     wire mmio_we_cpu = MemWrite && isMMIO_CPU;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -130,13 +135,15 @@ module DataMemory (
     end
 
     // ===========================
-    // DMem BRAM: 地址 MUX (Debug 还是 CPU)
+    // DMem BRAM: 地址/数据 MUX (Debug 还是 CPU)
     // ===========================
+    // dmem_dbg_en_sync=1 → DebugController 接管: 地址/写使能/写数据全由Debug侧控制
+    // dmem_dbg_en_sync=0 → CPU 正常访问: MemWrite且非MMIO时写BRAM
     wire [31:0] uram_addr_mux = dmem_dbg_en_sync ? dmem_dbg_addr_sync : Addr;
     wire uram_wea = dmem_dbg_en_sync ? dmem_wr_en_sync : (MemWrite && !isMMIO_CPU);
     wire [31:0] uram_din = dmem_dbg_en_sync ? dmem_wr_data_sync : WriteData;
 
-    // BRAM 读写 (同步读, negedge 为时序优化)
+    // BRAM 同步读 (negedge: 与IMem的posedge错开半拍, 分散FPGA内部BRAM访问峰值)
     reg [31:0] mem_read_data;
     always @(negedge clk) begin
         if (uram_wea)
@@ -147,10 +154,12 @@ module DataMemory (
     // ===========================
     // 读数据 MUX: DMem BRAM 还是 MMIO
     // ===========================
+    // CPU读: isMMIO → 外设值(零扩展) : BRAM读出值
+    // Debug读: 只读BRAM, MMIO区域返回0 (调试场景主要访问数据区)
     assign ReadData     = isMMIO_CPU ? mmio_read_cpu  : mem_read_data;
     assign dmem_rd_data = isMMIO_DBG ? 32'd0          : mem_read_data;
 
-    // 输出到外设 (直连 EGO1 引脚)
+    // 输出到外设 (直连 EGO1 引脚, 组合逻辑)
     assign LEDOut     = led_reg;
     assign seg_cs     = seg_cs_reg;
     assign seg_data_0 = seg_data0_reg;

@@ -61,13 +61,14 @@ module RegFile (
     assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 : regFile[dbg_reg_addr];
 
     // ===========================
-    // 写口 (时序逻辑, 上升沿写入)
+    // 写口 (时序逻辑, posedge clk 写入, negedge rst_n 异步复位)
     // ===========================
-    // 注意: x0 寄存器虽然写入端口开放, 但读口永远返回0, 所以即使写了x0也不影响读值
-    // 这符合 RISC-V 规范 (x0 硬连线为0)
+    // RISC-V规范: x0 硬连线为0, 写操作对x0无效
+    //   读口: rs1/rs2访问x0时返回0 (第51-54行)
+    //   写口: RegWrite=1且rd=x0时, 条件(rd_addr!=0)阻止写入, x0保持0
+    // 复位: for循环将32个寄存器全部清零 (综合为32个触发器复位)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            // 复位: 清空所有寄存器 (实际FPGA上也可不清理, 但初始化便于调试)
             for (i = 0; i < 32; i = i + 1)
                 regFile[i] <= 32'd0;
         end else begin

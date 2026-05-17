@@ -38,7 +38,9 @@ module ALU (
     output        Zero        // 结果为0标志 (供Branch指令使用)
 );
 
-    // Zero 标志: 组合逻辑，当结果为全0时拉高
+    // Zero 标志: 组合逻辑, 当 ALUResult==0 时拉高
+    // 注: 当前CPUTop中分支判断使用直接比较(rs1==rs2等), 未使用此Zero标志;
+    //     保留Zero作为备用的零检测输出, 供未来可能的优化或调试使用
     assign Zero = (ALUResult == 32'd0);
 
     // ALU 主运算逻辑

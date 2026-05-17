@@ -47,7 +47,7 @@ _start:
     # s0 = Base 地址
     #   硬件/Difftest: s0 = 0x00004000 (默认, 编译hex用)
     #   RARS仿真测试:  改为 lui s0, 0x1 → s0 = 0x00001000
-    lui  s0, 0x1            # s0 = 0x00004000 (硬件/difftest)
+    lui  s0, 0x4            # s0 = 0x00004000 (硬件/difftest)
 
 dispatcher_loop:
     # 读取 CaseID (Base+0)

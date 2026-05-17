@@ -85,6 +85,15 @@ module Decoder (
     // ===========================
     // 主译码器
     // ===========================
+    // 根据 opcode 生成 8 个控制信号:
+    //   RegWrite (写寄存器), ALUSrc (0=rs2, 1=立即数),
+    //   MemtoReg (0=ALU结果, 1=内存数据), MemWrite (写内存),
+    //   Branch (条件分支), Jump (JAL跳转), JALRSrc (JALR跳转),
+    //   ALUOp[1:0] (传给ALU译码器):
+    //     00=ADD类(lw/sw/lui/auipc/jal/jalr地址计算)
+    //     01=SUB(分支比较用)
+    //     10=R-type(查funct3+funct7)
+    //     11=I-type ALU(查funct3)
     reg  regwrite_r, alusrc_r, memtoreg_r, memwrite_r;
     reg  branch_r, jump_r, jalrsrc_r;
     reg [1:0] aluop_r;
@@ -92,6 +101,8 @@ module Decoder (
     always @(*) begin
         case (opcode)
             // R-type: ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU
+            // 数据流: RegFile(rs1,rs2) → ALU → RegFile(rd)
+            // ALUSrc=0 → ALU_B=rs2; ALUOp=10 → 查funct3+funct7
             7'b0110011: begin
                 regwrite_r = 1'b1;    // 写回寄存器
                 alusrc_r   = 1'b0;    // B端口来自rs2
@@ -104,6 +115,8 @@ module Decoder (
             end
 
             // I-type ALU: ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU
+            // 数据流: RegFile(rs1) + ImmGen → ALU → RegFile(rd)
+            // ALUSrc=1 → ALU_B=立即数; ALUOp=11 → 查funct3
             7'b0010011: begin
                 regwrite_r = 1'b1;
                 alusrc_r   = 1'b1;    // B端口来自立即数
@@ -116,6 +129,8 @@ module Decoder (
             end
 
             // I-type Load: LW, LH, LHU, LB, LBU
+            // 数据流: RegFile(rs1)+ImmGen → ALU(ADD计算地址) → DMem(读) → RegFile(rd)
+            // ALUOp=00 → 无条件ADD; MemtoReg=1 → WD3来自内存而非ALU
             7'b0000011: begin
                 regwrite_r = 1'b1;    // 写回寄存器
                 alusrc_r   = 1'b1;    // B端口来自立即数 (地址偏移)
@@ -128,6 +143,8 @@ module Decoder (
             end
 
             // S-type Store: SW, SH, SB
+            // 数据流: RegFile(rs1)+ImmGen → ALU(ADD计算地址) → DMem(写rs2值)
+            // RegWrite=0 → 不写寄存器; MemWrite=1 → 写内存
             7'b0100011: begin
                 regwrite_r = 1'b0;    // 不写寄存器
                 alusrc_r   = 1'b1;    // B端口来自立即数 (地址偏移)
@@ -140,6 +157,9 @@ module Decoder (
             end
 
             // B-type Branch: BEQ, BNE, BLT, BGE, BLTU, BGEU
+            // 数据流: RegFile(rs1,rs2) → 比较 → PC条件跳转
+            // RegWrite=0 → 分支不写寄存器; Branch=1 → 使能条件跳转
+            // 注: 实际比较在CPUTop中用funct3直接完成, ALU减法结果未使用
             7'b1100011: begin
                 regwrite_r = 1'b0;    // 分支不写寄存器
                 alusrc_r   = 1'b0;    // B端口来自rs2 (做比较)
@@ -148,55 +168,63 @@ module Decoder (
                 branch_r   = 1'b1;    // 条件分支!
                 jump_r     = 1'b0;
                 jalrsrc_r  = 1'b0;
-                aluop_r    = 2'b01;   // 分支比较用减法 (实际上Branch条件另做判断)
+                aluop_r    = 2'b01;   // 分支比较用减法
             end
 
             // U-type LUI: 加载高位立即数
+            // 数据流: 0 + ImmGen → ALU → RegFile(rd)
+            // 注: CPUTop中ALUSrcA检测到LUI时选通0作为ALU_A, 所以A+B=0+imm=imm
             7'b0110111: begin
                 regwrite_r = 1'b1;
-                alusrc_r   = 1'b1;    // 用立即数 (但LUI实际是直接过立即数)
+                alusrc_r   = 1'b1;
                 memtoreg_r = 1'b0;
                 memwrite_r = 1'b0;
                 branch_r   = 1'b0;
                 jump_r     = 1'b0;
                 jalrsrc_r  = 1'b0;
-                aluop_r    = 2'b00;   // 用ADD直通 (LUI在ALU里特殊处理)
+                aluop_r    = 2'b00;   // ADD: 0 + imm = imm
             end
 
             // U-type AUIPC: PC+立即数
+            // 数据流: PC + ImmGen → ALU → RegFile(rd)
+            // 注: CPUTop中ALUSrcA检测到AUIPC时选通PC作为ALU_A
             7'b0010111: begin
                 regwrite_r = 1'b1;
-                alusrc_r   = 1'b1;    // B端口来自立即数
+                alusrc_r   = 1'b1;
                 memtoreg_r = 1'b0;
                 memwrite_r = 1'b0;
                 branch_r   = 1'b0;
                 jump_r     = 1'b0;
                 jalrsrc_r  = 1'b0;
-                aluop_r    = 2'b00;   // ADD (PC+imm)
+                aluop_r    = 2'b00;   // ADD: PC + imm
             end
 
             // J-type JAL: 跳转并链接
+            // 数据流: PC → Ifetch.NextPC(PC+imm); PC+4 → RegFile(rd)
+            // Jump=1 → Next-PC使用JumpTarget; WD3=PC+4 (由CPUTop的JALWDSrc控制)
             7'b1101111: begin
                 regwrite_r = 1'b1;    // JAL写回PC+4到rd
-                alusrc_r   = 1'b1;    // 用立即数 (取跳转偏移)
+                alusrc_r   = 1'b1;
                 memtoreg_r = 1'b0;
                 memwrite_r = 1'b0;
                 branch_r   = 1'b0;
-                jump_r     = 1'b1;    // JAL跳转!
+                jump_r     = 1'b1;    // JAL跳转! PC=PC+imm
                 jalrsrc_r  = 1'b0;
-                aluop_r    = 2'b00;   // 地址计算用ADD
+                aluop_r    = 2'b00;
             end
 
             // I-type JALR: 寄存器跳转并链接
+            // 数据流: rs1+imm → Ifetch.NextPC; PC+4 → RegFile(rd)
+            // JALRSrc=1 → Next-PC使用JALRTarget; WD3=PC+4
             7'b1100111: begin
                 regwrite_r = 1'b1;    // JALR写回PC+4到rd
-                alusrc_r   = 1'b1;    // 用立即数
+                alusrc_r   = 1'b1;
                 memtoreg_r = 1'b0;
                 memwrite_r = 1'b0;
                 branch_r   = 1'b0;
                 jump_r     = 1'b0;
-                jalrsrc_r  = 1'b1;    // JALR跳转! (PC=rs1+imm)
-                aluop_r    = 2'b00;   // 地址计算用ADD
+                jalrsrc_r  = 1'b1;    // JALR跳转! PC=rs1+imm (LSB清零)
+                aluop_r    = 2'b00;
             end
 
             // 非法或未定义指令: 全部控制信号置0 = NOP

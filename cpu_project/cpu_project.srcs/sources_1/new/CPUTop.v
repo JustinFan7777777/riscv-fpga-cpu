@@ -203,10 +203,12 @@ module CPUTop (
     // ===========================
     // ALU 输入 MUX
     // ===========================
-    // ALUSrcA: 选择 ALU A 输入
-    //   LUI:  A=0  (rd = 0 + imm = imm)
-    //   AUIPC: A=PC (rd = PC + imm)
-    //   其他:  A=rs1_val
+    // ALUSrcA: 选择 ALU A 端口输入 (3选1)
+    //   LUI:   A=0       → ALUResult = 0 + imm = imm (加载立即数)
+    //   AUIPC: A=PC      → ALUResult = PC + imm (PC相对寻址)
+    //   其他:   A=rs1_val → ALUResult = rs1 OP rs2/imm (正常运算)
+    // 注: 此处用 opcode 直接判断, 而非 Decoder 信号, 因为 LUI/AUIPC 的
+    //      ALU A 选择与 I-type/R-type 不同, 需要独立的快速译码
     wire isLUI   = (inst[6:0] == 7'b0110111);
     wire isAUIPC = (inst[6:0] == 7'b0010111);
 
@@ -214,9 +216,9 @@ module CPUTop (
                    isAUIPC ? PC      :
                              rs1_val;
 
-    // ALUSrc: 选择 ALU B 输入
-    //   0: rs2_val (R-type, B-type)
-    //   1: Imm     (I-type, S-type, U-type, J-type)
+    // ALUSrc: 选择 ALU B 端口输入 (2选1)
+    //   0: rs2_val → R-type(寄存器-寄存器运算), B-type(分支比较)
+    //   1: Imm     → I-type(立即数运算), S-type(存储偏移), U-type, J-type
     assign ALU_B = ALUSrc ? Imm : rs2_val;
 
     // --- ALU: 算数逻辑单元 ---
@@ -251,18 +253,25 @@ module CPUTop (
     );
 
     // ===========================
-    // 写回数据 MUX (MemtoReg + JALWDSrc)
+    // 写回数据 MUX (3选1: PC+4 / ReadData / ALUResult)
     // ===========================
-    // JAL/JALR: WD3 = PC+4 (链接地址写回rd)
-    // Load:     WD3 = ReadData (内存读值)
-    // 其他:     WD3 = ALUResult (ALU计算结果)
+    // JAL/JALR: 需要把返回地址(PC+4)保存到rd → 选通PCPlus4
+    //   - Jump=1(JAL)或JALRSrc=1(JALR)时, JALWDSrc=1
+    //   - 优先级最高, 因为MemtoReg可能同时为1(虽然实际不会)
+    // Load:     需要把内存读出的数据写回rd → 选通ReadData
+    //   - MemtoReg=1, 由Decoder根据opcode=0000011设置
+    // 其他:      ALU计算结果直接写回rd → 选通ALUResult
+    //   - R-type, I-type ALU, U-type, 等
     wire JALWDSrc = Jump | JALRSrc;
     assign WD3 = JALWDSrc ? PCPlus4 :
                  MemtoReg ? ReadData : ALUResult;
 
     // ===========================
-    // 分支条件判断
+    // 分支条件判断 (组合逻辑, 与ALU并行)
     // ===========================
+    // 根据 funct3 对 rs1_val 和 rs2_val 做比较, 产生 BranchTaken
+    // 注: 不使用 ALU 的 Zero 标志, 而是直接在CPUTop做比较 —
+    //     这样可以并行进行, 不依赖ALU结果, 路径更短
     wire [2:0] funct3 = inst[14:12];
     assign BranchTaken = (funct3 == 3'b000) ? (rs1_val == rs2_val) :                       // BEQ
                          (funct3 == 3'b001) ? (rs1_val != rs2_val) :                       // BNE
@@ -272,25 +281,31 @@ module CPUTop (
                          (funct3 == 3'b111) ? (rs1_val >= rs2_val) :                       // BGEU
                          1'b0;
 
-    // PCSrc: 当 Branch 指令且条件满足时才跳转
+    // PCSrc: 1=条件分支且条件满足 → Ifetch 使用 BranchTarget 作为 NextPC
+    //       Branch=1(Decoder判定当前是B-type), BranchTaken=1(比较结果成立)
     assign PCSrc = Branch && BranchTaken;
 
     // ===========================
-    // Next-PC 地址计算
+    // Next-PC 地址计算 (三种跳转目标地址)
     // ===========================
-    assign BranchTarget = PC + Imm;      // B-type: PC + 分支偏移
-    assign JumpTarget   = PC + Imm;      // J-type: PC + JAL偏移
-    // JALR: (rs1 + imm) 且最低位清零 (RISC-V 要求2字节对齐)
+    // BranchTarget: B-type PC相对跳转 → PC + 符号扩展立即数
+    assign BranchTarget = PC + Imm;
+    // JumpTarget:   J-type JAL跳转 → PC + 符号扩展立即数
+    assign JumpTarget   = PC + Imm;
+    // JALRTarget:   I-type JALR跳转 → (rs1 + 符号扩展立即数), 最低位清零
+    //   RISC-V规范要求JALR目标地址的LSB=0(2字节对齐), 用中间wire jalr_sum
+    //   避免Vivado 2017.4不支持表达式part-select的语法限制
     assign jalr_sum     = rs1_val + Imm;
     assign JALRTarget   = {jalr_sum[31:1], 1'b0};
 
     // ===========================
     // cpu_halt 与 cpu_step 合并逻辑
     // ===========================
-    // cpu_step 优先级高于 cpu_halt:
-    //   当 cpu_halt=1 且 cpu_step=1 → CPU 放行一个周期 (单步)
-    //   当 cpu_halt=1 且 cpu_step=0 → CPU 暂停
-    //   当 cpu_halt=0           → CPU 全速运行
+    // DebugController 发出 cpu_halt(想暂停) 和 cpu_step(单步脉冲):
+    //   cpu_halt=0          → CPU 全速运行 (正常运行模式)
+    //   cpu_halt=1, step=1  → cpu_halt_effective=0, CPU放行一拍 (单步)
+    //   cpu_halt=1, step=0  → cpu_halt_effective=1, PC冻结   (暂停)
+    // 注: cpu_step是一个持续4个100MHz周期的脉冲, 刚好覆盖1个25MHz CPU周期
     assign cpu_halt_effective = cpu_halt & ~cpu_step;
 
     // ===========================

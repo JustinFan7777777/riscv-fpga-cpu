@@ -101,14 +101,18 @@ module Ifetch #(
     // ===========================
     // IMem 地址 MUX: Debug地址 还是 正常PC地址
     // ===========================
-    // PC是字节地址, IMem是32-bit字地址 → PC[13:2]取12-bit字地址
-    // Debug地址同样是字节地址 → inst_dbg_addr_sync[13:2]
+    // PC是字节地址, IMem是32-bit字地址 → PC[15:2]取14-bit字地址
+    // Debug地址同样是字节地址 → inst_dbg_addr_sync[15:2]
     wire [13:0] imem_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : PC[15:2];
     wire        imem_wea  = inst_dbg_en_sync & inst_wr_en_sync;
 
     // ===========================
-    // BRAM 实例化 (同步读, 即地址输入后下个周期数据才输出)
+    // BRAM 实例化 (同步读: 本周期给地址, 下周期数据才到 mem_dout)
     // ===========================
+    // FPGA Block RAM 硬件特性: 读延迟1个时钟周期 (不能组合读)
+    // 因此单周期CPU实际CPI=2 (取指1拍 + 执行1拍), 但指令吞吐仍是1条/周期
+    // Debug写: imem_wea=1时本周期写入 inst_wr_data_sync
+    // Debug读: mem_dout在下周期反映新地址, inst_rd_data直连mem_dout
     reg [31:0] mem_dout;
     always @(posedge clk) begin
         if (imem_wea)
@@ -142,7 +146,14 @@ module Ifetch #(
 
     parameter PC_RESET = 32'h00004000;  // difftest要求PC从0x4000开始
 
-    // Next-PC MUX (优先级: halt > reset > JALR > JAL > branch taken > PC+4)
+    // Next-PC MUX (优先级从高到低, 用串联三元运算符实现)
+    //   1. cpu_halt   → PC保持不变 (调试器暂停CPU)
+    //   2. cpu_reset  → PC回到0x4000 (硬件复位或调试软复位)
+    //   3. JALRSrc    → PC = rs1+imm, LSB清零 (JALR寄存器跳转)
+    //   4. Jump       → PC = PC+imm (JAL跳转)
+    //   5. PCSrc      → PC = PC+imm (条件分支满足)
+    //   6. default    → PC = PC+4 (顺序执行)
+    // 注: PCSrc = Branch && BranchTaken, 由CPUTop计算后传入
     wire [31:0] NextPC;
     assign NextPC = cpu_halt              ? pcReg :       // halt: 暂停
                     (cpu_reset)          ? PC_RESET :     // reset: 回到0x4000

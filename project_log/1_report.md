@@ -112,9 +112,144 @@ Mac（代码）→ Windows（综合上板）→ Mac（修 bug）→ Windows（�
 - 建议提供 Vivado 2017.4 的语法兼容性清单（已知不支持的特性）
 - difftest 的 IMem 起始地址如果可以配置，能减少硬件侧的适配工作
 
+
+
 ---
 
-## 开发日志
+## Case 汇编设计说明（刘一骏）
+
+### 整体架构
+
+`batch_test.asm` 采用**主调度器 + Case 函数**的跳转表架构：
+
+1. 上电后 `lui s0, 0x4` 将 s0 设为基址 0x4000
+2. 调度器循环：`lw t0, 0(s0)` 读 CaseID → 与 0~9 逐一 `beq` 比较 → 跳转对应 Case 函数
+3. Case 函数从 4(s0)/8(s0) 读操作数 → 计算 → 结果 `sw` 到 12(s0)
+4. `j dispatcher_loop` 回到调度器等待下一个 CaseID
+5. CaseID >= 10 时进入 `dispatcher_dead` 死循环，等待 Host 控制
+
+### Case 0 — AND 逻辑与运算
+
+**指令**: `and t3, t1, t2`
+**设计**: R-type 指令直接完成按位与。读取两个 32-bit 操作数，单条 `and` 执行，结果写回。汇编共 5 条指令。
+
+### Case 1 — SLL 逻辑左移
+
+**指令**: `sll t3, t1, t2`
+**设计**: RISC-V 硬件自动取移位量的低 5 位 `B[4:0]`，汇编侧无需额外掩码。测试数据 B=0x2d（45），低 5 位 = 13，A=1 左移 13 位 = 0x2000。
+
+### Case 2 — SRA 算术右移
+
+**指令**: `sra t3, t1, t2`
+**设计**: 与 SLL 对称。`sra` 保留符号位填补高位。测试数据 0x81231234 >>> 36（低 5 位 = 4）= 0xf8123123，用于验证符号扩展。
+
+### Case 3 — LUI + ADD
+
+**设计**: 
+```asm
+lui  a0, 0x12345     # a0 = 0x12345000
+add  t3, t1, a0       # t3 = OperandA + 0x12345000
+```
+LUI 加载 20-bit 立即数到高位，ADD 完成加法。验证 U-type 指令和 R-type ADD 的正确组合。
+
+### Case 4 — JAL + AUIPC
+
+**设计**:
+```asm
+jal  a0, case4_target     # a0 = PC+4 (即 target 的地址)
+case4_target:
+auipc a1, 0x12345         # a1 = 当前PC + 0x12345000
+sub  t3, a1, a0           # t3 = 0x12345000 (a1 和 a0 的 PC 差)
+add  t3, t3, t1           # + OperandA
+```
+核心技巧：`jal` 将下条指令地址写入 a0，`case4_target` 紧接 `jal`，所以 a0 = target 的 PC。`auipc` 在 target 处取 PC，与前者的差恰好是 0x12345000。验证 PC 相对寻址的精确性。
+
+### Case 5 — JAL + JALR
+
+**设计**:
+```asm
+jal  ra, case5_func    # ra = 返回地址, 跳到 func
+add  t3, t1, t2         # 返回后执行: t3 = A + B
+...
+case5_func:
+jr   ra                 # JALR x0, ra, 0 → 返回
+```
+模拟函数调用：`jal` 保存返回地址到 ra，`jr ra` 跳回。验证 JAL/JALR 的链接和返回机制。
+
+### Case 6 — Fibonacci 数列
+
+**算法**: 迭代法，避免递归（无栈）
+```asm
+addi a0, x0, 1          # a = 1 (fib(1))
+addi a1, x0, 1          # b = 1 (fib(2))
+addi t2, t1, -2         # counter = n - 2
+fib_loop:
+add  a2, a0, a1         # c = a + b
+addi a0, a1, 0          # a = b
+addi a1, a2, 0          # b = c
+addi t2, t2, -1         # counter--
+bgtz t2, fib_loop        # counter > 0 继续
+```
+n≤2 时直接返回 1（`ble` 伪指令展开为 `bge`），n>2 时循环 n-2 次。使用 a0-a2 三个寄存器做滑动窗口。
+
+### Case 7 — Popcount（统计 8-bit 中 1 的个数）
+
+**算法**: 分治法（6 条核心指令，O(1) 时间）
+```asm
+andi t1, t1, 0xFF        # 取低 8 位
+# Step 1: 每 2-bit 一组的 popcount
+andi t2, t1, 0x55        # t2 = x & 01010101
+srli t3, t1, 1
+andi t3, t3, 0x55        # t3 = (x>>1) & 01010101
+add  t1, t2, t3          # x = popcount_2bit
+# Step 2: 每 4-bit 一组
+andi t2, t1, 0x33;  srli t3, t1, 2;  andi t3, t3, 0x33;  add t1, t2, t3
+# Step 3: 每 8-bit 一组（最终结果）
+andi t2, t1, 0x0F;  srli t3, t1, 4;  andi t3, t3, 0x0F;  add t3, t2, t3
+```
+例：0xC1 = 0b11000001 → (10)(00)(00)(01) → 2+0+0+1 → (0010)(0001) → 2+1 → 3。
+
+### Case 8 — IEEE 754 半精度浮点数分类
+
+**字段提取**: sign=bit15, exp=bits[14:10], mantissa=bits[9:0]
+```asm
+srli t2, t1, 10           # 提取指数
+andi t2, t2, 0x1F         # t2 = 5-bit exp
+andi t3, t1, 0x3FF        # t3 = 10-bit mantissa
+```
+**分类分支**:
+- exp==0 且 mant==0 → type 0（零）
+- exp==0 且 mant!=0 → type 4（非规约化数）
+- exp==31 且 mant==0 → type 1（无穷大）
+- exp==31 且 mant!=0 → type 2（NaN）
+- 1≤exp≤30 → type 3（规约化数）
+
+使用 `bnez`/`beq` 构建决策树，9 组测试覆盖全部 5 种类型（含正负）。
+
+### Case 9 — 浮点数 → Q3.4 定点数量化
+
+**算法**: 值 = M × 2^(exp-21)，其中 M = 1024 + mantissa
+```asm
+addi t4, t4, 1024          # M = 1024 + mantissa
+addi t5, t3, -21           # shift = exp - 21
+# 若 shift>=0: 左移 M；若 shift<0: 右移 M
+bge  t5, x0, shift_left
+sub  t5, x0, t5            # 取正移位数
+srl  a0, t4, t5            # M >> (21-exp)
+j    sign_handle
+shift_left:
+sll  a0, t4, t5            # M << (exp-21)
+```
+**符号处理**: 正数直接输出低 8 位；负数取 32-bit 补码后截断
+```asm
+beqz t2, positive           # sign==0 跳过
+sub  a0, x0, a0            # -a0 (补码)
+positive:
+andi t3, a0, 0xFF          # 截 8 位
+```
+
+例：0xBF00 (-1.75) → M=1792, exp=15, shift=-6 → 1792>>6=28 → 补码 256-28=228=0xE4。6 组测试覆盖正负数。
+
 
 ### 第 12 周 (5月)
 - 完成 Requirement 文档阅读理解
@@ -135,7 +270,7 @@ Mac（代码）→ Windows（综合上板）→ Mac（修 bug）→ Windows（�
 - Vivado TCL 一键建工程脚本
 - ego1.xdc 引脚约束文件创建
 - 团队协作指南 project_log/ 建立
-- 进度检查表 5_progress_form 完成
+- 进度检查表 2_progress 完成
 - Bonus 规划（VGA + 贪吃蛇 = 10 分）
 - PC_RESET 从 0x0000 改为 0x4000（对齐 difftest 差分测试框架）
 - Ifetch $readmemh 加载偏移改为 mem[4096]（对应字节地址 0x4000）
