@@ -246,11 +246,14 @@ module CPUTop (
     );
 
     // ===========================
-    // 写回数据 MUX (MemtoReg)
+    // 写回数据 MUX (MemtoReg + JALWDSrc)
     // ===========================
-    // 0: ALUResult → 大部分指令
-    // 1: ReadData  → Load 指令
-    assign WD3 = MemtoReg ? ReadData : ALUResult;
+    // JAL/JALR: WD3 = PC+4 (链接地址写回rd)
+    // Load:     WD3 = ReadData (内存读值)
+    // 其他:     WD3 = ALUResult (ALU计算结果)
+    wire JALWDSrc = Jump | JALRSrc;
+    assign WD3 = JALWDSrc ? PCPlus4 :
+                 MemtoReg ? ReadData : ALUResult;
 
     // ===========================
     // 分支条件判断
@@ -273,7 +276,7 @@ module CPUTop (
     assign BranchTarget = PC + Imm;      // B-type: PC + 分支偏移
     assign JumpTarget   = PC + Imm;      // J-type: PC + JAL偏移
     // JALR: (rs1 + imm) 且最低位清零 (RISC-V 要求2字节对齐)
-    assign JALRTarget   = {rs1_val + Imm}[31:1], 1'b0;
+    assign JALRTarget   = {(rs1_val + Imm)[31:1], 1'b0};
 
     // ===========================
     // cpu_halt 与 cpu_step 合并逻辑

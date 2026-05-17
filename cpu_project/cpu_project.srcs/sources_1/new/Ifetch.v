@@ -23,7 +23,7 @@
 //
 // 【指令内存 (IMem)】
 //   - 使用 BRAM (Block RAM, 综合为FPGA片上块RAM)
-//   - 大小: 16KB (4096 x 32-bit words), 对应12-bit 字地址
+//   - 大小: 64KB (16384 x 32-bit words), 对应14-bit 字地址 (addr[15:2])
 //   - 使用 $readmemh 初始化, hex文件路径由参数 INIT_FILE 指定
 //   - 同步读: 地址给入后, 下个时钟沿输出数据 (BRAM硬件特性)
 //   - Debug 口: 当 inst_dbg_en=1时, 地址/写使能/写数据由DebugController接管
@@ -71,10 +71,10 @@ module Ifetch #(
     output [31:0] inst_rd_data      // Debug 读出数据
 );
 
-    // 指令内存 BRAM: 4096 x 32-bit = 16KB
+    // 指令内存 BRAM: 16384 x 32-bit = 64KB
     // (* ram_style = "block" *) 强制 Vivado 综合为 Block RAM
     (* ram_style = "block" *)
-    reg [31:0] mem [0:4095];
+    reg [31:0] mem [0:16383];
 
     // ===========================
     // 跨时钟域同步 Debug 信号
@@ -103,7 +103,7 @@ module Ifetch #(
     // ===========================
     // PC是字节地址, IMem是32-bit字地址 → PC[13:2]取12-bit字地址
     // Debug地址同样是字节地址 → inst_dbg_addr_sync[13:2]
-    wire [11:0] imem_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[13:2] : PC[13:2];
+    wire [13:0] imem_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : PC[15:2];
     wire        imem_wea  = inst_dbg_en_sync & inst_wr_en_sync;
 
     // ===========================

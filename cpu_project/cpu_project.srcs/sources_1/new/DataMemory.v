@@ -12,7 +12,7 @@
 //   RegFile(rs2数据) ──▶ DataMemory(写入)
 //
 // 【地址空间布局 (哈佛架构, 与IMem物理分离)】
-//   0x0000_0000 - 0x0000_3FFF : 数据内存 DMem (16KB BRAM)
+//   0x0000_0000 - 0x0000_FFFF : 数据内存 DMem (64KB BRAM)
 //   0xFFFF_0000 - 0xFFFF_0003 : 开关输入 (只读, 32-bit)
 //   0xFFFF_0004 - 0xFFFF_0007 : 按键输入 (只读, 32-bit)
 //   0xFFFF_0008 - 0xFFFF_000B : LED 输出   (读/写, 32-bit)
@@ -60,9 +60,9 @@ module DataMemory (
     output [31:0] dmem_rd_data      // Debug 读出数据
 );
 
-    // 数据内存 BRAM: 4096 x 32-bit = 16KB
+    // 数据内存 BRAM: 16384 x 32-bit = 64KB
     (* ram_style = "block" *)
-    reg [31:0] mem [0:4095];
+    reg [31:0] mem [0:16383];
 
     // LED 和 数码管 寄存器 (MMIO中可读可写的外设)
     reg [31:0] led_reg;
@@ -129,8 +129,8 @@ module DataMemory (
     reg [31:0] mem_read_data;
     always @(negedge clk) begin  // 下降沿: 与CPU时钟错半拍, 为时序优化
         if (uram_wea)
-            mem[uram_addr_mux[13:2]] <= uram_din;
-        mem_read_data <= mem[uram_addr_mux[13:2]];
+            mem[uram_addr_mux[15:2]] <= uram_din;
+        mem_read_data <= mem[uram_addr_mux[15:2]];
     end
 
     // ===========================
