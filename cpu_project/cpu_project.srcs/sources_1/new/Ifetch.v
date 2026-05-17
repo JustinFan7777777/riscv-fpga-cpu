@@ -130,7 +130,7 @@ module Ifetch #(
     // Vivado 综合时读取 hex 文件写入 BRAM 初始值.
     // difftest 差分测试框架默认从 IMem 字节地址 0x4000 开始放置指令,
     // 对应 mem 的字地址 = 0x4000 / 4 = 4096, 所以从 mem[4096] 开始加载.
-    parameter HEX_LOAD_OFFSET = 4096;  // 字地址偏移 (对应字节地址 0x4000)
+    localparam HEX_LOAD_OFFSET = PC_RESET >> 2;
     initial begin
         if (INIT_FILE != "")
             $readmemh(INIT_FILE, mem, HEX_LOAD_OFFSET);
