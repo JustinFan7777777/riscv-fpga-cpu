@@ -43,14 +43,15 @@
 //   (任意一个复位源触发都会复位整个 CPU)
 //
 // 【EGO1 引脚映射 (在 XDC 约束文件中定义)】
-//   clk      : P17  (100MHz)
-//   rst_n    : P15  (按钮, 按下=低)
-//   uart_rxd : N5   (FPGA←PC, 相当于FPGA的输入)
-//   uart_txd : T4   (FPGA→PC, 相当于FPGA的输出)
-//   开关      : 8位 (R1, P2, P3, P4, P5, R6, T1, U2)
-//   LED      : 8位 (F6, G4, G3, J4, J3, J2, K2, K1)
-//   按键      : 5位 (R17, R15, V1, U4, U1)
-//   数码管    : 8位段选 + 4位位选
+//   clk        : P17 (100MHz)
+//   rst_n      : P15 (按钮, 按下=低)
+//   uart_rxd   : N5  (FPGA←PC)
+//   uart_txd   : T4  (FPGA→PC)
+//   开关(左8)   : sw_pin[7:0]  = P5,P4,P3,P2,R2,M4,N4,R1
+//   开关(右8)   : dip_pin[7:0] = U3,U2,V2,V5,V4,R3,T3,T5
+//   LED(16个)  : led_pin[15:0]
+//   按键(5个)   : btn_pin[4:0] = R11,R17,R15,V1,U4
+//   数码管      : seg_cs[7:0](位选) + seg_data_0[7:0](段选0-3) + seg_data_1[7:0](段选4-7)
 //
 // 【使用流程速查】
 //   1. Vivado 创建工程 cpu_project, 添加所有 .v 源文件
@@ -70,11 +71,13 @@ module TopDebug (
     input         uart_rxd,     // FPGA 接收引脚 (EGO1: N5)
     output        uart_txd,     // FPGA 发送引脚 (EGO1: T4)
 
-    // 外设 IO (宽度可据EGO1实际硬件调整)
-    input  [31:0] SwitchIn,     // 拨码开关 (高16位恒为0)
-    input  [31:0] ButtonIn,     // 按键输入 (高27位恒为0)
-    output [31:0] LEDOut,       // LED 输出 (高24位恒为0)
-    output [31:0] SegOut        // 数码管输出 ({24'b0, 段选[7:0]})
+    // 外设 IO (宽度匹配 EGO1 开发板实际硬件)
+    input  [15:0] SwitchIn,     // 拨码开关: [7:0]=sw_pin(左8), [15:8]=dip_pin(右8)
+    input  [4:0]  ButtonIn,     // 按键: btn_pin[4:0] (5个按键)
+    output [15:0] LEDOut,       // LED: led_pin[15:0] (16个LED)
+    output [7:0]  seg_cs,       // 数码管位选: seg_cs_pin[7:0] (8位, 共阳极=低有效)
+    output [7:0]  seg_data_0,   // 数码管段选组0: seg_data_0_pin[7:0] (对应左4位)
+    output [7:0]  seg_data_1    // 数码管段选组1: seg_data_1_pin[7:0] (对应右4位)
 );
 
     // ===========================
@@ -222,7 +225,9 @@ module TopDebug (
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
         .LEDOut        (LEDOut),
-        .SegOut        (SegOut)
+        .seg_cs        (seg_cs),
+        .seg_data_0    (seg_data_0),
+        .seg_data_1    (seg_data_1)
     );
 
 endmodule

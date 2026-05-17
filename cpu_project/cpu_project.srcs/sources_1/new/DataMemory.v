@@ -13,10 +13,12 @@
 //
 // 【地址空间布局 (哈佛架构, 与IMem物理分离)】
 //   0x0000_0000 - 0x0000_FFFF : 数据内存 DMem (64KB BRAM)
-//   0xFFFF_0000 - 0xFFFF_0003 : 开关输入 (只读, 32-bit)
-//   0xFFFF_0004 - 0xFFFF_0007 : 按键输入 (只读, 32-bit)
-//   0xFFFF_0008 - 0xFFFF_000B : LED 输出   (读/写, 32-bit)
-//   0xFFFF_000C - 0xFFFF_000F : 数码管输出 (读/写, 32-bit)
+//   0xFFFF_0000 - 0xFFFF_0003 : SwitchIn[15:0] 开关输入 (只读)
+//   0xFFFF_0004 - 0xFFFF_0007 : ButtonIn[4:0]  按键输入 (只读)
+//   0xFFFF_0008 - 0xFFFF_000B : LEDOut[15:0]   LED 输出 (读/写)
+//   0xFFFF_000C - 0xFFFF_000F : seg_cs[7:0]    数码管位选 (读/写)
+//   0xFFFF_0010 - 0xFFFF_0013 : seg_data_0[7:0] 数码管段选组0 (读/写)
+//   0xFFFF_0014 - 0xFFFF_0017 : seg_data_1[7:0] 数码管段选组1 (读/写)
 //   例如: 在汇编中 lw x1, 0(x31) 其中 x31=0xFFFF0000 → 读到开关值
 //         在汇编中 sw x1, 8(x31) 其中 x31=0xFFFF0000 → 写到 LED
 //
@@ -46,11 +48,13 @@ module DataMemory (
     input  [31:0] WriteData,        // 待写入数据 (来自rs2)
     output [31:0] ReadData,         // 读出数据 (送到 MemtoReg MUX)
 
-    // 外设 IO 接口 (直连 FPGA 引脚)
-    input  [31:0] SwitchIn,         // 拨码开关输入值
-    input  [31:0] ButtonIn,         // 按键输入值
-    output [31:0] LEDOut,           // LED输出值
-    output [31:0] SegOut,           // 数码管输出值
+    // 外设 IO 接口 (宽度匹配 EGO1 开发板)
+    input  [15:0] SwitchIn,         // 拨码开关: [7:0]=sw_pin, [15:8]=dip_pin
+    input  [4:0]  ButtonIn,         // 按键: [4:0]=btn_pin
+    output [15:0] LEDOut,           // LED: [15:0]=led_pin
+    output [7:0]  seg_cs,           // 数码管位选 (8位, 共阳极=低有效)
+    output [7:0]  seg_data_0,       // 数码管段选组0 (左4位)
+    output [7:0]  seg_data_1        // 数码管段选组1 (右4位)
 
     // Debug: 数据内存读写端口
     input         dmem_dbg_en,      // 1=Debug模式访问数据内存
@@ -64,9 +68,11 @@ module DataMemory (
     (* ram_style = "block" *)
     reg [31:0] mem [0:16383];
 
-    // LED 和 数码管 寄存器 (MMIO中可读可写的外设)
-    reg [31:0] led_reg;
-    reg [31:0] seg_reg;
+    // IO 外设寄存器 (MMIO中可读可写, 宽度匹配 EGO1 实际硬件)
+    reg [15:0] led_reg;        // 16 个 LED
+    reg [7:0]  seg_cs_reg;     // 数码管位选 (8位)
+    reg [7:0]  seg_data0_reg;  // 数码管段选组0
+    reg [7:0]  seg_data1_reg;  // 数码管段选组1
 
     // ===========================
     // 跨时钟域同步 Debug 信号
@@ -74,7 +80,7 @@ module DataMemory (
     reg         dmem_dbg_en_sync,   dmem_wr_en_sync;
     reg [31:0] dmem_dbg_addr_sync, dmem_wr_data_sync;
 
-    always @(negedge clk or negedge rst_n) begin  // 注意: negedge clk
+    always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             dmem_dbg_en_sync   <= 1'b0;
             dmem_wr_en_sync    <= 1'b0;
@@ -95,25 +101,30 @@ module DataMemory (
     wire isMMIO_CPU = (Addr[31:16] == 16'hFFFF);
     wire isMMIO_DBG = (dmem_dbg_addr_sync[31:16] == 16'hFFFF);
 
-    // CPU 侧 MMIO 读
+    // CPU 侧 MMIO 读 (返回32bit值, 实际外设位宽不足32bit的零扩展)
     wire [31:0] mmio_read_cpu;
-    assign mmio_read_cpu = (Addr[3:0] == 4'h0) ? SwitchIn  :   // 0xFFFF0000: 开关
-                           (Addr[3:0] == 4'h4) ? ButtonIn  :   // 0xFFFF0004: 按键
-                           (Addr[3:0] == 4'h8) ? led_reg   :   // 0xFFFF0008: LED
-                           (Addr[3:0] == 4'hC) ? seg_reg   :   // 0xFFFF000C: 数码管
+    assign mmio_read_cpu = (Addr[3:0] == 4'h0) ? {16'b0, SwitchIn}       :  // 0xFFFF0000: 开关
+                           (Addr[3:0] == 4'h4) ? {27'b0, ButtonIn}       :  // 0xFFFF0004: 按键
+                           (Addr[3:0] == 4'h8) ? {16'b0, led_reg}        :  // 0xFFFF0008: LED
+                           (Addr[3:0] == 4'hC) ? {24'b0, seg_cs_reg}     :  // 0xFFFF000C: 数码管位选
+                           (Addr[3:0] == 4'h10)? {24'b0, seg_data0_reg}  :  // 0xFFFF0010: 数码管段选0
+                           (Addr[3:0] == 4'h14)? {24'b0, seg_data1_reg}  :  // 0xFFFF0014: 数码管段选1
                            32'd0;
 
-    // MMIO 写 (CPU侧)
-    // 只有 MemWrite=1 且地址命中MMIO时才写外设寄存器
+    // MMIO 写 (CPU侧: 只有 MemWrite=1 且地址命中MMIO时才写外设寄存器)
     wire mmio_we_cpu = MemWrite && isMMIO_CPU;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            led_reg <= 32'd0;
-            seg_reg <= 32'd0;
+            led_reg       <= 16'd0;
+            seg_cs_reg    <= 8'd0;
+            seg_data0_reg <= 8'd0;
+            seg_data1_reg <= 8'd0;
         end else begin
             if (mmio_we_cpu) begin
-                if (Addr[3:0] == 4'h8)  led_reg <= WriteData;
-                if (Addr[3:0] == 4'hC)  seg_reg <= WriteData;
+                if (Addr[3:0] == 4'h8)  led_reg       <= WriteData[15:0];
+                if (Addr[3:0] == 4'hC)  seg_cs_reg    <= WriteData[7:0];
+                if (Addr[3:0] == 4'h10) seg_data0_reg <= WriteData[7:0];
+                if (Addr[3:0] == 4'h14) seg_data1_reg <= WriteData[7:0];
             end
         end
     end
@@ -125,9 +136,9 @@ module DataMemory (
     wire uram_wea = dmem_dbg_en_sync ? dmem_wr_en_sync : (MemWrite && !isMMIO_CPU);
     wire [31:0] uram_din = dmem_dbg_en_sync ? dmem_wr_data_sync : WriteData;
 
-    // BRAM 读写 (同步读)
+    // BRAM 读写 (同步读, negedge 为时序优化)
     reg [31:0] mem_read_data;
-    always @(negedge clk) begin  // 下降沿: 与CPU时钟错半拍, 为时序优化
+    always @(negedge clk) begin
         if (uram_wea)
             mem[uram_addr_mux[15:2]] <= uram_din;
         mem_read_data <= mem[uram_addr_mux[15:2]];
@@ -136,12 +147,13 @@ module DataMemory (
     // ===========================
     // 读数据 MUX: DMem BRAM 还是 MMIO
     // ===========================
-    assign ReadData    = isMMIO_CPU ? mmio_read_cpu  : mem_read_data;
+    assign ReadData     = isMMIO_CPU ? mmio_read_cpu  : mem_read_data;
     assign dmem_rd_data = isMMIO_DBG ? 32'd0          : mem_read_data;
-    // Note: Debug读MMIO暂返回0, 实际调试场景主要读DMem数据区
 
-    // 输出到外设
-    assign LEDOut = led_reg;
-    assign SegOut = seg_reg;
+    // 输出到外设 (直连 EGO1 引脚)
+    assign LEDOut     = led_reg;
+    assign seg_cs     = seg_cs_reg;
+    assign seg_data_0 = seg_data0_reg;
+    assign seg_data_1 = seg_data1_reg;
 
 endmodule

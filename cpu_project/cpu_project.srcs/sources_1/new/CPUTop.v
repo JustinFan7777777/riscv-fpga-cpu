@@ -86,11 +86,13 @@ module CPUTop (
     // Debug: PC 读出口
     output [31:0] dbg_pc,           // 当前PC值 (送给DebugController)
 
-    // 外设 IO (直连FPGA引脚)
-    input  [31:0] SwitchIn,         // 拨码开关
-    input  [31:0] ButtonIn,         // 按键
-    output [31:0] LEDOut,           // LED
-    output [31:0] SegOut            // 数码管
+    // 外设 IO (宽度匹配 EGO1 开发板)
+    input  [15:0] SwitchIn,         // 拨码开关: [7:0]=左8, [15:8]=右8
+    input  [4:0]  ButtonIn,         // 按键: [4:0]=5个按键
+    output [15:0] LEDOut,           // LED: [15:0]=16个LED
+    output [7:0]  seg_cs,           // 数码管位选 (8位, 共阳极=低有效)
+    output [7:0]  seg_data_0,       // 数码管段选组0 (左4位数字)
+    output [7:0]  seg_data_1        // 数码管段选组1 (右4位数字)
 );
 
     // ===========================
@@ -236,7 +238,9 @@ module CPUTop (
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
         .LEDOut        (LEDOut),
-        .SegOut        (SegOut),
+        .seg_cs        (seg_cs),
+        .seg_data_0    (seg_data_0),
+        .seg_data_1    (seg_data_1),
         // Debug
         .dmem_dbg_en   (dmem_dbg_en),
         .dmem_wr_en    (dmem_wr_en),
