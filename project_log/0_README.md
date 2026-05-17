@@ -1,5 +1,7 @@
 # 项目日志与协作指南
 
+> **🟡 当前阶段：RARS 模拟验证 (刘一骏)**
+
 本目录用于三名小组成员的协作指南、操作步骤记录和最终 report 素材汇总。
 
 ## 目录结构
@@ -10,6 +12,7 @@
 | [2_assembly_dev_guide](2_assembly_dev_guide.md) | 汇编代码编译 + 模拟验证流程 | 汇编队友 |
 | [3_team_verification_plan](3_team_verification_plan.md) | 三方协同验证清单 | 全员 |
 | [4_report_notes](4_report_notes.md) | Report 素材记录 + 开发日志 | 全队 |
+| [5_progress_form](5_progress_form.md) | 课程进度检查表 (5/19 提交) | 全队 |
 
 ## 项目概况
 

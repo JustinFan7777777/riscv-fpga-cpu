@@ -1,126 +1,130 @@
 # 三方协同验证计划
 
+> 当前状态：**🟡 汇编 RARS 测试阶段**
+
+---
+
 ## 验证阶段总览
 
 ```
-阶段 A: 汇编验证 (汇编队友)
-  → 用 RISC-V 模拟器逐 Case 验证
+阶段 A: RARS 模拟验证 ← 🟡 正在进行 (刘一骏)
+   → 逐 Case 在 RARS 中跑 33 组测试数据
+   → 记录 PASS/FAIL 结果
 
-阶段 B: Vivado 综合 (Windows 队友)
-  → source create_project.tcl
-  → 不含 hex 的首次综合 (验证硬件正确)
-  → 含 hex 的最终综合
+阶段 B: Vivado 综合 (陈俊希)
+   → source create_project.tcl → Generate Bitstream
 
-阶段 C: 传统 I/O 上板 (Windows 队友)
-  → 开关+LED 验证最简 Case
-  → 确认整条硬件通路
+阶段 C: 传统 I/O 上板 (陈俊希)
+   → 开关+LED 验证硬件通路
 
-阶段 D: Debug UART 通信 (Windows 队友)
-  → Python 串口测试 PING/PONG
-  → CLI 命令验证 reg/pc/step
+阶段 D: Debug UART 通信 (陈俊希)
+   → Python 串口测试 PING/PONG
 
-阶段 E: 差分测试 (Windows 队友)
-  → difftest 跑全部 33 组测试数据
+阶段 E: Difftest 差分测试 (陈俊希)
+   → difftest 跑全部 33 组测试数据
 
-阶段 F: 问题修复 (循环)
-  → FAIL → 定位问题 → 修代码 → 重新综合 → 重新测试
+阶段 F: 问题修复循环
+   → FAIL → 定位 → 修代码 → 重新综合 → 重新测试
 ```
 
-## 阶段 A：汇编验证
+---
 
-- **负责人**：汇编队友
-- **依赖**：无
-- **文件**：[2_assembly_dev_guide](2_assembly_dev_guide.md)
+## 🟡 阶段 A：RARS 模拟验证（当前阶段）
 
-**验收条件**：全部 33 组测试数据在 RISC-V 模拟器中 PASS
+**负责人：刘一骏**
 
-## 阶段 B：Vivado 综合
+### 操作步骤
 
-- **负责人**：Windows 队友
-- **依赖**：阶段 A (需要 batch_test.hex)
-- **文件**：[1_windows_vivado_guide](1_windows_vivado_guide.md) 步骤 1-4
+1. RARS → Settings → Memory Configuration → 勾选 "Compact, Text at 0, Data at 0x1000" → 重启 RARS
+2. 打开 `assembly/batch_test.asm` → Assemble (F3)
+3. 逐组测试 33 组数据（详见 [2_assembly_dev_guide.md](2_assembly_dev_guide.md)）
 
-**验收条件**：Bitstream 生成成功，无 critical warning
-
-## 阶段 C：传统 I/O 测试
-
-- **负责人**：Windows 队友
-- **依赖**：阶段 B
-- **测试内容**：
-  1. 烧录 bitstream
-  2. 拨动开关设置输入值
-  3. 按复位键
-  4. 观察 LED 输出
-
-**验收条件**：至少一个 Case 的 LED 输出与预期一致
-
-## 阶段 D：Debug UART 测试
-
-- **负责人**：Windows 队友
-- **依赖**：阶段 B
-- **测试内容**：
-  1. 连接 USB 转串口线
-  2. Python 脚本发 PING (0x00)
-  3. 收到 PONG (0x80)
-  4. 依次测试 HALT, READ_REG, READ_PC, STEP
-
-**验收条件**：PING/PONG 成功 + 至少能读出一个寄存器值
-
-## 阶段 E：差分测试
-
-- **负责人**：Windows 队友
-- **依赖**：阶段 D
-- **完整测试数据** (33 组)：
+### 每组操作
 
 ```
-0,[0x00000f0f,0x00001234],0x0204
-0,[0xffffffff,0x00001234],0x1234
-1,[0x12481248,0x4],0x24812480
-1,[0x1,0x2d],0x2000
-2,[0x71240000,0x18],0x71
-2,[0x81231234,0x24],0xf8123123
-3,[0x10000000,0],0x22345000
-3,[0x1,0],0x12345001
-4,[0x0,0],0x12345000
-4,[0x10,0],0x12345010
-5,[0x5,0x6],0xB
-5,[0x1,0x2],0x3
-6,[0x01,0],0x1
-6,[0x02,0],0x1
-6,[0x03,0],0x2
-6,[0x04,0],0x3
-7,[0xc1,0],0x3
-7,[0xF8,0],0x5
-8,[0x8000,0],0x0
-8,[0x0000,0],0x0
-8,[0x7c00,0],0x1
-8,[0xFc00,0],0x1
-8,[0xFc01,0],0x2
-8,[0x2026,0],0x3
-8,[0xc202,0],0x3
-8,[0x0003,0],0x4
-8,[0x80e1,0],0x4
-9,[0x3c00,0],0x10
-9,[0x3e00,0],0x18
-9,[0x4200,0],0x30
-9,[0xc400,0],0xc0
-9,[0x4240,0],0x32
-9,[0xBF00,0],0xE4
+Data Segment 手动写入:
+  [0x4000] = CaseID
+  [0x4004] = OperandA
+  [0x4008] = OperandB
+→ Run (F5)
+→ 查看 [0x400C] 的值
+→ 与期望值比对 → PASS/FAIL
+→ Reset (F12)
+→ 下一组
 ```
 
-**验收条件**：全部 33 组数据 PASS
+### 快捷启动
 
-## 阶段 F：问题修复循环
+首次用 Case 0 第 1 组数据快速验证流程是否走通，确认后再批量跑 33 组。
 
-如果任何阶段出现 FAIL：
+### 验收条件
 
-1. **Windows 队友**：记录具体错误 (实际值 vs 期望值，截图)
-2. **代码队友 (Mac)**：根据错误定位问题 (Verilog 逻辑 还是 汇编逻辑)
-3. **汇编队友**：如有汇编错误，修正 batch_test.asm
-4. **代码队友**：如有 Verilog 错误，修正 .v 文件
-5. Git commit + push
-6. **Windows 队友**：git pull，重新综合/测试
+- 全部 33 组 PASS → 通知 Windows 队友进入阶段 B
+- 出现 FAIL → 截图寄存器 + DMem，发群里给范晓乐定位
+
+---
+
+## ⬜ 阶段 B：Vivado 综合
+
+**负责人：陈俊希** | **依赖：阶段 A 全部通过**
+
+1. Clone 最新仓库
+2. Vivado 2017.4 → Tcl Console → `source create_project.tcl`
+3. Run Synthesis → Run Implementation → Generate Bitstream
+
+**验收：Bitstream 生成成功，无 critical warning**
+
+---
+
+## ⬜ 阶段 C：传统 I/O 测试
+
+**负责人：陈俊希** | **依赖：阶段 B**
+
+1. 烧录 bitstream 到 EGO1
+2. 拨码开关设置 OperandA (左8位)，拨码开关设置 OperandB (右8位)
+3. 按复位键 (P15)
+4. 观察 LED 显示 AND 结果
+
+**验收：LED 输出与手动计算一致**
+
+---
+
+## ⬜ 阶段 D：Debug UART 测试
+
+**负责人：陈俊希** | **依赖：阶段 B**
+
+```python
+import serial
+ser = serial.Serial('COM3', 115200, timeout=0.5)
+ser.write(b'\x00')           # CMD_PING
+assert ser.read(1)[0] == 0x80  # RESP_PONG
+```
+
+**验收：收到 PONG (0x80)**
+
+---
+
+## ⬜ 阶段 E：Difftest 差分测试
+
+**负责人：陈俊希** | **依赖：阶段 D**
+
+在 difftest 工具中载入 33 组测试数据（详见 [2_assembly_dev_guide.md](2_assembly_dev_guide.md) 中的测试清单），点击 Run Batch Test。
+
+**验收：全部 33 组 PASS**
+
+---
+
+## ⬜ 阶段 F：问题修复循环
+
+若任何阶段出现 FAIL：
+
+1. 记录具体错误（实际值 vs 期望值，截图）
+2. 范晓乐根据错误定位问题（Verilog 逻辑 or 汇编逻辑）
+3. 修复后 git commit + push
+4. 陈俊希 git pull，重新综合/测试
+
+---
 
 ## 成功标准
 
-全部 10 个 Case (33 组差分测试数据) PASS，即可进入文档和视频阶段。
+✅ 全部 33 组差分测试 PASS → 基础功能 80 分到手 → 进入文档 & 视频阶段

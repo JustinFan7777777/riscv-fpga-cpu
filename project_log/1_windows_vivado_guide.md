@@ -69,19 +69,22 @@ create_project.tcl
 3. 如果找不到设备：检查 USB 驱动是否安装、线是否接对
 4. **Program Device** → 选择 `TopDebug.bit` → **Program**
 
-## 步骤 6：传统 I/O 测试（先确认 CPU 基本功能）
+## 步骤 6：传统 I/O 测试（确认硬件链路）
 
-验证 Case 0 (AND 运算)：
+验证 bitstream 正确烧录且 CPU 能运行最简汇编。需写一个独立于 batch_test 的简短测试程序：
 
-1. 确保 batch_test.hex 中 Case 0 代码已加载
-2. 在开发板上：
-   - 用 **左8个拨码开关 (sw_pin)** 输入 OperandA 的低 8 位
-   - 用 **右8个拨码开关 (dip_pin)** 输入 OperandB 的低 8 位
-   - 按 **复位键 (P15)** 让 CPU 从 PC=0 开始
-   - 观察 **LED (led_pin[15:0])** 的 [7:0]：应该显示 A & B 的结果
-3. 如果 LED 显示预期结果 → CPU 硬件通路正常 ✅
+```asm
+# 简单 I/O 测试: Switch[7:0] & 0xFF → LED[7:0]
+lui  x31, 0xFFFF0      # x31 = 0xFFFF0000 (MMIO 基址)
+lw   x1, 0(x31)         # 读开关值
+andi x1, x1, 0xFF       # 取低 8 位
+sw   x1, 8(x31)         # 写到 LED
+j    .                   # 死循环
+```
 
-> 注：传统 I/O 测试需要 CPU 主动读取开关值并写入 LED。确认 case0 程序在执行 AND 运算前先从 MMIO 地址 0xFFFF0000 和 0xFFFF0004 读取开关值。
+编译为 hex → 替换 batch_test.hex → 综合 → 烧录 → 拨开关 → 看 LED。
+
+> batch_test.asm 依赖 difftest 预写 DMem 0x4000，不能直接用于传统 I/O 测试。此步骤仅用于上板前快速确认硬件链路，通过后可跳过进入步骤 7。
 
 ## 步骤 7：Debug UART 测试
 

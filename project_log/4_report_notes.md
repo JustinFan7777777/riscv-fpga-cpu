@@ -20,17 +20,15 @@
 - 仓库地址：https://github.com/CS202ComputerOrganization/cpu-project-12412307-12411025-12411922
 
 ### 3. 开发计划与实施情况
-- 第 12 周：_____
-- 第 13 周：_____
-- 第 14 周：_____
-- 第 15 周：_____
+
+详见下方"开发日志"章节。
 
 ### 4. CPU 架构设计说明
 
 #### ISA 特性
 - 指令集：RISC-V RV32I (基础整数指令集)
-- 指令数量：约 37 条
-- 指令列表：ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW, LH, LHU, LB, LBU, SW, SH, SB, BEQ, BNE, BLT, BGE, BLTU, BGEU, LUI, AUIPC, JAL, JALR
+- 已实现指令：31 条（ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU, LW, SW, BEQ, BNE, BLT, BGE, BLTU, BGEU, LUI, AUIPC, JAL, JALR）
+- 未实现：LH, LHU, LB, LBU, SH, SB（DataMemory 待扩展 byte/halfword 支持，基础 Case 不涉及）
 - 寄存器：32 个 32-bit 通用寄存器 (x0-x31)，x0 硬连线为 0
 - 异常处理：不支持 (基础版本)
 
@@ -41,8 +39,8 @@
 - 哈佛架构：指令内存 64KB + 数据内存 64KB (物理分离)
 
 #### 地址空间
-- IMem: 0x0000_0000 - 0x0000_FFFF (64KB)
-- DMem: 0x0000_0000 - 0x0000_FFFF (64KB)
+- IMem: 0x0000_0000 - 0x0000_FFFF (64KB)。注：PC 复位地址为 0x4000（对齐 difftest），$readmemh 从 mem[4096] 开始加载
+- DMem: 0x0000_0000 - 0x0000_FFFF (64KB)。测试数据基址 0x4000
 - MMIO: 0xFFFF_0000 - 0xFFFF_0017 (开关/LED/按键/数码管)
 
 #### 外设 IO
@@ -84,9 +82,35 @@
 - 测试说明：
 
 ### 7. 问题与总结
-- 开发过程中遇到的问题：
-- 解决方案：
-- 对课程项目的意见和建议：
+
+#### 开发过程关键决策与心路历程
+
+**1. 架构选型：单周期 vs 流水线**
+最初考虑直接上五级流水线，但评估后选择单周期先行。理由：① 单周期调试简单，所有状态在同一拍可见 ② 基础功能 80 分单周期即可覆盖 ③ 留出时间打磨代码质量和测试覆盖。流水线作为 Bonus 备选，待基础功能全 PASS 后再评估时间窗口。
+
+**2. 哈佛 vs 冯诺依曼架构**
+选择哈佛架构。Difftest 差分测试框架通过 UART 分别访问 IMem 和 DMem（WRITE_INST vs WRITE_DMEM），物理分离天然匹配。且双口 BRAM 独立读写避免结构冲突。
+
+**3. Difftest 地址对齐问题**
+Difftest 默认将 batch_test.hex 加载到 IMem 字节地址 0x4000，而 CPU 的 PC 初始设计为 0x0000。最初试图让 difftest 改配置，但它是课程提供的封闭工具。最终决定 CPU 侧适配：PC_RESET = 0x4000，$readmemh 偏移 4096。所有 PC 相对跳转指令不受影响。
+心得：嵌入式工具链对接时，适配外部工具比强行改造工具更高效。
+
+**4. Vivado 2017.4 的 Verilog 语法限制**
+遇到多个 Verilog-2001 不被 Vivado 2017.4 完整支持的情况：表达式 part-select、always 块内变量声明等。每次都是 Windows 队友综合报错 → Mac 侧查语法 → 重构为兼容写法。跨平台协作的典型摩擦。
+
+**5. 跨时钟域设计的取舍**
+DebugController 和 UART 跑 100MHz，CPU 跑 25MHz。BRAM 同步读使用 negedge clk 给组合逻辑留半拍 settling time。MEM_WAIT_CYCLES = 20 保证 Debug 写信号被 25MHz 域稳定采样。无异步 FIFO，纯同步器 + 等待计数——简单但足够可靠。
+
+**6. RARS 模拟器与硬件地址空间不一致**
+RARS 默认数据段在 0x10010000，而我们硬件 DMem 仅 64KB（0x0000-0xFFFF）。汇编队友无法在 RARS 中直接访问 0x4000。解决：RARS Compact 内存模式，不改硬件。又一个"工具适配硬件"的案例。
+
+**7. 三人异步协作模式**
+Mac（代码）→ Windows（综合上板）→ Mac（修 bug）→ Windows（回归）。每轮迭代周期取决于沟通效率。Tcl 脚本和详细操作指南是减少沟通摩擦的关键——Windows 队友不需要理解代码，只需按步骤操作。
+
+#### 对课程项目的建议
+- 建议课程组提供统一的 RARS 内存配置文件，避免每个组踩同样的坑
+- 建议提供 Vivado 2017.4 的语法兼容性清单（已知不支持的特性）
+- difftest 的 IMem 起始地址如果可以配置，能减少硬件侧的适配工作
 
 ---
 
@@ -102,16 +126,23 @@
 - 完成 batch_test.asm (全部 10 个 Case)
 
 ### 第 13 周 (5月)
-- 修复 JAL/JALR 写回 bug
-- 修复 JALRTarget 语法错误
-- 内存扩容 16KB→64KB
-- EGO1 端口对齐修正 (SwitchIn/ButtonIn/LEDOut/7-seg)
-- 汇编代码完成并审查
-- 创建 Vivado TCL 脚本
-- 创建团队协作指南
+- 修复 JAL/JALR 写回 bug（WD3 未选通 PC+4）
+- 修复 JALRTarget 语法错误（表达式 part-select 不被 Vivado 2017.4 支持）
+- 内存扩容 16KB→64KB（适配测试基址 0x4000）
+- EGO1 端口对齐修正 (SwitchIn 32→16, ButtonIn 32→5, LEDOut 32→16, 7-seg 拆分为 seg_cs+seg_data_0+seg_data_1)
+- batch_test.asm 全部 10 个 Case 完成
+- batch_test.hex 编译完成（130 条指令），反汇编逐条验证通过
+- Vivado TCL 一键建工程脚本
+- ego1.xdc 引脚约束文件创建
+- 团队协作指南 project_log/ 建立
+- 进度检查表 5_progress_form 完成
+- Bonus 规划（VGA + 贪吃蛇 = 10 分）
+- PC_RESET 从 0x0000 改为 0x4000（对齐 difftest 差分测试框架）
+- Ifetch $readmemh 加载偏移改为 mem[4096]（对应字节地址 0x4000）
 
 ### 第 14 周
-- (待记录)
+- RARS 模拟验证进行中（刘一骏）
+- Windows 队友 Vivado 上板待执行（陈俊希）
 
 ### 第 15 周
 - (待记录)
@@ -143,3 +174,28 @@
 - 现象：TopDebug 端口使用了 32-bit 总线，EGO1 实际硬件宽度不同
 - 修复：SwitchIn 32→16, ButtonIn 32→5, LEDOut 32→16, SegOut→seg_cs+seg_data_0+seg_data_1
 - 文件：TopDebug.v, CPUTop.v, DataMemory.v
+
+### Bug 5: Ifetch 中 Branch 信号未声明
+- 发现日期：第 13 周
+- 现象：Ifetch.v 的 Next-PC MUX 中使用了 `Branch` 信号，但该信号未在 Ifetch 端口声明
+- 分析：PCSrc 已由 CPUTop 计算为 `Branch && BranchTaken`，`&& Branch` 是冗余的
+- 修复：删除 `&& Branch`，直接使用 `PCSrc`
+- 文件：Ifetch.v:147
+
+### Bug 6: RegFile 中 integer i 声明位置错误
+- 发现日期：第 13 周
+- 现象：`integer i` 在 always 块内部声明，Verilog-2001 不支持
+- 修复：将 `integer i` 移到模块级声明
+- 文件：RegFile.v
+
+### Bug 7: JALRTarget 表达式 part-select 不兼容
+- 发现日期：第 13 周
+- 现象：`{(rs1_val + Imm)[31:1], 1'b0}` 在 Vivado 2017.4 综合报错
+- 修复：拆分为中间 wire jalr_sum，先算和再取位选
+- 文件：CPUTop.v:283-284
+
+### Bug 8: Difftest 与 CPU 起始地址不一致
+- 发现日期：第 13 周
+- 现象：difftest 默认从 IMem 0x4000 放指令，但 CPU PC 复位到 0x0000
+- 修复：PC_RESET 改为 32'h00004000，$readmemh 加载偏移改为 mem[4096]
+- 文件：Ifetch.v

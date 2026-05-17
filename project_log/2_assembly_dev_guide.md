@@ -1,141 +1,155 @@
-# 汇编队友操作指南：汇编编译 + 模拟验证
+# 汇编队友操作指南：RARS 模拟器验证
+
+> 当前阶段：batch_test.hex 已编译完成，直接用 RARS 逐 Case 验证即可。
 
 ## 前置准备
 
-- [ ] 安装 RISC-V GNU Toolchain (课程提供)
-- [ ] 或安装 RARS (RISC-V Assembler and Runtime Simulator, Java 版)
-- [ ] Clone 小组仓库到本地
+- [ ] 安装 RARS (Java 版 RISC-V 模拟器)
+- [ ] Clone 小组仓库到本地，确认 `assembly/batch_test.asm` 和 `assembly/batch_test.hex` 存在
 
-## 步骤 1：确认汇编文件
+## 步骤 1：配置 RARS 内存（仅需一次）
 
-打开 `assembly/batch_test.asm`，这个文件包含：
-- **主调度器**：循环从 DMem 0x4000 读取 CaseID，跳转到对应 case 处理函数
-- **Case 0-5**：完整实现 (简单指令)
-- **Case 6-9**：完整实现 (斐波那契、popcount、浮点分类、浮点量化)
-
-## 步骤 2：编译 .asm → .hex
-
-### 方法 A：GNU Toolchain (推荐)
-
-```bash
-# 汇编
-riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 \
-  assembly/batch_test.asm -o assembly/batch_test.o
-
-# 链接 (代码从地址 0 开始)
-riscv64-unknown-elf-ld -Ttext 0x00000000 \
-  assembly/batch_test.o -o assembly/batch_test.elf
-
-# 生成 hex (Verilog 格式)
-riscv64-unknown-elf-objcopy -O verilog \
-  assembly/batch_test.elf assembly/batch_test.hex
-```
-
-### 方法 B：RARS
-
-**重要：使用 RARS 前必须先配置内存！**
-RARS 默认数据段起始地址是 0x10010000，不允许访问 0x4000 这样的低地址。
-→ RARS 菜单栏 → **Settings → Memory Configuration**:
-  勾选 **"Compact, Text at 0, Data at 0x1000"**
-  (或将 "Data segment address" 手动设为 `0x00000000`)
-→ 重启 RARS 生效。
-
-```bash
-java -jar rars.jar a dump .text HexText assembly/batch_test.hex assembly/batch_test.asm
-```
-
-## 步骤 3：验证 hex 文件
-
-检查 `assembly/batch_test.hex`：
-- 每行应该是 8 位十六进制数 (32-bit)
-- 第一行对应 PC=0x00000000 的指令
-- 第二行对应 PC=0x00000004 的指令
-- 依此类推
-
-```bash
-# 检查行数
-wc -l assembly/batch_test.hex
-
-# 查看前 10 行
-head -10 assembly/batch_test.hex
-```
-
-## 步骤 4：模拟器验证 (关键步骤！)
-
-在把 hex 交给 Windows 队友之前，先在本机用模拟器逐 case 验证。
-
-### 方法 A：使用 Spike (RISC-V ISA Simulator)
-
-```bash
-# 安装 spike (如未安装)
-# sudo apt-get install spike  # Ubuntu
-# 或从源码编译: https://github.com/riscv-software-src/riscv-isa-sim
-
-# 运行 batch_test.elf
-spike --isa=rv32i batch_test.elf
-```
-
-### 方法 B：使用 RARS 模拟器
+RARS 默认数据段从 0x10010000 开始，不允许访问 0x4000。需修改设置：
 
 1. 打开 RARS
-2. File → Open → 选择 `batch_test.asm`
-3. Tools → Memory Map (查看内存布局)
-4. 在 Data Segment 窗口设置 DMem 测试数据：
-   - 地址 0x4000: CaseID
-   - 地址 0x4004: OperandA
-   - 地址 0x4008: OperandB
-5. Run → Go (或单步 Step)
-6. 执行完成后检查 0x400C 处的 Result
-7. 与 TestCase_Specification.xlsx 中的期望值比对
+2. 菜单栏 → **Settings → Memory Configuration**
+3. 勾选 **"Compact, Text at 0, Data at 0x1000"**
+4. 点 OK，**关闭 RARS 重新打开**使设置生效
 
-### 逐 Case 验证清单
+## 步骤 2：打开 batch_test.asm
 
-| Case | 测试数据 (A,B) | 期望结果 | 模拟器结果 | PASS/FAIL |
-|------|---------------|---------|-----------|-----------|
-| 0 | (0x0f0f, 0x1234) | 0x0204 | | |
-| 0 | (0xffffffff, 0x1234) | 0x1234 | | |
-| 1 | (0x12481248, 0x4) | 0x24812480 | | |
-| 1 | (0x1, 0x2d) | 0x2000 | | |
-| 2 | (0x71240000, 0x18) | 0x71 | | |
-| 2 | (0x81231234, 0x24) | 0xf8123123 | | |
-| 3 | (0x10000000, 0) | 0x22345000 | | |
-| 3 | (0x1, 0) | 0x12345001 | | |
-| 4 | (0x0, 0) | 0x12345000 | | |
-| 4 | (0x10, 0) | 0x12345010 | | |
-| 5 | (0x5, 0x6) | 0xB | | |
-| 5 | (0x1, 0x2) | 0x3 | | |
-| 6 | (0x1, 0) | 0x1 | | |
-| 6 | (0x2, 0) | 0x1 | | |
-| 6 | (0x3, 0) | 0x2 | | |
-| 6 | (0x4, 0) | 0x3 | | |
-| 7 | (0xC1, 0) | 0x3 | | |
-| 7 | (0xF8, 0) | 0x5 | | |
-| 8 | (0x8000, 0) | 0x0 | | |
-| 8 | (0x0000, 0) | 0x0 | | |
-| 8 | (0x7C00, 0) | 0x1 | | |
-| 8 | (0xFC00, 0) | 0x1 | | |
-| 8 | (0xFC01, 0) | 0x2 | | |
-| 8 | (0x2026, 0) | 0x3 | | |
-| 8 | (0xC202, 0) | 0x3 | | |
-| 8 | (0x0003, 0) | 0x4 | | |
-| 8 | (0x80E1, 0) | 0x4 | | |
-| 9 | (0x3C00, 0) | 0x10 | | |
-| 9 | (0x3E00, 0) | 0x18 | | |
-| 9 | (0x4200, 0) | 0x30 | | |
-| 9 | (0xC400, 0) | 0xC0 | | |
-| 9 | (0x4240, 0) | 0x32 | | |
-| 9 | (0xBF00, 0) | 0xE4 | | |
+1. RARS → File → Open → 选择 `assembly/batch_test.asm`
+2. 点击工具栏 **Assemble** (扳手图标) 或按 F3
+3. 确认底部显示 "Assembly completed successfully"
 
-## 步骤 5：提交 hex
+## 步骤 3：逐 Case 验证（33 组数据，约 30 分钟）
 
-全部 case 通过模拟器验证后：
-1. 将 `batch_test.hex` 提交到 GitHub 仓库的 `assembly/` 目录
-2. 通知 Windows 队友重新 Generate Bitstream
+对每组测试数据执行以下操作：
 
-## 常见问题
+### 操作流程
 
-| 问题 | 解决 |
-|------|------|
-| 汇编器报 "unknown pseudo-instruction" | 一些伪指令 (如 `li`, `ble`, `bgtz`) 可能需要换成基础指令。如果 toolchain 不支持，反馈给代码队友。 |
-| hex 文件为空或格式不对 | 检查 objcopy 参数。Verilog hex 格式每行一个 32-bit 十六进制数。 |
-| 模拟结果与期望不符 | 单步跟踪，检查每条指令执行后的寄存器值。 |
+```
+1. 在 RARS 左侧 Execute 面板，找到 "Data Segment" 子窗口
+2. 右键 → "Manual Edit" → 手动写入以下地址：
+   ┌──────────┬────────────────────────────────────┐
+   │ 地址      │ 写入值                              │
+   ├──────────┼────────────────────────────────────┤
+   │ 0x4000   │ CaseID (十六进制, 如 0x00000000)     │
+   │ 0x4004   │ OperandA (十六进制)                  │
+   │ 0x4008   │ OperandB (十六进制)                  │
+   └──────────┴────────────────────────────────────┘
+3. 点击 Run → Go (F5) 运行程序
+4. 程序运行到 dispatcher_dead 死循环后自动停止
+   （如果一直跑不停，点 Stop 手动停止）
+5. 在 Data Segment 查看地址 0x400C 的值 = 实际结果
+6. 与期望值比对 → 记录 PASS/FAIL
+7. 按 Reset (F12) 复位，开始下一组
+```
+
+### 33 组测试数据清单
+
+**Case 0 — AND**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 1 | 0x00000f0f | 0x00001234 | 0x00000204 | | |
+| 2 | 0xffffffff | 0x00001234 | 0x00001234 | | |
+
+**Case 1 — SLL**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 3 | 0x12481248 | 0x00000004 | 0x24812480 | | |
+| 4 | 0x00000001 | 0x0000002d | 0x00002000 | | |
+
+**Case 2 — SRA**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 5 | 0x71240000 | 0x00000018 | 0x00000071 | | |
+| 6 | 0x81231234 | 0x00000024 | 0xf8123123 | | |
+
+**Case 3 — LUI+ADD**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 7 | 0x10000000 | 0x00000000 | 0x22345000 | | |
+| 8 | 0x00000001 | 0x00000000 | 0x12345001 | | |
+
+**Case 4 — JAL+AUIPC**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 9 | 0x00000000 | 0x00000000 | 0x12345000 | | |
+| 10 | 0x00000010 | 0x00000000 | 0x12345010 | | |
+
+**Case 5 — JAL+JALR**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 11 | 0x00000005 | 0x00000006 | 0x0000000B | | |
+| 12 | 0x00000001 | 0x00000002 | 0x00000003 | | |
+
+**Case 6 — Fibonacci**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 13 | 0x00000001 | 0x00000000 | 0x00000001 | | |
+| 14 | 0x00000002 | 0x00000000 | 0x00000001 | | |
+| 15 | 0x00000003 | 0x00000000 | 0x00000002 | | |
+| 16 | 0x00000004 | 0x00000000 | 0x00000003 | | |
+
+**Case 7 — Popcount**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 17 | 0x000000C1 | 0x00000000 | 0x00000003 | | |
+| 18 | 0x000000F8 | 0x00000000 | 0x00000005 | | |
+
+**Case 8 — IEEE754 浮点分类**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 19 | 0x00008000 | 0x00000000 | 0x00000000 | | |
+| 20 | 0x00000000 | 0x00000000 | 0x00000000 | | |
+| 21 | 0x00007C00 | 0x00000000 | 0x00000001 | | |
+| 22 | 0x0000FC00 | 0x00000000 | 0x00000001 | | |
+| 23 | 0x0000FC01 | 0x00000000 | 0x00000002 | | |
+| 24 | 0x00002026 | 0x00000000 | 0x00000003 | | |
+| 25 | 0x0000C202 | 0x00000000 | 0x00000003 | | |
+| 26 | 0x00000003 | 0x00000000 | 0x00000004 | | |
+| 27 | 0x000080E1 | 0x00000000 | 0x00000004 | | |
+
+**Case 9 — 浮点→Q3.4 量化**
+| # | OperandA | OperandB | 期望结果 | 实际 | 判定 |
+|---|----------|----------|---------|------|------|
+| 28 | 0x00003C00 | 0x00000000 | 0x00000010 | | |
+| 29 | 0x00003E00 | 0x00000000 | 0x00000018 | | |
+| 30 | 0x00004200 | 0x00000000 | 0x00000030 | | |
+| 31 | 0x0000C400 | 0x00000000 | 0x000000C0 | | |
+| 32 | 0x00004240 | 0x00000000 | 0x00000032 | | |
+| 33 | 0x0000BF00 | 0x00000000 | 0x000000E4 | | |
+
+## 步骤 4：记录结果
+
+在项目根目录创建 `assembly/test_results.txt`，格式如下：
+
+```
+=== RARS 模拟验证结果 ===
+日期: 2026-05-__
+测试人: 刘一骏
+
+Case 0:  1/2 PASS, 2/2 PASS
+Case 1:  ...
+...
+总计: __/33 PASS
+
+若有 FAIL，记录详情:
+Case X, 数据: A=... B=..., 期望: ..., 实际: ...
+```
+
+## 步骤 5：提交
+
+全部 33 组 PASS 后：
+1. 将 `test_results.txt` 放入 `assembly/` 目录
+2. `git add assembly/test_results.txt && git commit -m "Add RARS test results" && git push`
+3. 在群里通知 Windows 队友可以开始上板测试
+
+## 如果遇到 FAIL
+
+| 现象 | 可能原因 | 行动 |
+|------|---------|------|
+| 某 Case 结果不对 | 汇编逻辑 bug | 单步跟踪该 Case，截图寄存器值发群里给范晓乐定位 |
+| RARS 报内存访问错误 | Memory Configuration 没设对 | 回到步骤 1 重新检查 |
+| 程序不停止 | dispatcher 跳转错误 | 检查是否从正确的 CaseID 开始 |
