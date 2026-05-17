@@ -33,6 +33,13 @@ riscv64-unknown-elf-objcopy -O verilog \
 
 ### 方法 B：RARS
 
+**重要：使用 RARS 前必须先配置内存！**
+RARS 默认数据段起始地址是 0x10010000，不允许访问 0x4000 这样的低地址。
+→ RARS 菜单栏 → **Settings → Memory Configuration**:
+  勾选 **"Compact, Text at 0, Data at 0x1000"**
+  (或将 "Data segment address" 手动设为 `0x00000000`)
+→ 重启 RARS 生效。
+
 ```bash
 java -jar rars.jar a dump .text HexText assembly/batch_test.hex assembly/batch_test.asm
 ```

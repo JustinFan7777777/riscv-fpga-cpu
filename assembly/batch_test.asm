@@ -17,6 +17,14 @@
 #   5. 跳回 dispatcher 继续读下一个 CaseID
 #   6. 若 CaseID >= 10: 死循环等待 Host 控制
 #
+# ==== RARS 模拟器配置 (重要!) ====
+#   由于 CPU 硬件 DMem 仅 64KB, Base 地址为 0x4000, 但 RARS 默认数据段
+#   起始地址是 0x10010000, 不允许访问 0x4000 这样的"低地址"。
+#   解决方法 -> RARS → Settings → Memory Configuration:
+#     勾选 "Compact, Text at 0, Data at 0x1000"
+#   或 将 "Data segment address" 设为 0x00000000
+#   然后重启 RARS 即可正常访问 0x4000。
+#
 # ==== 编译 (使用课程提供的 RISC-V toolchain) ====
 #   riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 batch_test.asm -o batch_test.o
 #   riscv64-unknown-elf-ld -Ttext 0x00000000 batch_test.o -o batch_test.elf
