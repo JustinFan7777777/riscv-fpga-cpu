@@ -123,11 +123,13 @@ module Ifetch #(
     // ===========================
     // 使用 $readmemh 初始化指令内存
     // ===========================
-    // Vivado 综合时会读取 .hex 文件, 将机器码写入 BRAM 初始值
-    // 这样生成的 bitstream 自带指令, 上电就能跑
+    // Vivado 综合时读取 hex 文件写入 BRAM 初始值.
+    // difftest 差分测试框架默认从 IMem 字节地址 0x4000 开始放置指令,
+    // 对应 mem 的字地址 = 0x4000 / 4 = 4096, 所以从 mem[4096] 开始加载.
+    parameter HEX_LOAD_OFFSET = 4096;  // 字地址偏移 (对应字节地址 0x4000)
     initial begin
         if (INIT_FILE != "")
-            $readmemh(INIT_FILE, mem);
+            $readmemh(INIT_FILE, mem, HEX_LOAD_OFFSET);
     end
 
     // ===========================
@@ -138,10 +140,12 @@ module Ifetch #(
     // 计算各种 Next-PC
     wire [31:0] PC_Plus_4 = pcReg + 32'd4;
 
+    parameter PC_RESET = 32'h00004000;  // difftest要求PC从0x4000开始
+
     // Next-PC MUX (优先级: halt > reset > JALR > JAL > branch taken > PC+4)
     wire [31:0] NextPC;
     assign NextPC = cpu_halt              ? pcReg :       // halt: 暂停
-                    (cpu_reset)          ? 32'd0 :       // reset: 归零
+                    (cpu_reset)          ? PC_RESET :     // reset: 回到0x4000
                     JALRSrc              ? JALRTarget :  // JALR
                     Jump                 ? JumpTarget :  // JAL
                     PCSrc                 ? BranchTarget :// 条件分支满足
@@ -149,7 +153,7 @@ module Ifetch #(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            pcReg <= 32'd0;
+            pcReg <= PC_RESET;  // difftest要求PC从0x4000开始
         end else begin
             pcReg <= NextPC;
         end
