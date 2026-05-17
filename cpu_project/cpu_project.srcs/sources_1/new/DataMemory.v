@@ -54,7 +54,7 @@ module DataMemory (
     output [15:0] LEDOut,           // LED: [15:0]=led_pin
     output [7:0]  seg_cs,           // 数码管位选 (8位, 共阳极=低有效)
     output [7:0]  seg_data_0,       // 数码管段选组0 (左4位)
-    output [7:0]  seg_data_1        // 数码管段选组1 (右4位)
+    output [7:0]  seg_data_1,        // 数码管段选组1 (右4位)
 
     // Debug: 数据内存读写端口
     input         dmem_dbg_en,      // 1=Debug模式访问数据内存

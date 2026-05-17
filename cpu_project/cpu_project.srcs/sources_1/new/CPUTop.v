@@ -131,6 +131,7 @@ module CPUTop (
 
     // Next-PC
     wire [31:0] JumpTarget, BranchTarget, JALRTarget;
+    wire [31:0] jalr_sum;               // JALR加法中间结果
     wire        PCSrc;
     wire        cpu_halt_effective;  // 实际生效的 halt 信号
 
@@ -280,7 +281,8 @@ module CPUTop (
     assign BranchTarget = PC + Imm;      // B-type: PC + 分支偏移
     assign JumpTarget   = PC + Imm;      // J-type: PC + JAL偏移
     // JALR: (rs1 + imm) 且最低位清零 (RISC-V 要求2字节对齐)
-    assign JALRTarget   = {(rs1_val + Imm)[31:1], 1'b0};
+    assign jalr_sum     = rs1_val + Imm;
+    assign JALRTarget   = {jalr_sum[31:1], 1'b0};
 
     // ===========================
     // cpu_halt 与 cpu_step 合并逻辑

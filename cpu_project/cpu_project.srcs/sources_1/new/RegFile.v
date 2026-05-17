@@ -43,6 +43,7 @@ module RegFile (
 
     // 32个32-bit寄存器 (x0~x31)
     reg [31:0] regFile [0:31];
+    integer i;  // 复位循环变量
 
     // ===========================
     // 双读口 (组合逻辑, 非阻塞)
@@ -67,7 +68,6 @@ module RegFile (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             // 复位: 清空所有寄存器 (实际FPGA上也可不清理, 但初始化便于调试)
-            integer i;
             for (i = 0; i < 32; i = i + 1)
                 regFile[i] <= 32'd0;
         end else begin

@@ -144,7 +144,7 @@ module Ifetch #(
                     (cpu_reset)          ? 32'd0 :       // reset: 归零
                     JALRSrc              ? JALRTarget :  // JALR
                     Jump                 ? JumpTarget :  // JAL
-                    (PCSrc && Branch)    ? BranchTarget :// 条件分支满足
+                    PCSrc                 ? BranchTarget :// 条件分支满足
                                            PC_Plus_4;   // 默认: 顺序执行
 
     always @(posedge clk or negedge rst_n) begin
