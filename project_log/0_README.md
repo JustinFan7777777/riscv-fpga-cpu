@@ -20,10 +20,13 @@
 - **验证工具**: 差分测试 (difftest) + 传统 I/O (开关/LED)
 - **Git 仓库**: GitHub Classroom
 
-## 成员分工
+## 成员信息
 
-| 角色 | 负责内容 |
-|------|---------|
-| 代码设计 (Mac) | Verilog 代码编写、审查、项目协调 |
-| 汇编开发 | batch_test.asm 编写与编译 |
-| 硬件验证 (Windows) | Vivado 工程、bitstream 生成、上板测试 |
+| 姓名 | 学号 | 角色 | 负责内容 |
+|------|------|------|---------|
+| 范晓乐 | 12412307 | 代码设计 (Mac) | Verilog 代码编写、审查、项目协调 |
+| 刘一骏 | 12411922 | 汇编开发 | batch_test.asm 编写与编译、RARS 模拟验证 |
+| 陈俊希 | 12411025 | 硬件验证 (Windows) | Vivado 工程、bitstream 生成、上板测试 |
+
+- **GitHub Classroom**: [cpu-project-12412307-12411025-12411922](https://github.com/CS202ComputerOrganization/cpu-project-12412307-12411025-12411922)
+- **提交文件夹名**: `c_rv_FanXiaole_ChenJunxi_LiuYijun`
