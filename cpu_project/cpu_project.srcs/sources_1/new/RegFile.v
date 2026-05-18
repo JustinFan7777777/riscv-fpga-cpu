@@ -26,7 +26,7 @@
 `timescale 1ns / 1ps
 
 module RegFile (
-    input         clk,          // CPU 时钟 (25MHz)
+    input         clk,          // CPU 时钟 (12.5MHz)
     input         rst_n,        // 异步复位 (低有效)
     input         RegWrite,     // 写使能: 1=将WD3写入rd寄存器
     input  [4:0]  rs1_addr,     // 读口1地址 (来自 inst[19:15])

@@ -40,7 +40,7 @@
 `timescale 1ns / 1ps
 
 module DataMemory (
-    input         clk,              // CPU 时钟 (25MHz)
+    input         clk,              // CPU 时钟 (12.5MHz)
     input         rst_n,            // 异步复位 (低有效)
     // CPU 正常访存接口
     input         MemWrite,         // 1=写数据内存 (来自Decoder)
@@ -77,7 +77,7 @@ module DataMemory (
     // ===========================
     // 跨时钟域同步 Debug 信号 (negedge clk: 与CPU时钟错半拍, 改善时序)
     // ===========================
-    // DebugController@100MHz → CPU@25MHz, 打一拍同步消除亚稳态
+    // DebugController@100MHz → CPU@12.5MHz, 打一拍同步消除亚稳态
     // 使用 negedge: Debug写发生在clk下降沿, BRAM在上升沿之前有半拍setup
     reg         dmem_dbg_en_sync,   dmem_wr_en_sync;
     reg [31:0] dmem_dbg_addr_sync, dmem_wr_data_sync;

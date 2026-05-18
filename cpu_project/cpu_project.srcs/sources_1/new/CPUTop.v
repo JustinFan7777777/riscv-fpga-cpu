@@ -39,7 +39,7 @@
 //   9. MUX(MemtoReg): 选择写回数据 (ALUResult / ReadData) → WD3
 //   10.RegFile: 若 RegWrite=1, 将 WD3 写入 rd
 //   11.Next-PC 逻辑: 根据 Branch/Jump/JALR/halt 决定下个 PC
-//   所有以上步骤在单个 25MHz 时钟周期内完成.
+//   所有以上步骤在单个 12.5MHz 时钟周期内完成.
 //
 // 【Debug 端口 (全部直通到 TopDebug)】
 //   DebugController 可以直接读寄存器、读/写指令内存、读/写数据内存,
@@ -57,7 +57,7 @@
 `timescale 1ns / 1ps
 
 module CPUTop (
-    input         clk,              // CPU 时钟 (25MHz, 来自TopDebug的BUFG输出)
+    input         clk,              // CPU 时钟 (12.5MHz, 来自TopDebug的BUFG输出)
     input         rst_n,            // 异步复位 (低有效, 已合并物理复位和软复位)
 
     // Debug: CPU 控制
@@ -305,7 +305,7 @@ module CPUTop (
     //   cpu_halt=0          → CPU 全速运行 (正常运行模式)
     //   cpu_halt=1, step=1  → cpu_halt_effective=0, CPU放行一拍 (单步)
     //   cpu_halt=1, step=0  → cpu_halt_effective=1, PC冻结   (暂停)
-    // 注: cpu_step是一个持续4个100MHz周期的脉冲, 刚好覆盖1个25MHz CPU周期
+    // 注: cpu_step是一个持续8个100MHz周期的脉冲, 刚好覆盖1个12.5MHz CPU周期
     assign cpu_halt_effective = cpu_halt & ~cpu_step;
 
     // ===========================

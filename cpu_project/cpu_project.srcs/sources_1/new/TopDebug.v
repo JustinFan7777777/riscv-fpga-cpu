@@ -11,7 +11,7 @@
 //                          TopDebug
 //   ┌────────────────────────────────────────────────────────────┐
 //   │                                                            │
-//   │  100MHz ──▶ ClockDivider(/4) ──▶ BUFG ──▶ 25MHz CPU clk   │
+//   │  100MHz ──▶ ClockDivider(/8) ──▶ BUFG ──▶ 12.5MHz CPU clk  │
 //   │                                                            │
 //   │  uart_rxd ──▶ UartRx ──(rx_data)──▶ DebugController        │
 //   │                                       │    │    │          │
@@ -31,7 +31,7 @@
 //
 // 【时钟方案】
 //   系统时钟: 100MHz (EGO1 板载晶振, 引脚 P17)
-//   CPU 时钟: 25MHz  (100MHz / 4)
+//   CPU 时钟: 12.5MHz (100MHz / 8)
 //   分频方式: 2-bit 计数器 (~clk_div2, ~clk_div4)
 //   BUFG: 将分频后的时钟推上全局时钟树, 保证低skew
 //   DebugController 和 UART 直接使用 100MHz 系统时钟
@@ -81,32 +81,31 @@ module TopDebug (
 );
 
     // ===========================
-    // 时钟分频: 100MHz → 25MHz
+    // 时钟分频: 100MHz → 12.5MHz
     // ===========================
-    // 2-bit 自由运行计数器:
-    //   clk_div[0]: 每周期翻转 → 50MHz (占空比50%)
-    //   clk_div[1]: 每2周期翻转 → 25MHz (占空比50%)
-    // 取 clk_div[1] 作为CPU时钟源
+    // 3-bit 自由运行计数器:
+    //   clk_div[0]: 每周期翻转 → 50MHz
+    //   clk_div[1]: 每2周期翻转 → 25MHz
+    //   clk_div[2]: 每4周期翻转 → 12.5MHz
+    // 取 clk_div[2] 作为CPU时钟源 (保证组合BRAM读路径时序收敛)
     reg [2:0] clk_div;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
-            clk_div <= 2'd0;
+            clk_div <= 3'd0;
         else
-            clk_div <= clk_div + 2'd1;
+            clk_div <= clk_div + 3'd1;
     end
 
-    // clk_div[1]: 100MHz / 4 = 25MHz
-    wire clk_25mhz = clk_div[2];
+    // clk_div[2]: 100MHz / 8 = 12.5MHz
+    wire clk_12_5mhz = clk_div[2];
 
     // BUFG: 全局时钟 Buffer (Xilinx 原语)
-    // 分频器输出的 clk_25mhz 是普通逻辑信号 (高skew),
-    // 经过 BUFG 后推上 FPGA 全局时钟树 (低skew), 才能可靠驱动所有触发器
-    // 不加 BUFG 会导致各模块时钟到达时间不一致 → setup/hold 违规
+    // 分频器输出是普通逻辑信号 (高skew), 经过 BUFG 推上全局时钟树 (低skew)
     wire cpu_clk;
     BUFG BUFG_cpu_clk (
-        .O(cpu_clk),      // 全局时钟输出 (低skew)
-        .I(clk_25mhz)     // 分频时钟输入 (高skew)
+        .O(cpu_clk),         // 全局时钟输出 (低skew)
+        .I(clk_12_5mhz)      // 分频时钟输入 (高skew)
     );
 
     // ===========================
@@ -201,7 +200,7 @@ module TopDebug (
     // CPU 实例化
     // ===========================
     CPUTop uCPUTop (
-        .clk           (cpu_clk),        // 25MHz BUFG输出
+        .clk           (cpu_clk),        // 12.5MHz BUFG输出
         .rst_n         (rst_n_combined), // 合并后的复位
 
         // Debug: CPU 控制

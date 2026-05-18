@@ -25,7 +25,7 @@
 //   - 使用 BRAM (Block RAM, 综合为FPGA片上块RAM)
 //   - 大小: 64KB (16384 x 32-bit words), 对应14-bit 字地址 (addr[15:2])
 //   - 使用 $readmemh 初始化, hex文件路径由参数 INIT_FILE 指定
-//   - 同步读: 地址给入后, 下个时钟沿输出数据 (BRAM硬件特性)
+//   - 组合读: 地址变化即时反映到输出 (写仍为同步时序)
 //   - Debug 口: 当 inst_dbg_en=1时, 地址/写使能/写数据由DebugController接管
 //
 // 【Debug 端口说明 (来自/去向 DebugController)】
@@ -36,7 +36,7 @@
 //   inst_rd_data  : Debug读出的数据 (送回DebugController)
 //
 // 【跨时钟域同步】
-//   CPU跑25MHz, DebugController跑100MHz. 所有 debug 输入信号在CPU时钟
+//   CPU跑12.5MHz, DebugController跑100MHz. 所有 debug 输入信号在CPU时钟
 //   域内打一拍 (_sync后缀) 后再使用, 避免亚稳态。
 //
 // 【IMem 包含的 .hex 文件地址映射】
@@ -49,7 +49,7 @@
 module Ifetch #(
     parameter INIT_FILE = "../assembly/batch_test.hex"  // hex 初始化文件路径
 )(
-    input         clk,              // CPU 时钟 (25MHz)
+    input         clk,              // CPU 时钟 (12.5MHz)
     input         rst_n,            // 异步复位 (低有效)
     input         cpu_halt,         // 1=暂停PC更新 (调试器控制)
     input         cpu_reset,        // 1=复位PC (调试软复位)
@@ -79,7 +79,7 @@ module Ifetch #(
     // ===========================
     // 跨时钟域同步 Debug 信号
     // ===========================
-    // 原因: DebugController 跑 100MHz, CPU 跑 25MHz
+    // 原因: DebugController 跑 100MHz, CPU 跑 12.5MHz
     // 直接接可能产生 setup/hold 时序违规
     reg        inst_dbg_en_sync,   inst_wr_en_sync;
     reg [31:0] inst_dbg_addr_sync, inst_wr_data_sync;

@@ -153,15 +153,15 @@
 //       │                      │             │              │
 //       └──全部字节发完────────┘             └──单字节发完──┘(循环下一字节)
 //
-//   S_MEM_WAIT 的设计原因：系统时钟 100MHz，但 CPU 内部 uram 跑在 25MHz。
+//   S_MEM_WAIT 的设计原因：系统时钟 100MHz，但 CPU 内部 uram 跑在 12.5MHz。
 //   跨时钟域访问需要等待 20 个 100MHz 周期来保证数据稳定。虽然寄存器应该是
 //   组合逻辑读（无需等待），但为了稳健也统一加了 MEM_WAIT_CYCLES。
 //
 // 【CPU 控制逻辑 (cpu_step 信号)】
 //   - 非 halt 状态(cpu_halt=0)：cpu_step 恒为 1，CPU 全速运行
 //   - halt 状态(cpu_halt=1)：
-//       * 收到 STEP 命令 → 内部计数器 step_countdown 从 4 倒数到 0，
-//         这期间 cpu_step=1，刚好覆盖一个 25MHz 时钟周期，完成一条指令
+//       * 收到 STEP 命令 → 内部计数器 step_countdown 从 8 倒数到 0，
+//         这期间 cpu_step=1，刚好覆盖一个 12.5MHz 时钟周期，完成一条指令
 //       * counter 到 0 后 cpu_step=0，CPU 再次暂停
 //    这种设计避免了"一个 100MHz 脉冲太窄，CPU 来不及反应"的问题。
 //
@@ -249,18 +249,18 @@ module DebugController (
     reg [3:0]  payload_cnt;      // received payload bytes
     reg [3:0]  payload_need;     // needed payload bytes
     reg [7:0]  payload [0:7];    // payload buffer (max 8 bytes: WRITE_INST addr[4]+data[4])
-    reg [3:0]  step_countdown;   // Step counter: multiple cycles to cover one 25MHz period
+    reg [3:0]  step_countdown;   // Step counter: multiple cycles to cover one 12.5MHz period
 
     reg [31:0] resp_data;        // 32-bit data to send
     reg [2:0]  resp_len;         // response total length (incl. code)
     reg [2:0]  resp_idx;         // current send byte index
     reg [7:0]  resp_buf [0:4];   // response buffer
 
-    // Memory read wait counter (cross clock domain: 100MHz → 25MHz uram)
-    // uram at 25MHz needs 1 cycle to output data = 4 cycles at 100MHz
-    // Write needs signal stable for at least one full 25MHz rising edge, use 20 cycles for margin
+    // Memory read wait counter (cross clock domain: 100MHz → 12.5MHz uram)
+    // uram at 12.5MHz needs 1 cycle to output data = 8 cycles at 100MHz
+    // Write needs signal stable for at least one full 12.5MHz rising edge, use 20 cycles for margin
     localparam MEM_WAIT_CYCLES = 5'd20;
-    localparam STEP_COUNTDOWN_INIT = 4'd4;  // Step pulse width (100MHz cycles), adjust to cover one 25MHz period
+    localparam STEP_COUNTDOWN_INIT = 4'd8;  // Step pulse width (100MHz cycles), cover one 12.5MHz CPU period (100/12.5=8)
     reg [4:0]  mem_wait_cnt;
 
     // Get payload length for each command
