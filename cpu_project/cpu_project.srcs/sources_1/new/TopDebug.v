@@ -87,7 +87,7 @@ module TopDebug (
     //   clk_div[0]: 每周期翻转 → 50MHz (占空比50%)
     //   clk_div[1]: 每2周期翻转 → 25MHz (占空比50%)
     // 取 clk_div[1] 作为CPU时钟源
-    reg [1:0] clk_div;
+    reg [2:0] clk_div;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -97,7 +97,7 @@ module TopDebug (
     end
 
     // clk_div[1]: 100MHz / 4 = 25MHz
-    wire clk_25mhz = clk_div[1];
+    wire clk_25mhz = clk_div[2];
 
     // BUFG: 全局时钟 Buffer (Xilinx 原语)
     // 分频器输出的 clk_25mhz 是普通逻辑信号 (高skew),

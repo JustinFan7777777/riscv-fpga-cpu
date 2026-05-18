@@ -107,22 +107,17 @@ module Ifetch #(
     wire        imem_wea  = inst_dbg_en_sync & inst_wr_en_sync;
 
     // ===========================
-    // BRAM 实例化 (同步读: 本周期给地址, 下周期数据才到 mem_dout)
+    // BRAM 实例化: 同步写, 组合读
     // ===========================
-    // FPGA Block RAM 硬件特性: 读延迟1个时钟周期 (不能组合读)
-    // 因此单周期CPU实际CPI=2 (取指1拍 + 执行1拍), 但指令吞吐仍是1条/周期
-    // Debug写: imem_wea=1时本周期写入 inst_wr_data_sync
-    // Debug读: mem_dout在下周期反映新地址, inst_rd_data直连mem_dout
-    reg [31:0] mem_dout;
+    // 写操作保留同步时序; 读操作使用组合读以保证当前 PC 对应的 inst
     always @(posedge clk) begin
         if (imem_wea)
             mem[imem_addr] <= inst_wr_data_sync;
-        mem_dout <= mem[imem_addr];
     end
 
-    // IMem 读取数据: Debug读和正常取指共用
-    assign inst_rd_data = mem_dout;
-    assign inst         = mem_dout;
+    // IMem 读取数据: Debug读和正常取指共用 (组合读)
+    assign inst_rd_data = mem[imem_addr];
+    assign inst         = mem[imem_addr];
 
     // ===========================
     // 使用 $readmemh 初始化指令内存
