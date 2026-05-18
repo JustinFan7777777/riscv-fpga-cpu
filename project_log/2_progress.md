@@ -8,9 +8,9 @@
 
 | 姓名 | 学号 | 项目中的任务 | 当前进度 |
 |------|------|-------------|---------|
-| 范晓乐 | 12412307 | CPU Verilog 代码设计开发、工程搭建、模块集成、代码审查 | 100% |
+| 范晓乐 | 12412307 | CPU Verilog 代码设计开发、工程搭建、模块集成、代码审查、Bug 修复 | 100% |
 | 刘一骏 | 12411922 | 汇编代码(batch_test.asm)编写、RARS 模拟验证 | 100% |
-| 陈俊希 | 12411025 | Vivado 综合实现、EGO1 上板测试、差分测试(difftest) | 进行中 |
+| 陈俊希 | 12411025 | Vivado 综合实现、EGO1 上板测试、差分测试(difftest) | 100% |
 
 ---
 
@@ -34,7 +34,7 @@
 |------|------|
 | 架构类型 | **单周期** (Single-cycle) |
 | 流水线 | 不涉及 |
-| CPU 时钟 | **25 MHz** (系统时钟 100MHz / 4 + BUFG) |
+| CPU 时钟 | **12.5 MHz** (系统时钟 100MHz / 8 + BUFG, 保证组合IMem读路径时序收敛) |
 | ISA 类型 | **RISC-V** (RV32I) |
 | 存储方案 | **哈佛结构** (指令内存 IMem 64KB + 数据内存 DMem 64KB，物理分离) |
 
@@ -125,16 +125,16 @@ LH, LHU, LB, LBU, SH, SB 共 6 条
 
 | 用例编号 | Assembly file 涉及指令 | ASM 就绪 | 测试环境 | 测试结果 |
 |---------|----------------------|---------|---------|---------|
-| TC0 (AND) | lw + and + sw | Y | IO on EGO1 / Difftest | 待测 |
-| TC1 (SLL) | lw + sll + sw | Y | Difftest | 待测 |
-| TC2 (SRA) | lw + sra + sw | Y | Difftest | 待测 |
-| TC3 (LUI+ADD) | lw + lui + add + sw | Y | Difftest | 待测 |
-| TC4 (JAL+AUIPC) | lw + jal + auipc + sub + add + sw | Y | Difftest | 待测 |
-| TC5 (JAL+JALR) | lw + jal + jr + add + sw | Y | Difftest | 待测 |
-| TC6 (Fibonacci) | lw + addi + add + ble + bgtz + sw | Y | Difftest | 待测 |
-| TC7 (Popcount) | lw + srli + andi + add + sw | Y | Difftest | 待测 |
-| TC8 (浮点分类) | lw + slli + srli + andi + beq + bne + sw | Y | Difftest | 待测 |
-| TC9 (浮点→Q3.4) | lw + srli + slli + andi + addi + sll/srl + sub + beq + sw | Y | Difftest | 待测 |
+| TC0 (AND) | lw + and + sw | Y | Difftest | PASS (2/2) |
+| TC1 (SLL) | lw + sll + sw | Y | Difftest | PASS (2/2) |
+| TC2 (SRA) | lw + sra + sw | Y | Difftest | PASS (2/2) |
+| TC3 (LUI+ADD) | lw + lui + add + sw | Y | Difftest | PASS (2/2) |
+| TC4 (JAL+AUIPC) | lw + jal + auipc + sub + add + sw | Y | Difftest | PASS (2/2) |
+| TC5 (JAL+JALR) | lw + jal + jr + add + sw | Y | Difftest | PASS (2/2) |
+| TC6 (Fibonacci) | lw + addi + add + ble + bgtz + sw | Y | Difftest | PASS (4/4) |
+| TC7 (Popcount) | lw + srli + andi + add + sw | Y | Difftest | PASS (2/2) |
+| TC8 (浮点分类) | lw + slli + srli + andi + beq + bne + sw | Y | Difftest | PASS (9/9) |
+| TC9 (浮点→Q3.4) | lw + srli + slli + andi + addi + sll/srl + sub + beq + sw | Y | Difftest | PASS (6/6) |
 
 ---
 
@@ -143,6 +143,6 @@ LH, LHU, LB, LBU, SH, SB 共 6 条
 | 项目 | 内容 |
 |------|------|
 | 开发进度 | **Verilog 代码 100%**（11 模块全部完成并审查），**汇编代码 100%**（batch_test.asm + batch_test.hex 已完成并反汇编验证通过） |
-| 测试进度 | **RARS 模拟验证已完成 (21/21 PASS)**（刘一骏），Windows 上板测试待执行（陈俊希） |
-| 文档进度 | **10%** — 提纲和素材已整理（1_report.md），正文待撰写 |
-| 项目整体风险点 | ① difftest 差分测试尚未执行，是否 PASS 未知 ② Vivado 2017.4 综合/时序收敛待验证 ③ 第 15 周截止，测试时间窗口紧张 |
+| 测试进度 | **Difftest 上板验证已完成 (33/33 PASS)**（陈俊希），RARS 模拟验证已完成 (21/21 PASS)（刘一骏） |
+| 文档进度 | **30%** — 提纲和素材已整理（1_report.md），difftest 结果已记录，正文待撰写 |
+| 项目整体风险点 | ① ~~difftest 差分测试~~ 已通过 ✅ ② ~~Vivado 综合/时序收敛~~ 已通过 ✅ ③ 第 15 周截止，文档和视频时间窗口紧张 |

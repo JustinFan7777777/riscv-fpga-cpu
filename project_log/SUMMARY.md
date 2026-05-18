@@ -1,4 +1,4 @@
-# CPU Project 完整进展总结 (截至第 14 周)
+# CPU Project 完整进展总结 (截至第 15 周 — 基础部分完成)
 
 ---
 
@@ -8,8 +8,8 @@
 |----|-----|
 | 指令集 | RISC-V RV32I |
 | CPU 架构 | 单周期 (Single-cycle), 哈佛结构 |
-| CPU 时钟 | 25MHz (100MHz 系统时钟 / 4 + BUFG) |
-| IMem | 64KB BRAM, PC_RESET=0x4000, hex 从 mem[4096] 加载 |
+| CPU 时钟 | 12.5MHz (100MHz 系统时钟 / 8 + BUFG) |
+| IMem | 64KB BRAM, PC_RESET=0x4000, hex 从 mem[4096] 加载, 组合读 |
 | DMem | 64KB BRAM + MMIO (0xFFFF0000 起) |
 | 开发板 | EGO1 (XC7A35T) |
 | Vivado | 2017.4 |
@@ -17,6 +17,7 @@
 | 已实现指令 | **31 条** (R/I/S/B/U/J 全部基础类型, 缺 LH/LB/SH/SB 共 6 条 byte/halfword) |
 | 基础 Case | 10 个全覆盖 (Case 0-9) |
 | Debug | DebugController + UartRx/UartTx, 11 条命令 |
+| Difftest | **33/33 PASS** ✅ |
 
 ---
 
@@ -100,14 +101,21 @@ PC(0x4000)→IMem→inst→Decoder(控制信号)
 
 **difftest 地址对齐 (Ifetch.v)**
 - PC_RESET = 32'h00004000
-- $readmemh(INIT_FILE, mem, 4096) → hex 加载在 mem[4096] (字节地址 0x4000)
+- HEX_LOAD_OFFSET = PC_RESET >> 2 (localparam 自动推导)
+- $readmemh(INIT_FILE, mem, HEX_LOAD_OFFSET) → hex 加载在 mem[4096] (字节地址 0x4000)
 - 原因: difftest 框架默认从 IMem 0x4000 放指令
 
+**IMem 读取方式**
+- 组合读 (combinational read): `assign inst = mem[imem_addr]`
+- 原因: 单周期 CPU 要求当周期取指，BRAM 寄存器读会引入 1 周期延迟
+- 写仍为同步时序 (`always @(posedge clk)`)
+
 **跨时钟域**
-- DebugController+UART @100MHz, CPU @25MHz
+- DebugController+UART @100MHz, CPU @12.5MHz
 - IMem sync: posedge clk
 - DMem sync: negedge clk (错半拍改善时序)
-- MEM_WAIT_CYCLES = 20 (保证 Debug 信号被 25MHz 域稳定采样)
+- MEM_WAIT_CYCLES = 20 (保证 Debug 信号被 12.5MHz 域稳定采样)
+- STEP_COUNTDOWN_INIT = 8 (100MHz/12.5MHz = 8 cycles per CPU step)
 
 **MMIO 地址映射**
 - 0xFFFF0000: 开关 (16-bit, 只读)
@@ -119,7 +127,7 @@ PC(0x4000)→IMem→inst→Decoder(控制信号)
 
 ---
 
-## 4. 已修复的 Bug (共 8 个)
+## 4. 已修复的 Bug (共 10 个)
 
 | # | 问题 | 修复 | 文件 |
 |---|------|------|------|
@@ -131,22 +139,29 @@ PC(0x4000)→IMem→inst→Decoder(控制信号)
 | 6 | RegFile integer i 在 always 内声明 | 移到模块级 | RegFile.v |
 | 7 | JALRTarget part-select 不支持 | 中间 wire jalr_sum | CPUTop.v |
 | 8 | Difftest PC=0x4000 vs CPU PC=0x0000 | PC_RESET=0x4000, hex 偏移 4096 | Ifetch.v |
+| 9 | BRAM 寄存器读导致单周期失效 | IMem 改为组合读, 去除 mem_dout | Ifetch.v |
+| 10 | 25MHz 组合读路径时序不收敛, 后18组超时 | CPU 降频至 12.5MHz (100MHz/8) | TopDebug.v |
 
 ---
 
-## 5. 汇编测试结果
+## 5. 测试结果
 
-**RARS 模拟验证: 21/21 PASS** (详见 3_test_results.md)
+**Difftest 上板验证: 33/33 PASS ✅** (2026-05-18)
 
-| Case | 测试组数 | 结果 | 验证人 |
-|------|---------|------|--------|
-| 0 (AND) | 2 | PASS | 刘一骏 |
-| 4 (JAL+AUIPC) | 2 | PASS | 刘一骏 |
-| 6 (Fibonacci) | 4 | PASS | 刘一骏 |
-| 8 (IEEE754) | 9 | PASS | 刘一骏 |
-| 9 (Q3.4量化) | 6 | PASS | 刘一骏 |
+| Case | 测试组数 | RARS | Difftest | 验证人 |
+|------|---------|------|---------|--------|
+| 0 (AND) | 2 | PASS | PASS | 刘一骏(RARS) / 陈俊希(Difftest) |
+| 1 (SLL) | 2 | — | PASS | 陈俊希 |
+| 2 (SRA) | 2 | — | PASS | 陈俊希 |
+| 3 (LUI+ADD) | 2 | — | PASS | 陈俊希 |
+| 4 (JAL+AUIPC) | 2 | PASS | PASS | 刘一骏 / 陈俊希 |
+| 5 (JAL+JALR) | 2 | — | PASS | 陈俊希 |
+| 6 (Fibonacci) | 4 | PASS | PASS | 刘一骏 / 陈俊希 |
+| 7 (Popcount) | 2 | — | PASS | 陈俊希 |
+| 8 (IEEE754) | 9 | PASS | PASS | 刘一骏 / 陈俊希 |
+| 9 (Q3.4量化) | 6 | PASS | PASS | 刘一骏 / 陈俊希 |
 
-剩余 Case 1/2/3/5/7 (12组) 未在 RARS 单独验证, 将在 difftest 上板时直接测试。
+所有 33 组测试数据全部通过, 详见 3_test_results.md。
 
 ---
 
@@ -158,22 +173,18 @@ PC(0x4000)→IMem→inst→Decoder(控制信号)
 - ego1.xdc EGO1 完整引脚约束
 - create_project.tcl Vivado 一键建工程脚本
 - RARS 模拟验证 21/21 PASS
-- 全部已知 Bug 修复
-- 代码注释全覆盖 (队友可直接阅读)
+- **Difftest 上板验证 33/33 PASS**
+- **全部 10 个 Bug 修复 (含 2 个上板后发现)**
+- 代码注释全覆盖
 - project_log 协作文件整理
 
 ### 待执行 ❌
 
 | 步骤 | 负责人 | 操作 |
 |------|--------|------|
-| 1 | **陈俊希** | `git clone` → `source create_project.tcl` → Synthesis → Bitstream |
-| 2 | 陈俊希 | 烧录 EGO1 → 传统 I/O 快速链路检查 (开关→LED) |
-| 3 | 陈俊希 | UART Python PING/PONG 测试 |
-| 4 | 陈俊希 | Difftest 33 组差分测试 |
-| 5 | 范晓乐 | 修 bug (如有 FAIL) |
-| 6 | 范晓乐 | 项目文档 PDF (提纲见 1_report.md) |
-| 7 | 全员 | 视频 MP4 (全员出镜 + 2 复杂 Case 演示) |
-| 8 | 范晓乐 | gitlog.txt + 打包 + 上传 BB |
+| 1 | 范晓乐 | 项目文档 PDF (提纲见 1_report.md) |
+| 2 | 全员 | 视频 MP4 (全员出镜 + 2 复杂 Case 演示) |
+| 3 | 范晓乐 | gitlog.txt + 打包 + 上传 BB |
 
 ### 提交文件命名
 - 文件夹: `c_rv_FanXiaole_ChenJunxi_LiuYijun`
@@ -182,20 +193,23 @@ PC(0x4000)→IMem→inst→Decoder(控制信号)
 
 ---
 
-## 7. 上板前检查清单
+## 7. 检查清单
 
 - [x] batch_test.asm 第 50 行 = `lui s0, 0x4` (硬件/difftest 模式, **不是** 0x1)
 - [x] batch_test.hex 首行 = `00004437` (验证为 `lui s0, 0x4`)
-- [x] ego1.xdc 端口名与 TopDebug.v 一致 (clk/rst_n/uart_rxd/uart_txd/SwitchIn/ButtonIn/LEDOut/seg_cs/seg_data_0/seg_data_1)
+- [x] ego1.xdc 端口名与 TopDebug.v 一致
 - [x] Ifetch.v PC_RESET = 32'h00004000
-- [x] Ifetch.v HEX_LOAD_OFFSET = 4096
+- [x] Ifetch.v HEX_LOAD_OFFSET = PC_RESET >> 2
 - [x] Vivado 2017.4 版本确认
 - [x] No Vivado IP cores
 - [x] $readmemh 初始化 IMem
+- [x] Difftest 33/33 PASS
+- [x] IMem 组合读 (单周期正确)
+- [x] CPU 12.5MHz (100MHz/8, 时序收敛)
 
 ---
 
-## 8. Bonus 规划 (待基础 PASS 后启动)
+## 8. Bonus 规划 (基础 PASS, 可启动)
 
 **推荐: VGA 文本显示 [5分] + 贪吃蛇游戏 [5分] = 10 分满分**
 

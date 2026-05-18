@@ -33,7 +33,7 @@
 - 异常处理：不支持 (基础版本)
 
 #### CPU 架构
-- 时钟频率：CPU 25MHz (100MHz 系统时钟 / 4)
+- 时钟频率：CPU 12.5MHz (100MHz 系统时钟 / 8, 保证组合IMem读路径时序收敛)
 - CPI：1 (单周期 CPU)
 - 流水线：无 (基础版本)
 - 哈佛架构：指令内存 64KB + 数据内存 64KB (物理分离)
@@ -334,3 +334,15 @@ andi t3, a0, 0xFF          # 截 8 位
 - 现象：difftest 默认从 IMem 0x4000 放指令，但 CPU PC 复位到 0x0000
 - 修复：PC_RESET 改为 32'h00004000，$readmemh 加载偏移改为 mem[4096]
 - 文件：Ifetch.v
+
+### Bug 9: BRAM 寄存器读导致单周期取指失效
+- 发现日期：第 15 周 (上板 difftest 调试)
+- 现象：Ifetch 使用 `mem_dout <= mem[imem_addr]` 寄存器读，IMem 输出延迟 1 周期，导致单周期 CPU 取指与执行不同步
+- 修复：去除 mem_dout 寄存器，改为组合读 `assign inst = mem[imem_addr]`
+- 文件：Ifetch.v
+
+### Bug 10: 25MHz 组合 IMem 读路径时序不收敛
+- 发现日期：第 15 周 (上板 difftest 调试)
+- 现象：25MHz 时 difftest 前 15 组 PASS，后 18 组因组合路径过长导致时序违规超时；降至 12.5MHz 后全部 33 组 PASS
+- 修复：CPU 时钟从 25MHz (100MHz/4) 降为 12.5MHz (100MHz/8)，同步更新 STEP_COUNTDOWN_INIT=8
+- 文件：TopDebug.v, DebugController.v
