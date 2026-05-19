@@ -141,7 +141,7 @@ module CPUTop (
 
     // --- Ifetch: 取指 (PC + 指令内存) ---
     Ifetch #(
-        .INIT_FILE("../assembly/batch_test.hex")
+        .INIT_FILE("../../../../assembly/batch_test.hex")
     ) uIfetch (
         .clk          (clk),
         .rst_n        (rst_n),
