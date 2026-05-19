@@ -227,6 +227,14 @@ module Decoder (
                 aluop_r    = 2'b00;
             end
 
+            // ===== INCLASS_MAIN: 现场设计 — 新opcode分支插在此注释上方 =====
+            // 模板 (复制上方类似指令格式修改):
+            // 7'bXXXXXXX: begin  // ← 教师给的opcode
+            //     regwrite_r = 1'bX; alusrc_r = 1'bX; memtoreg_r = 1'bX;
+            //     memwrite_r = 1'bX; branch_r = 1'bX; jump_r = 1'bX;
+            //     jalrsrc_r = 1'bX;  aluop_r = 2'bXX;
+            // end
+            // ALUOp速查: 00=强制ADD  01=强制SUB  10=R-type(查funct表)  11=I-type-ALU(查funct表)
             // 非法或未定义指令: 全部控制信号置0 = NOP
             default: begin
                 regwrite_r = 1'b0;
@@ -263,8 +271,10 @@ module Decoder (
             2'b01: alucontrol_r = 4'b0001;  // SUB (用于分支比较, 产生Zero标志)
 
             2'b10: begin  // R-type: 根据funct3和funct7[5]决定运算
+                // ===== INCLASS_ALU_R: 现场设计 — R-type新运算改此funct3表中对应行 =====
+                // 模式: 3'bXXX: alucontrol_r = funct7_5 ? 4'b新编码 : 4'b旧编码;
                 case (funct3)
-                    3'b000: alucontrol_r = funct7_5 ? 4'b0001 : 4'b0000; // SUB : ADD
+                    3'b000: alucontrol_r = funct7_5 ? 4'b0001 : 4'b0000; // SUB : ADD (无funct7_5区分时可复用此行)
                     3'b001: alucontrol_r = 4'b0101; // SLL
                     3'b010: alucontrol_r = 4'b1000; // SLT
                     3'b011: alucontrol_r = 4'b1001; // SLTU
@@ -277,6 +287,7 @@ module Decoder (
             end
 
             2'b11: begin  // I-type ALU: 根据funct3决定运算
+                // ===== INCLASS_ALU_I: 现场设计 — I-type新运算改此funct3表中对应行 =====
                 case (funct3)
                     3'b000: alucontrol_r = 4'b0000; // ADDI
                     3'b001: alucontrol_r = 4'b0101; // SLLI

@@ -56,6 +56,11 @@ module ALU (
             4'b0111: ALUResult = $signed(A) >>> B[4:0];   // SRA  / SRAI (算术右移)
             4'b1000: ALUResult = ($signed(A) < $signed(B)) ? 32'd1 : 32'd0;  // SLT / SLTI
             4'b1001: ALUResult = (A < B) ? 32'd1 : 32'd0;                   // SLTU / SLTIU
+            // ===== INCLASS_ALU: 现场设计 — 新ALU运算插在此注释下方 =====
+            // 可用编码: 4'b1010 ~ 4'b1111
+            // 模板: 4'b1010: ALUResult = <新运算表达式>;
+            // 常用: A+B, A-B, A&B, A|B, A^B, A<<B[4:0], A>>B[4:0],
+            //       $signed(A)>>>B[4:0], (A<B)?1:0, ($signed(A)<$signed(B))?1:0
             default: ALUResult = 32'd0;  // 未定义操作，输出0 (安全默认值)
         endcase
     end

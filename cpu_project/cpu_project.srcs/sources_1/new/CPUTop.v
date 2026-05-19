@@ -209,6 +209,9 @@ module CPUTop (
     //   其他:   A=rs1_val → ALUResult = rs1 OP rs2/imm (正常运算)
     // 注: 此处用 opcode 直接判断, 而非 Decoder 信号, 因为 LUI/AUIPC 的
     //      ALU A 选择与 I-type/R-type 不同, 需要独立的快速译码
+    // ===== INCLASS_MUX_A: 现场设计 — 如需新ALU_A来源，在此MUX添加分支 =====
+    // 模板: wire isNEW = (inst[6:0] == 7'bXXXXXXX);
+    //       assign ALU_A = ... ? ... : isNEW ? new_source : rs1_val;
     wire isLUI   = (inst[6:0] == 7'b0110111);
     wire isAUIPC = (inst[6:0] == 7'b0010111);
 
@@ -262,6 +265,8 @@ module CPUTop (
     //   - MemtoReg=1, 由Decoder根据opcode=0000011设置
     // 其他:      ALU计算结果直接写回rd → 选通ALUResult
     //   - R-type, I-type ALU, U-type, 等
+    // ===== INCLASS_MUX_WD3: 现场设计 — 如需新WD3来源，在此MUX添加分支 =====
+    // 优先级: JAL/JALR(PC+4) > Load(ReadData) > 默认(ALUResult)
     wire JALWDSrc = Jump | JALRSrc;
     assign WD3 = JALWDSrc ? PCPlus4 :
                  MemtoReg ? ReadData : ALUResult;
