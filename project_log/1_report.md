@@ -324,7 +324,7 @@ cpu_project/cpu_project.srcs/sources_1/new/
 ### 提交目录结构
 
 ```
-c_rv_FanXiaole_ChenJunxi_LiuYijun/
+c_小组编号_rv_FanXiaole_ChenJunxi_LiuYijun/
 ├── cpu_project/
 │   ├── cpu_project.xpr
 │   ├── cpu_project.srcs/*
@@ -339,3 +339,5 @@ c_rv_FanXiaole_ChenJunxi_LiuYijun/
 ├── other/
 └── gitlog.txt
 ```
+
+> **提交说明：** 文档通过问卷提交 (https://f.kdocs.cn/g/5JvFO9aZ/)，视频上传云盘 (链接后续发)，压缩包仅包含源代码 + gitlog.txt。文件夹命名需含小组编号 (见分组共享文档)。
