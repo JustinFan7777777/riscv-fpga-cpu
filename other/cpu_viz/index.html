@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RISC-V RV32I — 单周期 CPU 数据通路可视化</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background:#0f172a; color:#e2e8f0;
+       display:flex; height:100vh; overflow:hidden; }
+#sidebar { width:340px; min-width:340px; background:#1e293b; padding:20px; overflow-y:auto;
+           border-right:1px solid #334155; display:flex; flex-direction:column; gap:18px; }
+#sidebar h1 { font-size:18px; color:#f1f5f9; border-bottom:1px solid #334155; padding-bottom:12px; }
+#sidebar h1 span { color:#60a5fa; font-size:13px; display:block; margin-top:4px; }
+#sidebar label { font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; }
+#inst-select { width:100%; padding:8px 12px; background:#0f172a; color:#e2e8f0; border:1px solid #475569;
+               border-radius:6px; font-size:14px; cursor:pointer; }
+#inst-select:focus { outline:none; border-color:#3b82f6; }
+#ctrl-table { width:100%; border-collapse:collapse; font-size:12px; }
+#ctrl-table th { text-align:left; padding:5px 8px; color:#94a3b8; font-weight:500; border-bottom:1px solid #334155; }
+#ctrl-table td { padding:5px 8px; font-family:'SF Mono','Menlo',monospace; font-size:13px; border-bottom:1px solid #1e293b; }
+.sig-1 { color:#34d399; font-weight:700; }
+.sig-0 { color:#ef4444; }
+.sig-x { color:#64748b; }
+#inst-info { background:#0f172a; border-radius:8px; padding:12px; font-size:12px; line-height:1.6; }
+#inst-info .name { font-size:16px; color:#60a5fa; font-weight:700; }
+#inst-info .type { display:inline-block; background:#3b82f6; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:8px; }
+#inst-info .encoding { font-family:'SF Mono','Menlo',monospace; color:#fbbf24; margin-top:6px; }
+#inst-info .flow { color:#94a3b8; margin-top:8px; }
+#main { flex:1; display:flex; align-items:center; justify-content:center; background:#0b1120; }
+svg { width:100%; height:100%; max-width:900px; }
+.comp-rect { fill:#1e293b; stroke:#475569; stroke-width:1.5; rx:6; ry:6; transition:all .35s; }
+.comp-label { fill:#94a3b8; font-size:11px; text-anchor:middle; font-family:'SF Mono','Menlo',monospace; pointer-events:none; transition:fill .35s; }
+.comp-label-sub { fill:#64748b; font-size:9px; text-anchor:middle; pointer-events:none; }
+.conn { fill:none; stroke:#334155; stroke-width:1.5; transition:stroke .35s, stroke-width .35s; marker-end:url(#arrowhead); }
+.conn-bus { stroke-width:3; stroke:#334155; }
+.comp-rect.active { fill:#1e3a5f; stroke:#3b82f6; stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(59,130,246,0.4)); }
+.comp-rect.active-ex { fill:#3d2e0a; stroke:#f59e0b; stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(245,158,11,0.4)); }
+.comp-rect.active-mem { fill:#1e3a0a; stroke:#eab308; stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(234,179,8,0.4)); }
+.comp-rect.active-wb { fill:#0a2e1e; stroke:#10b981; stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(16,185,129,0.4)); }
+.comp-label.active { fill:#60a5fa; }
+.comp-label.active-ex { fill:#fbbf24; }
+.comp-label.active-mem { fill:#fde047; }
+.comp-label.active-wb { fill:#34d399; }
+.conn.active-if { stroke:#3b82f6; stroke-width:3; filter:drop-shadow(0 0 4px rgba(59,130,246,0.5)); }
+.conn.active-id { stroke:#8b5cf6; stroke-width:3; filter:drop-shadow(0 0 4px rgba(139,92,246,0.5)); }
+.conn.active-ex { stroke:#f59e0b; stroke-width:3; filter:drop-shadow(0 0 4px rgba(245,158,11,0.5)); }
+.conn.active-mem { stroke:#eab308; stroke-width:3; filter:drop-shadow(0 0 4px rgba(234,179,8,0.5)); }
+.conn.active-wb { stroke:#10b981; stroke-width:3; filter:drop-shadow(0 0 4px rgba(16,185,129,0.5)); }
+.stage-label { fill:#475569; font-size:10px; text-anchor:middle; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; }
+.stage-label.active { fill:#60a5fa; }
+@keyframes dash { to { stroke-dashoffset: -20; } }
+.conn.flowing { stroke-dasharray: 10 5; animation: dash .6s linear infinite; }
+#stages { display:flex; gap:4px; margin-top:4px; }
+.stage-dot { flex:1; height:4px; border-radius:2px; background:#334155; transition:background .35s; }
+.stage-dot.on-if { background:#3b82f6; }
+.stage-dot.on-id { background:#8b5cf6; }
+.stage-dot.on-ex { background:#f59e0b; }
+.stage-dot.on-mem { background:#eab308; }
+.stage-dot.on-wb { background:#10b981; }
+@media (max-width:900px) { body { flex-direction:column; } #sidebar { width:100%; min-width:0; flex-shrink:0; } }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>RISC-V CPU 数据通路可视化<span>单周期 · Single-Cycle · RV32I</span></h1>
+  <div>
+    <label>选择指令</label>
+    <select id="inst-select">
+      <optgroup label="R-type (寄存器运算)">
+        <option value="ADD">ADD  — rd = rs1 + rs2</option>
+        <option value="SUB">SUB  — rd = rs1 - rs2</option>
+        <option value="AND">AND  — rd = rs1 & rs2</option>
+      </optgroup>
+      <optgroup label="I-type ALU (立即数运算)">
+        <option value="ADDI">ADDI — rd = rs1 + imm</option>
+        <option value="ORI">ORI  — rd = rs1 | imm</option>
+      </optgroup>
+      <optgroup label="Load / Store (访存)">
+        <option value="LW">LW   — rd = mem[rs1 + imm]</option>
+        <option value="SW">SW   — mem[rs1 + imm] = rs2</option>
+      </optgroup>
+      <optgroup label="B-type (条件分支)">
+        <option value="BEQ">BEQ  — if rs1==rs2 then PC+=imm</option>
+      </optgroup>
+      <optgroup label="U-type (高位立即数)">
+        <option value="LUI">LUI  — rd = imm << 12</option>
+        <option value="AUIPC">AUIPC — rd = PC + (imm << 12)</option>
+      </optgroup>
+      <optgroup label="Jump (跳转)">
+        <option value="JAL">JAL  — rd = PC+4; PC += imm</option>
+        <option value="JALR">JALR — rd = PC+4; PC = (rs1+imm)&~1</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <div id="stages">
+    <div class="stage-dot" id="dot-if"></div>
+    <div class="stage-dot" id="dot-id"></div>
+    <div class="stage-dot" id="dot-ex"></div>
+    <div class="stage-dot" id="dot-mem"></div>
+    <div class="stage-dot" id="dot-wb"></div>
+  </div>
+
+  <div>
+    <label>控制信号</label>
+    <table id="ctrl-table">
+      <tr><th>信号</th><th>值</th><th>含义</th></tr>
+      <tr><td>RegWrite</td><td id="sig-rw">—</td><td>写回寄存器</td></tr>
+      <tr><td>ALUSrc</td><td id="sig-as">—</td><td>0=rs2 / 1=imm</td></tr>
+      <tr><td>MemtoReg</td><td id="sig-mr">—</td><td>0=ALU / 1=Mem</td></tr>
+      <tr><td>MemWrite</td><td id="sig-mw">—</td><td>写数据内存</td></tr>
+      <tr><td>Branch</td><td id="sig-br">—</td><td>条件分支</td></tr>
+      <tr><td>Jump</td><td id="sig-jp">—</td><td>JAL 跳转</td></tr>
+      <tr><td>JALRSrc</td><td id="sig-jr">—</td><td>JALR 跳转</td></tr>
+      <tr><td>ALUOp</td><td id="sig-ao">—</td><td>00=ADD 01=SUB 10=R 11=I</td></tr>
+    </table>
+  </div>
+
+  <div id="inst-info">
+    <div class="name" id="info-name"></div>
+    <div class="type" id="info-type"></div>
+    <div class="encoding" id="info-enc"></div>
+    <div class="flow" id="info-flow"></div>
+  </div>
+</div>
+
+<div id="main">
+<svg viewBox="0 0 980 600" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#475569" /></marker>
+    <marker id="arrow-if" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3b82f6" /></marker>
+    <marker id="arrow-id" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#8b5cf6" /></marker>
+    <marker id="arrow-ex" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f59e0b" /></marker>
+    <marker id="arrow-mem" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#eab308" /></marker>
+    <marker id="arrow-wb" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#10b981" /></marker>
+  </defs>
+
+  <!-- 阶段标注 -->
+  <text x="110" y="18" class="stage-label" id="stage-if">IF · 取指</text>
+  <text x="310" y="18" class="stage-label" id="stage-id">ID · 译码</text>
+  <text x="510" y="18" class="stage-label" id="stage-ex">EX · 执行</text>
+  <text x="700" y="18" class="stage-label" id="stage-mem">MEM · 访存</text>
+  <text x="870" y="18" class="stage-label" id="stage-wb">WB · 写回</text>
+  <line x1="190" y1="5" x2="190" y2="590" stroke="#1e293b" stroke-width="1"/>
+  <line x1="400" y1="5" x2="400" y2="590" stroke="#1e293b" stroke-width="1"/>
+  <line x1="600" y1="5" x2="600" y2="590" stroke="#1e293b" stroke-width="1"/>
+  <line x1="780" y1="5" x2="780" y2="590" stroke="#1e293b" stroke-width="1"/>
+
+  <!-- ===== IF 阶段 ===== -->
+  <rect id="comp-pc" x="30" y="40" width="110" height="38" class="comp-rect"/>
+  <text x="85" y="55" class="comp-label" id="lbl-pc">PC</text>
+  <text x="85" y="68" class="comp-label-sub">Program Counter</text>
+
+  <rect id="comp-imem" x="210" y="40" width="150" height="38" class="comp-rect"/>
+  <text x="285" y="55" class="comp-label" id="lbl-imem">IMem (BRAM 64KB)</text>
+  <text x="285" y="68" class="comp-label-sub">Instruction Memory</text>
+
+  <path id="c-pc-imem" d="M140,59 L210,59" class="conn" style="stroke-width:2.5;"/>
+
+  <!-- ===== ID 阶段 ===== -->
+  <path id="c-imem-inst" d="M285,78 L285,110 L285,145" class="conn" style="stroke-width:3;"/>
+
+  <!-- IMem 分支到 ImmGen -->
+  <path id="c-imem-immgen" d="M210,59 L180,59 L180,168 L140,168" class="conn"/>
+
+  <!-- IMem 分支到 Decoder -->
+  <path id="c-imem-decoder" d="M360,78 L370,78 L370,150" class="conn"/>
+
+  <rect id="comp-immgen" x="30" y="150" width="110" height="36" class="comp-rect"/>
+  <text x="85" y="164" class="comp-label" id="lbl-immgen">ImmGen</text>
+  <text x="85" y="177" class="comp-label-sub">立即数生成器</text>
+
+  <rect id="comp-decoder" x="290" y="150" width="160" height="36" class="comp-rect"/>
+  <text x="370" y="164" class="comp-label" id="lbl-decoder">Decoder</text>
+  <text x="370" y="177" class="comp-label-sub">译码 + 控制信号生成</text>
+
+  <rect id="comp-regfile" x="210" y="250" width="180" height="56" class="comp-rect"/>
+  <text x="300" y="272" class="comp-label" id="lbl-regfile">RegFile (32x32)</text>
+  <text x="300" y="288" class="comp-label-sub">rs1[19:15] rs2[24:20] rd[11:7]</text>
+
+  <path id="c-decoder-regfile" d="M370,186 L370,220 L300,220 L300,250" class="conn"/>
+
+  <!-- ===== EX 阶段 ===== -->
+  <rect id="comp-alua-mux" x="60" y="390" width="90" height="34" class="comp-rect"/>
+  <text x="105" y="403" class="comp-label" id="lbl-aluamux">ALU-A MUX</text>
+  <text x="105" y="416" class="comp-label-sub">LUI=0 · AUIPC=PC</text>
+
+  <rect id="comp-alub-mux" x="320" y="390" width="90" height="34" class="comp-rect"/>
+  <text x="365" y="403" class="comp-label" id="lbl-alubmux">ALU-B MUX</text>
+  <text x="365" y="416" class="comp-label-sub">ALUSrc: 0=rs2 1=imm</text>
+
+  <rect id="comp-alu" x="180" y="470" width="120" height="38" class="comp-rect"/>
+  <text x="240" y="484" class="comp-label" id="lbl-alu">ALU (10ops)</text>
+  <text x="240" y="497" class="comp-label-sub">ALUControl[3:0]</text>
+
+  <rect id="comp-branch" x="520" y="390" width="110" height="34" class="comp-rect"/>
+  <text x="575" y="403" class="comp-label" id="lbl-branch">Branch CMP</text>
+  <text x="575" y="416" class="comp-label-sub">BEQ/BNE/BLT/BGE/...</text>
+
+  <!-- rs1 → ALU-A -->
+  <path id="c-rs1-alua" d="M240,306 L200,306 L200,370 L150,370 L150,390" class="conn"/>
+  <!-- PC → ALU-A (AUIPC) -->
+  <path id="c-pc-alua" d="M85,78 L85,340 L105,340 L105,390" class="conn"/>
+  <!-- 0 → ALU-A (LUI) -->
+  <text x="45" y="382" font-size="9" fill="#64748b">0</text>
+  <path id="c-zero-alua" d="M60,390 L60,370 L75,370" class="conn"/>
+  <!-- rs2 → ALU-B -->
+  <path id="c-rs2-alub" d="M360,306 L365,306 L365,390" class="conn"/>
+  <!-- Imm → ALU-B -->
+  <path id="c-imm-alub" d="M85,186 L85,340 L315,340 L315,370 L365,370 L365,390" class="conn"/>
+  <!-- ALU-A MUX → ALU -->
+  <path id="c-alua-alu" d="M150,407 L150,440 L200,440 L200,470" class="conn"/>
+  <!-- ALU-B MUX → ALU -->
+  <path id="c-alub-alu" d="M410,407 L410,440 L280,440 L280,470" class="conn"/>
+  <!-- Decoder → ALU (ALUControl) -->
+  <path id="c-decoder-alu" d="M450,168 L450,450 L300,450 L300,470" class="conn" style="stroke-dasharray:4 3;"/>
+  <!-- Decoder → ALU-B MUX (ALUSrc) -->
+  <path id="c-decoder-alusrc" d="M430,160 L460,160 L460,300 L410,300 L410,390" class="conn" style="stroke-dasharray:4 3;"/>
+
+  <!-- rs1 → Branch CMP -->
+  <path id="c-rs1-branch" d="M390,278 L480,278 L480,370 L520,370 L520,390" class="conn"/>
+  <!-- rs2 → Branch CMP -->
+  <path id="c-rs2-branch" d="M390,290 L500,290 L500,360 L530,360 L530,390" class="conn"/>
+
+  <!-- ===== MEM 阶段 ===== -->
+  <rect id="comp-dmem" x="640" y="240" width="170" height="56" class="comp-rect"/>
+  <text x="725" y="262" class="comp-label" id="lbl-dmem">DataMemory (64KB)</text>
+  <text x="725" y="278" class="comp-label-sub">BRAM + MMIO (0xFFFFxxxx)</text>
+
+  <!-- ALU → DMem (addr) -->
+  <path id="c-alu-dmem" d="M300,489 L300,530 L680,530 L680,296" class="conn"/>
+  <!-- rs2 → DMem (write data) -->
+  <path id="c-rs2-dmem" d="M390,280 L620,280 L620,268 L640,268" class="conn"/>
+  <!-- Decoder → DMem (MemWrite) -->
+  <path id="c-decoder-memwrite" d="M450,168 L500,168 L780,168 L780,240" class="conn" style="stroke-dasharray:4 3;"/>
+
+  <!-- ===== WB 阶段 ===== -->
+  <rect id="comp-memtoreg" x="420" y="540" width="110" height="34" class="comp-rect"/>
+  <text x="475" y="553" class="comp-label" id="lbl-memtoreg">WD3 MUX</text>
+  <text x="475" y="566" class="comp-label-sub">JAL·JALR / Mem / ALU</text>
+
+  <!-- DMem → MemtoReg -->
+  <path id="c-dmem-memtoreg" d="M725,296 L725,520 L530,520 L530,540" class="conn"/>
+  <!-- ALU → MemtoReg (默认) -->
+  <path id="c-alu-memtoreg" d="M240,508 L240,520 L420,520 L420,557" class="conn"/>
+  <!-- PC+4 → WD3 (JAL/JALR) -->
+  <text x="180" y="538" font-size="9" fill="#64748b">PC+4 (link addr)</text>
+  <path id="c-pcplus4-memtoreg" d="M55,540 L420,557" class="conn"/>
+  <!-- Decoder → MemtoReg -->
+  <path id="c-decoder-memtoreg" d="M450,168 L550,168 L550,500 L475,500 L475,540" class="conn" style="stroke-dasharray:4 3;"/>
+
+  <!-- WD3 → RegFile -->
+  <path id="c-wd3-regfile" d="M475,574 L475,590 L300,590 L300,306" class="conn"/>
+
+  <!-- ===== Next-PC 逻辑 ===== -->
+  <rect id="comp-nextpc" x="20" y="540" width="100" height="34" class="comp-rect"/>
+  <text x="70" y="553" class="comp-label" id="lbl-nextpc">Next-PC MUX</text>
+  <text x="70" y="566" class="comp-label-sub">halt·rst·JALR·JAL·Br·+4</text>
+
+  <!-- Branch → Next-PC -->
+  <path id="c-branch-nextpc" d="M575,424 L575,500 L120,500 L120,540" class="conn"/>
+  <!-- Decoder → Next-PC -->
+  <path id="c-decoder-nextpc" d="M290,168 L250,168 L250,500 L70,500 L70,540" class="conn" style="stroke-dasharray:4 3;"/>
+  <!-- PC+4 → Next-PC -->
+  <path id="c-pcplus4-nextpc" d="M80,557 L80,530 L70,530" class="conn"/>
+  <!-- Next-PC → PC (反馈) -->
+  <path id="c-nextpc-pc" d="M20,557 L10,557 L10,59 L30,59" class="conn" style="stroke-dasharray:6 4;"/>
+
+  <!-- 图例 -->
+  <rect x="780" y="540" width="180" height="50" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+  <text x="790" y="555" font-size="9" fill="#94a3b8">图例</text>
+  <line x1="790" y1="568" x2="810" y2="568" stroke="#3b82f6" stroke-width="2.5"/><text x="815" y="571" font-size="8" fill="#64748b">IF</text>
+  <line x1="835" y1="568" x2="855" y2="568" stroke="#f59e0b" stroke-width="2.5"/><text x="860" y="571" font-size="8" fill="#64748b">EX</text>
+  <line x1="880" y1="568" x2="900" y2="568" stroke="#eab308" stroke-width="2.5"/><text x="905" y="571" font-size="8" fill="#64748b">MEM</text>
+  <line x1="790" y1="582" x2="810" y2="582" stroke="#8b5cf6" stroke-width="2.5"/><text x="815" y="585" font-size="8" fill="#64748b">ID</text>
+  <line x1="835" y1="582" x2="855" y2="582" stroke="#10b981" stroke-width="2.5"/><text x="860" y="585" font-size="8" fill="#64748b">WB</text>
+  <line x1="880" y1="582" x2="900" y2="582" stroke="#334155" stroke-width="1" stroke-dasharray="3 2"/><text x="905" y="585" font-size="8" fill="#64748b">控制线</text>
+</svg>
+</div>
+
+<script>
+// ======================================================================
+// 指令数据：每条指令定义 active paths + components + control signals
+// key 说明: paths=[connId, stagePhase]  stagePhase: if/id/ex/mem/wb
+// ======================================================================
+const instDefs = {};
+
+// ---- R-type 公用通路 ----
+const rtypePaths = [
+  ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+  ['c-decoder-regfile','id'],
+  ['c-rs1-alua','ex'],['c-rs2-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+  ['c-alu-dmem','ex'],['c-alu-memtoreg','wb'],['c-wd3-regfile','wb'],
+  ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+  ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+];
+const rtypeComps = [
+  ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+  ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+  ['comp-alu','ex'],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+];
+const rtypeSigs = {RegWrite:1,ALUSrc:0,MemtoReg:0,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'10'};
+const rtypeStages = ['if','id','ex','','wb'];
+
+// ---- ADD ----
+instDefs.ADD = {
+  name:'ADD — rd = rs1 + rs2',type:'R-type',enc:'opcode=0110011 funct3=000 funct7=0000000',
+  flow:'PC→IMem→inst→Decoder(控制信号)。RegFile 读 rs1,rs2。rs1→ALU-A MUX, rs2→ALU-B MUX(ALUSrc=0)。ALU 执行 ADD(ALUControl=0000)。结果→WD3 MUX(默认)→RegFile rd。Next-PC=PC+4。',
+  paths:rtypePaths, comps:rtypeComps, signals:rtypeSigs, stages:rtypeStages
+};
+instDefs.SUB = {
+  name:'SUB — rd = rs1 - rs2',type:'R-type',enc:'opcode=0110011 funct3=000 funct7=0100000',
+  flow:'与 ADD 通路相同。唯一差异: funct7[5]=1→ALUControl=0001(SUB)。',
+  paths:rtypePaths, comps:rtypeComps, signals:rtypeSigs, stages:rtypeStages
+};
+instDefs.AND = {
+  name:'AND — rd = rs1 & rs2',type:'R-type',enc:'opcode=0110011 funct3=111 funct7=0000000',
+  flow:'与 ADD 通路相同。funct3=111→ALUControl=0010(AND)。',
+  paths:rtypePaths, comps:rtypeComps, signals:rtypeSigs, stages:rtypeStages
+};
+
+// ---- I-type ALU ----
+const itypePaths = [
+  ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+  ['c-decoder-regfile','id'],
+  ['c-rs1-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+  ['c-alu-dmem','ex'],['c-alu-memtoreg','wb'],['c-wd3-regfile','wb'],
+  ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+  ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+];
+const itypeComps = [
+  ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+  ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+  ['comp-alu','ex'],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+];
+instDefs.ADDI = {
+  name:'ADDI — rd = rs1 + imm',type:'I-type ALU',enc:'opcode=0010011 funct3=000',
+  flow:'关键差异: ALUSrc=1→ALU-B MUX 选通 ImmGen 的符号扩展立即数(而非rs2)。imm=inst[31:20] 符号扩展→32-bit。ALU=ADD。',
+  paths:itypePaths, comps:itypeComps, signals:{RegWrite:1,ALUSrc:1,MemtoReg:0,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'11'}, stages:['if','id','ex','','wb']
+};
+instDefs.ORI = {
+  name:'ORI — rd = rs1 | imm',type:'I-type ALU',enc:'opcode=0010011 funct3=110',
+  flow:'通路与 ADDI 相同。funct3=110→ALUControl=0011(OR)。',
+  paths:itypePaths, comps:itypeComps, signals:{RegWrite:1,ALUSrc:1,MemtoReg:0,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'11'}, stages:['if','id','ex','','wb']
+};
+
+// ---- LW ----
+instDefs.LW = {
+  name:'LW — rd = mem[rs1 + imm]',type:'I-type Load',enc:'opcode=0000011 funct3=010',
+  flow:'ALU 计算地址 rs1+imm(ALUSrc=1,ALUOp=00)。ALUResult→DMem 读。MemtoReg=1→WD3 MUX 选通 ReadData(内存值)。RegWrite=1→写回rd。唯一使用 MemtoReg=1 的指令。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-decoder-regfile','id'],
+    ['c-rs1-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+    ['c-alu-dmem','mem'],['c-dmem-memtoreg','mem'],['c-wd3-regfile','wb'],
+    ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-decoder-alusrc','id'],['c-decoder-alu','id'],['c-decoder-memtoreg','id'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+    ['comp-alu','ex'],['comp-dmem','mem'],['comp-memtoreg','wb'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:1,ALUSrc:1,MemtoReg:1,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'00'},
+  stages:['if','id','ex','mem','wb']
+};
+
+// ---- SW ----
+instDefs.SW = {
+  name:'SW — mem[rs1 + imm] = rs2',type:'S-type',enc:'opcode=0100011 funct3=010',
+  flow:'ALU 计算地址 rs1+imm。MemWrite=1→DMem 将 rs2写入 ALUResult 地址。RegWrite=0→不写寄存器(唯一不写reg的指令之一)。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-rs1-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+    ['c-alu-dmem','mem'],['c-rs2-dmem','mem'],['c-decoder-memwrite','id'],
+    ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+    ['comp-alu','ex'],['comp-dmem','mem'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:0,ALUSrc:1,MemtoReg:'x',MemWrite:1,Branch:0,Jump:0,JALRSrc:0,ALUOp:'00'},
+  stages:['if','id','ex','mem','']
+};
+
+// ---- BEQ ----
+instDefs.BEQ = {
+  name:'BEQ — if (rs1 == rs2) PC += imm',type:'B-type',enc:'opcode=1100011 funct3=000',
+  flow:'Branch=1→激活 Branch CMP。rs1,rs2 送入比较器做==比较。若相等(BranchTaken=1)→Next-PC MUX 选通BranchTarget(PC+imm)。RegWrite=0。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-rs1-branch','ex'],['c-rs2-branch','ex'],['c-branch-nextpc','ex'],
+    ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-rs1-alua','ex'],['c-rs2-alub','ex'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-branch','ex'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:0,ALUSrc:0,MemtoReg:'x',MemWrite:0,Branch:1,Jump:0,JALRSrc:0,ALUOp:'01'},
+  stages:['if','id','ex','','']
+};
+
+// ---- LUI ----
+instDefs.LUI = {
+  name:'LUI — rd = imm << 12',type:'U-type',enc:'opcode=0110111',
+  flow:'核心: ALU-A MUX 选通0(非rs1!),ALU-B 为imm(左移12位)。ALU=0+imm=imm→rd。唯一 ALU_A=0 的指令。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-decoder-regfile','id'],
+    ['c-zero-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+    ['c-alu-dmem','ex'],['c-alu-memtoreg','wb'],['c-wd3-regfile','wb'],
+    ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+    ['comp-alu','ex'],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:1,ALUSrc:1,MemtoReg:0,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'00'},
+  stages:['if','id','ex','','wb']
+};
+
+// ---- AUIPC ----
+instDefs.AUIPC = {
+  name:'AUIPC — rd = PC + (imm << 12)',type:'U-type',enc:'opcode=0010111',
+  flow:'与LUI核心差异: ALU-A MUX 选通PC(而非0)。ALU=PC+imm→rd。唯一 ALU_A=PC 的指令。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-decoder-regfile','id'],
+    ['c-pc-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+    ['c-alu-dmem','ex'],['c-alu-memtoreg','wb'],['c-wd3-regfile','wb'],
+    ['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+    ['comp-alu','ex'],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:1,ALUSrc:1,MemtoReg:0,MemWrite:0,Branch:0,Jump:0,JALRSrc:0,ALUOp:'00'},
+  stages:['if','id','ex','','wb']
+};
+
+// ---- JAL ----
+instDefs.JAL = {
+  name:'JAL — rd = PC+4; PC += imm',type:'J-type',enc:'opcode=1101111',
+  flow:'两件事同时: ①Jump=1→Next-PC MUX=JumpTarget(PC+imm), PC跳转。②WD3 MUX=PC+4(链接地址)→rd。ALU 不参与关键路径。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-decoder-regfile','id'],
+    ['c-pcplus4-memtoreg','wb'],['c-wd3-regfile','wb'],
+    ['c-decoder-nextpc','if'],['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:1,ALUSrc:1,MemtoReg:'x',MemWrite:0,Branch:0,Jump:1,JALRSrc:0,ALUOp:'00'},
+  stages:['if','id','','','wb']
+};
+
+// ---- JALR ----
+instDefs.JALR = {
+  name:'JALR — rd = PC+4; PC = (rs1+imm)&~1',type:'I-type Jump',enc:'opcode=1100111 funct3=000',
+  flow:'与JAL类似但Next-PC来源不同: JALRSrc=1→Next-PC MUX=JALRTarget=(rs1+imm)且LSB清零。ALU计算rs1+imm。WD3 MUX同选PC+4→rd。',
+  paths:[
+    ['c-pc-imem','if'],['c-imem-inst','if'],['c-imem-decoder','id'],['c-imem-immgen','id'],
+    ['c-decoder-regfile','id'],
+    ['c-rs1-alua','ex'],['c-imm-alub','ex'],['c-alua-alu','ex'],['c-alub-alu','ex'],
+    ['c-pcplus4-memtoreg','wb'],['c-wd3-regfile','wb'],
+    ['c-decoder-nextpc','if'],['c-pcplus4-nextpc','if'],['c-nextpc-pc','if'],
+    ['c-decoder-alusrc','id'],['c-decoder-alu','id'],
+  ],
+  comps:[
+    ['comp-pc',''],['comp-imem',''],['comp-decoder',''],['comp-immgen',''],
+    ['comp-regfile',''],['comp-alua-mux','ex'],['comp-alub-mux','ex'],
+    ['comp-alu','ex'],['comp-dmem',''],['comp-memtoreg','wb'],['comp-nextpc',''],
+  ],
+  signals:{RegWrite:1,ALUSrc:1,MemtoReg:'x',MemWrite:0,Branch:0,Jump:0,JALRSrc:1,ALUOp:'00'},
+  stages:['if','id','ex','','wb']
+};
+
+// ======================================================================
+// 核心高亮函数
+// ======================================================================
+// label 映射: comp ID → label text elements 的 ID
+const labelMap = {
+  'comp-pc': ['lbl-pc'], 'comp-imem': ['lbl-imem'],
+  'comp-decoder': ['lbl-decoder'], 'comp-immgen': ['lbl-immgen'],
+  'comp-regfile': ['lbl-regfile'],
+  'comp-alua-mux': ['lbl-aluamux'], 'comp-alub-mux': ['lbl-alubmux'],
+  'comp-alu': ['lbl-alu'], 'comp-branch': ['lbl-branch'],
+  'comp-dmem': ['lbl-dmem'], 'comp-memtoreg': ['lbl-memtoreg'],
+  'comp-nextpc': ['lbl-nextpc'],
+};
+
+function highlight(instName) {
+  const d = instDefs[instName];
+  if (!d) return;
+
+  // 重置连线
+  document.querySelectorAll('.conn').forEach(el => {
+    el.classList.remove('active-if','active-id','active-ex','active-mem','active-wb');
+    el.setAttribute('marker-end','url(#arrowhead)');
+  });
+
+  // 重置组件 + 标签
+  document.querySelectorAll('.comp-rect').forEach(el => {
+    el.classList.remove('active','active-ex','active-mem','active-wb');
+  });
+  document.querySelectorAll('.comp-label,.comp-label-sub').forEach(el => {
+    el.classList.remove('active','active-ex','active-mem','active-wb');
+  });
+
+  // 重置阶段标签
+  document.querySelectorAll('.stage-label').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.stage-dot').forEach(el => {
+    el.classList.remove('on-if','on-id','on-ex','on-mem','on-wb');
+  });
+
+  // 点亮连线
+  d.paths.forEach(([id,stage]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('active-'+stage);
+    const amap = {if:'arrow-if',id:'arrow-id',ex:'arrow-ex',mem:'arrow-mem',wb:'arrow-wb'};
+    if (amap[stage]) el.setAttribute('marker-end','url(#'+amap[stage]+')');
+  });
+
+  // 点亮组件 + 标签
+  d.comps.forEach(([id,cls]) => {
+    const rect = document.getElementById(id);
+    if (!rect) return;
+    const styleCls = cls ? 'active-'+cls : 'active';
+    rect.classList.add(styleCls);
+    // 点亮关联的 label
+    const lblIds = labelMap[id];
+    if (lblIds) {
+      lblIds.forEach(lid => {
+        const lbl = document.getElementById(lid);
+        if (lbl) lbl.classList.add(styleCls);
+      });
+    }
+  });
+
+  // 阶段标签
+  const snames = ['if','id','ex','mem','wb'];
+  d.stages.forEach((s,i) => {
+    if (s) {
+      const sl = document.getElementById('stage-'+snames[i]);
+      if (sl) sl.classList.add('active');
+      const dot = document.getElementById('dot-'+snames[i]);
+      if (dot) dot.classList.add('on-'+snames[i]);
+    }
+  });
+
+  // 控制信号
+  const sigs = d.signals;
+  function setSig(id,val) {
+    const el = document.getElementById('sig-'+id);
+    if (!el) return;
+    el.textContent = val;
+    el.className = val===1?'sig-1':val===0?'sig-0':'sig-x';
+  }
+  setSig('rw',sigs.RegWrite); setSig('as',sigs.ALUSrc); setSig('mr',sigs.MemtoReg);
+  setSig('mw',sigs.MemWrite); setSig('br',sigs.Branch); setSig('jp',sigs.Jump);
+  setSig('jr',sigs.JALRSrc); setSig('ao',sigs.ALUOp);
+
+  // 信息面板
+  document.getElementById('info-name').textContent = d.name;
+  document.getElementById('info-type').textContent = d.type;
+  document.getElementById('info-enc').textContent = d.enc;
+  document.getElementById('info-flow').textContent = d.flow;
+}
+
+// ======================================================================
+// 初始化
+// ======================================================================
+document.getElementById('inst-select').addEventListener('change', function(){
+  highlight(this.value);
+});
+highlight('ADD');
+</script>
+
+</body>
+</html>
