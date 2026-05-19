@@ -48,7 +48,7 @@
 
 module Ifetch #(
     // ===== INCLASS_HEX: 现场设计 — 如需临时换hex，改此路径 (或直接改batch_test.hex内容) =====
-    parameter INIT_FILE = "../assembly/batch_test.hex"  // hex 初始化文件路径
+    parameter INIT_FILE = "../../../../assembly/batch_test.hex"  // hex 初始化文件路径
 )(
     input         clk,              // CPU 时钟 (12.5MHz)
     input         rst_n,            // 异步复位 (低有效)
