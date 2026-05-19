@@ -145,18 +145,20 @@ CPU 通过 `sw` 写显存：`sw x1, 0xFFFF0100(x0)` → 屏幕左上角显示字
 
 ---
 
-## 四、RISC-V CPU 通关游戏 [2分] — 教学效率工具
+## 四、RISC-V CPU 单周期数据通路可视化工具 [2分] — 教学效率工具
 
 ### 4.1 产品定位
 
-一款**浏览器内运行的 RISC-V 学习通关游戏**，面向 CO 课程学生，帮助理解：
-- RISC-V 指令类型和编码格式
-- 不同指令类型的控制信号选择
-- CPU 数据通路 (单周期 + 流水线)
-- 流水线冒险与解决方案
-- 汇编编程基础
+一款**浏览器内运行的 CPU 单周期数据通路可视化工具**，面向 CO 课程学生，帮助直观理解：
 
-**核心创新：** 可视化的动态 CPU 数据通路图，点击任何指令类型即时展示 IF→ID→EX→MEM→WB 数据流动。
+- 单周期 CPU 各组件 (PC/IMem/Decoder/ImmGen/RegFile/ALU/DataMemory) 的物理连接
+- 不同指令类型 (R/I/Load/Store/B/U/J) 的数据通路差异
+- 控制信号 (RegWrite/ALUSrc/MemtoReg/MemWrite/Branch/Jump/JALRSrc/ALUOp) 如何引导数据流动
+- 为什么 LUI 的 ALU_A=0？为什么 JAL 的 WD3=PC+4？
+
+**核心创新：** 用户从下拉菜单选择一条指令 → SVG 数据通路图中对应路径**逐级点亮**(绿色高亮 + 流动动画)，从左到右展示 IF → ID → EX → MEM → WB 五阶段的数据流动。右侧面板同步显示控制信号表 (0/1/x) 和文字描述。
+
+**与游戏的差异：** 去掉关卡/计分/通关机制，聚焦纯可视化——选指令，看通路，理解 CPU。更简洁，更专业。
 
 ### 4.2 技术实现
 
@@ -164,190 +166,125 @@ CPU 通过 `sw` 写显存：`sw x1, 0xFFFF0100(x0)` → 屏幕左上角显示字
 
 **文件结构：**
 ```
-other/riscv_game/
-├── index.html       # 主页面 (全部逻辑内嵌)
-├── cpu_draw.js      # SVG 可视化引擎
-└── questions.js     # 题库
+other/cpu_viz/
+└── index.html          # 全部 HTML/CSS/JS 内嵌，单文件
 ```
 
-**存放位置：** `other/riscv_game/` — 打包进压缩包提交。
+### 4.3 可视化设计
 
-### 4.3 关卡设计 (6 关)
-
-#### 第 0 关 — 新手村：认识 RISC-V 指令类型
-
-**场景：** 6 张指令卡片随机排列，拖拽到对应的类型框中 (R/I/S/B/U/J)。
-
-**示例题目：**
-- `add x1, x2, x3` → 拖到 R-type
-- `addi x1, x2, 100` → 拖到 I-type
-- `sw x1, 0(x2)` → 拖到 S-type
-- `beq x1, x2, label` → 拖到 B-type
-- `lui x1, 0x12345` → 拖到 U-type
-- `jal x1, label` → 拖到 J-type
-
-**过关条件：** 12 题全对
-
-#### 第 1 关 — 指令解码器：识别机器码
-
-**场景：** 给定 32-bit 机器码 (十六进制)，分解出 opcode / funct3 / funct7 / rs1 / rs2 / rd / imm。
-
-**示例：**
-- `0x002081B3` → opcode=? funct3=? rs1=? rs2=? rd=?
-  - 答案: opcode=0110011, funct3=000, rs1=x1(00001), rs2=x2(00010), rd=x3(00011) → ADD
-
-**过关条件：** 8 题正确率 ≥ 80%
-
-#### 第 2 关 — 控制信号大师：选择 Control Bits
-
-**场景：** 屏幕上方显示**动态 CPU 数据通路图 (SVG)**，下方显示一条指令。玩家点击数据通路图上的控制信号 MUX 选择正确的值。
-
-对于每条指令，玩家需要选择：
-- RegWrite: 1 或 0
-- ALUSrc: 0(rs2) 或 1(imm)
-- MemtoReg: 0(ALU) 或 1(Mem)
-- MemWrite: 1 或 0
-- Branch: 1 或 0
-- Jump: 1 或 0
-- ALUOp: 00/01/10/11
-
-**可视化效果：** 玩家每选对一个信号，数据通路图中对应的路径就会**高亮发光**，形成完整的数据流动动画。
-
-**示例题目：**
-| 指令 | RegWrite | ALUSrc | MemtoReg | MemWrite | Branch | Jump | ALUOp | 
-|------|----------|--------|----------|----------|--------|------|-------|
-| ADD | 1 | 0 | 0 | 0 | 0 | 0 | 10 |
-| LW | 1 | 1 | 1 | 0 | 0 | 0 | 00 |
-| SW | 0 | 1 | x | 1 | 0 | 0 | 00 |
-| BEQ | 0 | 0 | x | 0 | 1 | 0 | 01 |
-| JAL | 1 | 1 | x | 0 | 0 | 1 | 00 |
-
-**过关条件：** 覆盖全部 7 种 opcode 类型，正确率 ≥ 90%
-
-#### 第 3 关 — 数据通路追踪：一条指令的旅程
-
-**场景：** 大型 SVG 数据通路图。玩家点击数据通路中的组件 (按正确顺序) 来追踪一条指令从取指到写回的完整路径。
-
-**示例：** 指令 `lw x1, 4(x2)` 的数据通路追踪：
-```
-1. PC → IMem              (IF: 取指)
-2. IMem → inst            (IF: 输出指令)
-3. inst → Decoder         (ID: 译码, 产生控制信号)
-4. inst[19:15] → RegFile  (ID: 读 rs1=x2)
-5. inst[31:20] → ImmGen   (ID: 生成立即数 4)
-6. rs1_val → ALU_A        (EX: rs1=x2的值)
-7. Imm → ALU_B            (EX: 立即数4)
-8. ALU → ALUResult        (EX: x2+4, 即地址)
-9. ALUResult → DMem addr  (MEM: 读内存地址)
-10. DMem → ReadData        (MEM: 读出内存数据)
-11. ReadData → WD3         (WB: 选通MemtoReg)
-12. WD3 → RegFile          (WB: 写回x1)
-```
-
-**可视化效果：** 玩家每次正确点击，对应连线**从灰色变为绿色并产生流动粒子动画**。点到错误位置时，组件**闪烁红色提示**。
-
-**过关条件：** 正确追踪 R-type / I-type / Load / Store / Branch / JAL 共 6 种指令类型的数据通路
-
-#### 第 4 关 — 流水线冒险：识别与解决
-
-**场景：** 屏幕显示五级流水线图 (IF/ID/EX/MEM/WB)，连续多条指令流经各阶段。玩家识别冒险类型并选择解决方案。
-
-**冒险类型：**
-- **数据冒险 (RAW)：** `add x1,x2,x3` → `sub x4,x1,x5` (x1 未写回即被读)
-  - 解决：Forwarding — 从 EX/MEM 转发到 EX 的 ALU 输入
-- **控制冒险：** `beq x1,x2,label` 后的指令
-  - 解决：Flush + 预测不跳转，或 Stall 等待分支结果
-- **结构冒险：** IMem 和 DMem 同时访问
-  - 解决：哈佛结构分离 IMem/DMem
-
-**可视化效果：**
-- 展示 5 级流水线图 (IF/ID/EX/MEM/WB 横向排列)
-- 多条指令从右向左流动 (每周期前进一级)
-- 发生冒险时：相关连线**红色闪烁**
-- 玩家选择 forwarding 后：增加一条**绿色虚线**从 EX/MEM 旁路到 EX ALU 输入
-- 玩家选择 stall 后：IF/ID 阶段**暂停一周期** (插入 bubble)
-
-**过关条件：** 3 种冒险各出 2 题 (共 6 题)，全部正确
-
-#### 第 5 关 — ASM 编程挑战
-
-**场景：** 简单的在线汇编器。给出功能需求，玩家编写 RISC-V 汇编。
-
-**题目示例：**
-1. "用最少指令实现 `x3 = x1 * 8`" → `slli x3, x1, 3`
-2. "实现 `if (x1 == x2) x3 = 1 else x3 = 0`" → `beq` + `addi`
-3. "实现交换 x1 和 x2 的值 (不借助其他寄存器)" → `xor` 三次异或
-
-**反馈：** 输入汇编 → 模拟执行 → 显示寄存器最终值 → 比对预期
-
-**过关条件：** 5 题中答对 3 题
-
-### 4.4 数据通路可视化 — 核心 SVG 设计
-
-**单周期数据通路图 (完整版)：**
+#### 整体布局
 
 ```
-                              +----------+
-                              |  PC+4    |
-                              +----+-----+
-                                   |
-  +-------+     +---------+    +---v-----+    +---------+    +---------+
-  | PC    |---->| IMem    |--->| Decoder |--->| RegFile |--->| ALU_A   |
-  |(0x4000|    |(64KB)   |    |+ImmGen  |    |  32x32  |    |  MUX    |
-  +-------+    +---------+    +---------+    +---------+    +----+----+
-      ^                                                          |
-      |                     +---------+    +---------+    +------v------+
-      |                     | Next-PC |<---| Branch  |<---| ALU         |
-      |                     |  MUX    |    | Compare |    | (10 ops)    |
-      |                     +---------+    +---------+    +------+------+
-      |                                                          |
-      |               +---------+    +---------+    +-----------v-----+
-      +---------------| WD3 MUX |<---| MemtoReg|<---| DataMemory      |
-                      +---------+    |  MUX    |    | (DMem + MMIO)   |
-                           |         +---------+    +-----------------+
-                      +----v----+
-                      | RegFile |
-                      | (write) |
-                      +---------+
+┌──────────────────────────────────────────────────────────┐
+│                    ┌─ 五阶段标签: IF | ID | EX | MEM | WB │
+│   ┌──────────┐     │                                      │
+│   │ 指令选择  │     │   SVG 数据通路图 (渐进式点亮)          │
+│   │ [下拉框]  │     │                                      │
+│   │          │     │   PC→IMem→Decoder┐                   │
+│   │ 控制信号  │     │       ↓    ImmGen┤→RegFile           │
+│   │ RegWrite │     │   ALU_A_MUX─┐    │                   │
+│   │ ALUSrc   │     │   ALU_B_MUX─┤→ALU→DMem→MemtoReg→RegW │
+│   │ ...      │     │   Branch→NextPC→PC                   │
+│   │          │     │                                      │
+│   │ 文字描述  │     │   (未激活路径灰色, 激活路径绿色发光)    │
+│   └──────────┘     │                                      │
+│                    └──────────────────────────────────────┘
+└──────────────────────────────────────────────────────────┘
 ```
 
-**流水线五级图：**
+#### 配色方案
 
-```
-         IF            ID            EX            MEM           WB
-    +----------+  +----------+  +----------+  +----------+  +----------+
-    | IMem     |  | Decoder  |  | ALU      |  | DMem     |  | RegFile  |
-    | PC Update|->| RegFile  |->| MUXes    |->| (R/W)    |->| (Write)  |
-    |          |  | ImmGen   |  | Branch   |  |          |  | MemtoReg |
-    +----------+  +----------+  +----------+  +----------+  +----------+
-         |              |             |             |             |
-    IF/ID reg     ID/EX reg     EX/MEM reg    MEM/WB reg
-    (Pipeline)    (Pipeline)    (Pipeline)    (Pipeline)
-```
+| 阶段 | 颜色 | CSS |
+|------|------|-----|
+| IF (取指) | 蓝色 | `#3B82F6` |
+| ID (译码) | 紫色 | `#8B5CF6` |
+| EX (执行) | 橙色 | `#F59E0B` |
+| MEM (访存) | 黄色 | `#EAB308` |
+| WB (写回) | 绿色 | `#10B981` |
+| 未激活 | 灰色 | `#374151` |
+| 控制信号=1 | 亮绿 | `#34D399` |
+| 控制信号=0 | 暗红 | `#EF4444` |
+
+#### 指令数据定义 (10 条代表性指令)
+
+每条指令定义: 激活的组件列表 → 激活的连线列表 → 控制信号值 → 文字描述
+
+| # | 指令 | 类型 | 关键通路差异 |
+|---|------|------|------------|
+| 1 | ADD | R-type | rs1+rs2→rd, RegWrite=1, ALUSrc=0 |
+| 2 | SUB | R-type | 同ADD, ALUControl=funct7决定减法 |
+| 3 | ADDI | I-type ALU | rs1+imm→rd, ALUSrc=1 |
+| 4 | LW | Load | mem[rs1+imm]→rd, MemtoReg=1 |
+| 5 | SW | Store | rs2→mem[rs1+imm], RegWrite=0, MemWrite=1 |
+| 6 | BEQ | B-type | 比较rs1==rs2, RegWrite=0, Branch=1 |
+| 7 | LUI | U-type | 0+imm→rd, ALU_A=0, ALU_B=imm |
+| 8 | AUIPC | U-type | PC+imm→rd, ALU_A=PC, ALU_B=imm |
+| 9 | JAL | J-type | PC+4→rd, PC→PC+imm, Jump=1 |
+| 10 | JALR | I-jump | PC+4→rd, PC→(rs1+imm)&~1, JALRSrc=1 |
+
+#### SVG 组件清单
+
+| ID | 组件 | 坐标 (viewBox) |
+|----|------|---------------|
+| `pc` | PC 寄存器 | 左上方 |
+| `imem` | 指令内存 IMem | PC 右侧 |
+| `decoder` | 译码器 Decoder | IMem 下方 |
+| `immgen` | 立即数生成器 ImmGen | Decoder 左侧 |
+| `regfile` | 寄存器堆 RegFile | Decoder 下方 |
+| `alu_a_mux` | ALU-A 选择器 | RegFile 左下方 |
+| `alu_b_mux` | ALU-B 选择器 | RegFile 右下方 |
+| `alu` | 算术逻辑单元 ALU | 两 MUX 下方 |
+| `dmem` | 数据内存 DMem + MMIO | ALU 右方 |
+| `memtoreg_mux` | MemtoReg 选择器 | DMem 下方 |
+| `branch_comp` | 分支比较器 | RegFile 右侧 |
+| `nextpc_mux` | Next-PC 选择器 | PC 左侧 |
+
+#### 连线 (paths) 清单
+
+每条连线定义: id, from, to, 激活条件
+
+| ID | 路径 | 说明 |
+|----|------|------|
+| `pc_to_imem` | PC → IMem | 所有指令 |
+| `imem_to_decoder` | IMem → Decoder | 所有指令 |
+| `imem_to_immgen` | IMem → ImmGen | 所有指令 (ImmGen 总是运作) |
+| `decoder_regwrite` | Decoder → RegFile (WE) | RegWrite=1 |
+| `decoder_alusrc` | Decoder → ALU-B MUX | 控制 ALUSrc |
+| `decoder_memtoreg` | Decoder → MemtoReg MUX | 控制 MemtoReg |
+| `decoder_memwrite` | Decoder → DMem (WE) | MemWrite=1 |
+| `decoder_branch` | Decoder → Branch Comp | Branch=1 |
+| `decoder_jump` | Decoder → Next-PC MUX | Jump=1 |
+| `decoder_jalrsrc` | Decoder → Next-PC MUX | JALRSrc=1 |
+| `rs1_to_alu_a` | RegFile.rs1 → ALU-A MUX | 默认路径 |
+| `pc_to_alu_a` | PC → ALU-A MUX | AUIPC 时选通 |
+| `zero_to_alu_a` | 0 → ALU-A MUX | LUI 时选通 |
+| `rs2_to_alu_b` | RegFile.rs2 → ALU-B MUX | ALUSrc=0 |
+| `imm_to_alu_b` | ImmGen → ALU-B MUX | ALUSrc=1 |
+| `alu_to_dmem` | ALU → DMem (addr) | 所有指令 |
+| `rs2_to_dmem` | RegFile.rs2 → DMem (wd) | SW 时有效 |
+| `dmem_to_memtoreg` | DMem → MemtoReg MUX | Load 时选通 |
+| `alu_to_memtoreg` | ALU → MemtoReg MUX | 默认路径 |
+| `pcplus4_to_memtoreg` | PC+4 → MemtoReg MUX | JAL/JALR 时选通 (已整合到WD3 MUX) |
+| `wd3_to_regfile` | WD3 → RegFile (wd) | RegWrite=1 |
+| `rs1_to_branch` | RegFile.rs1 → Branch Comp | Branch=1 |
+| `rs2_to_branch` | RegFile.rs2 → Branch Comp | Branch=1 |
+| `branch_to_nextpc` | Branch Comp → Next-PC MUX | 分支满足时 |
+| `nextpc_to_pc` | Next-PC MUX → PC | 所有指令 |
+
+### 4.4 交互设计
+
+1. 页面加载 → 默认选中 ADD 指令 → 数据通路按 ADD 高亮
+2. 用户从下拉框切换指令 → 通路即时切换 (CSS transition, ~0.5s)
+3. 鼠标悬停组件 → tooltip 显示组件功能说明
+4. 控制信号表实时更新 (绿色=1, 红色=0, 灰色=x/don't care)
+5. 底部文字描述该指令的完整数据流动
 
 ### 4.5 技术要点
 
-**SVG 动画引擎 (cpu_draw.js)：**
-
-核心类：
-```javascript
-class CPUDatapath {
-  drawSingleCycle()    // 绘制单周期数据通路
-  drawPipeline()        // 绘制五级流水线
-  highlightPath(stages) // 高亮指定阶段的数据路径
-  animateInstruction(type, from, to)  // 动画展示指令执行
-}
-```
-
-**数据流动画实现：**
-- 使用 SVG `<path>` + CSS `stroke-dasharray` + `stroke-dashoffset` 动画模拟流动粒子
-- 使用 `requestAnimationFrame` 控制动画帧率
-- 组件状态：`idle`(灰), `active`(绿), `error`(红), `forwarding`(蓝虚线)
-
-**题库设计 (questions.js)：**
-- 结构化 JSON 数据
-- 支持随机抽题、难度分级
-- 记录通关时间 (用于排名/成就)
+- SVG 使用 `<path marker-end="url(#arrow)">` 绘制箭头
+- 高亮通过 CSS class `.active` 切换实现 `transition: stroke 0.3s`
+- 控制信号表用 JS 对象字面量映射，按 opcode 索引
+- 单文件 HTML ~500 行，提交到 `other/cpu_viz/index.html`
 
 ---
 
