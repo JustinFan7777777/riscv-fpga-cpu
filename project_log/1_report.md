@@ -96,6 +96,15 @@
 | DMem | 64KB BRAM，地址空间 0x0000_0000–0x0000_FFFF，测试数据基址 0x4000 |
 | 栈基址 | 未定义 (汇编测试未使用栈) |
 
+**Difftest 测试数据地址布局：**
+
+| 数据 | 地址 |
+|------|------|
+| CaseID | 0x4000 (Base + 0) |
+| OperandA | 0x4004 (Base + 4) |
+| OperandB | 0x4008 (Base + 8) |
+| Result | 0x400C (Base + C) |
+
 PC 复位为 0x4000 而非 0x0000 的原因：difftest 差分测试框架默认将 batch_test.hex 加载到 IMem 字节地址 0x4000，CPU 侧适配工具而非改造工具。`$readmemh` 通过 `HEX_LOAD_OFFSET = PC_RESET >> 2` 自动将 hex 内容加载到 mem[4096] 起始位置。
 
 ### 4d. 外设 IO
@@ -179,7 +188,9 @@ PC(0x4000) → IMem(BRAM 64KB, 组合读) → inst
 | Difftest 上板 | 集成测试 | 10 个 Case (0–9) 共 33 组数据批量自动比对 | 33/33 PASS | CPU 硬件逻辑完全正确 |
 | 传统 I/O | 集成测试 | 开关输入 CaseID, LED 显示结果低 8 位 | PASS | 基本硬件链路正常 |
 
-### 5.2 Difftest 完整结果 (2026-05-18, 12.5MHz)
+**关于仿真：** 本项目采用 "Verilog 代码审查 + RARS 汇编验证 + Difftest 上板测试" 的流程，未进行子模块仿真或 CPU 集成仿真。理由：(1) 单周期 CPU 以组合逻辑为主，11 个模块端口和逻辑已通过逐行交叉审查验证；(2) RARS 对全部 10 个 Case 汇编逻辑验证 PASS；(3) 课程要求明确：能上板则无需仿真，仿真仅为无法上板时的降级方案（得分×0.3）；(4) Difftest 33/33 PASS 已全面验证硬件正确性。
+
+### 5.2 Difftest 完整结果 (2026-05-18, 12.5MHz) (2026-05-18, 12.5MHz)
 
 ```
 Loading 130 instructions to 0x00000000...
@@ -341,3 +352,16 @@ c_小组编号_rv_FanXiaole_ChenJunxi_LiuYijun/
 ```
 
 > **提交说明：** 文档通过问卷提交 (https://f.kdocs.cn/g/5JvFO9aZ/)，视频上传云盘 (链接后续发)，压缩包仅包含源代码 + gitlog.txt。文件夹命名需含小组编号 (见分组共享文档)。
+
+## 附录 C. 代码规范
+
+| 项目 | 内容 |
+|------|------|
+| 顶层模块名 | TopDebug |
+| CPU 模块名 | CPUTop |
+| 子模块名 | Ifetch, Decoder, ImmGen, RegFile, ALU, DataMemory |
+| 模块命名 | 子模块名大写 (ALU, CPUTop) |
+| 常量命名 | 参数化常量用大写 (PC_RESET, MEM_WAIT_CYCLES, HEX_LOAD_OFFSET) |
+| 端口命名 | 驼峰规则 (RegWrite, MemtoReg, ALUSrc, BranchTaken) |
+| 符号化常量 | Ifetch: PC_RESET + INIT_FILE；DebugController: CMD_PING/RESET/STEP...；Decoder: opcode 硬编码分支 |
+| 注释规范 | 每个 .v 文件头部有完整中文功能说明，关键数据通路有行内注释 |
