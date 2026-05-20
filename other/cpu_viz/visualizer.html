@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RISC-V RV32I Single-Cycle Datapath</title>
+    <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║                    CSS DESIGN SYSTEM                         ║
+    ║                                                              ║
+    ║  Color architecture has 3 layers:                            ║
+    ║    1. Stage colors (5 pipeline stages)  — used for stage     ║
+    ║       dots, column backgrounds, data-path glow/stroke.       ║
+    ║    2. Control signal colors (7 signals) — each control       ║
+    ║       signal has a distinct color for dashed-line tracing.   ║
+    ║    3. Inactive defaults — dark slate for unlit components    ║
+    ║       and paths.                                             ║
+    ║                                                              ║
+    ║  SVG z-order / overlap strategy:                             ║
+    ║    - Inactive paths use opacity:0.18 so they DON'T visually  ║
+    ║      paint over active paths, even when drawn later in       ║
+    ║      SVG source order.                                       ║
+    ║    - Active paths use opacity:1 + animated dash pattern.     ║
+    ║    - This eliminates the need for dynamic DOM reordering.    ║
+    ╚══════════════════════════════════════════════════════════════╝
+    -->
     <style>
         :root {
             --bg: #0d1117;
@@ -11,25 +31,25 @@
             --border: #30363d;
             --text-main: #c9d1d9;
             --text-dim: #8b949e;
-            
-            /* Stage Colors */
-            --c-if: #3b82f6; /* Blue */
-            --c-id: #8b5cf6; /* Purple */
-            --c-ex: #f97316; /* Orange */
-            --c-mem: #eab308; /* Yellow */
-            --c-wb: #22c55e; /* Green */
 
-            /* Control Signal Colors */
-            --c-regwrite: #d946ef; /* Magenta */
-            --c-alusrc: #06b6d4;   /* Cyan */
-            --c-memtoreg: #a855f7; /* Purple */
-            --c-memwrite: #ef4444; /* Red */
-            --c-memread: #22c55e;  /* Green */
-            --c-branch: #3b82f6;   /* Blue */
-            --c-aluop: #f97316;    /* Orange */
+            /* Stage Colors — each pipeline stage has a unique hue */
+            --c-if: #3b82f6; /* Blue   — Instruction Fetch  */
+            --c-id: #8b5cf6; /* Purple — Instruction Decode */
+            --c-ex: #f97316; /* Orange — Execute            */
+            --c-mem: #eab308; /* Yellow — Memory Access      */
+            --c-wb: #22c55e; /* Green  — Write Back          */
 
-            --inactive-stroke: #334155;
-            --inactive-fill: #1e293b;
+            /* Control Signal Colors — each control line has a dedicated color */
+            --c-regwrite: #d946ef; /* Magenta — Register file write enable     */
+            --c-alusrc: #06b6d4;   /* Cyan    — ALU source mux select          */
+            --c-memtoreg: #a855f7; /* Purple   — Mem/ALU result mux select     */
+            --c-memwrite: #ef4444; /* Red     — Data memory write enable       */
+            --c-memread: #22c55e;  /* Green   — Data memory read enable        */
+            --c-branch: #3b82f6;   /* Blue    — Branch condition flag          */
+            --c-aluop: #f97316;    /* Orange  — ALU operation select           */
+
+            --inactive-stroke: #334155; /* Dark slate — unlit component borders */
+            --inactive-fill: #1e293b;   /* Darker slate — unlit component fill  */
         }
 
         body {
@@ -170,7 +190,8 @@
             fill: none;
             stroke: var(--inactive-stroke);
             stroke-width: 2;
-            transition: stroke 0.3s;
+            opacity: 0.18;
+            transition: stroke 0.3s, opacity 0.3s;
         }
         .path.dashed { stroke-dasharray: 4 4; }
 
@@ -182,10 +203,12 @@
         .path.active {
             stroke-dasharray: 8 4;
             animation: dashFlow 0.8s linear infinite;
+            opacity: 1;
         }
         .path.dashed.active {
             stroke-dasharray: 6 6;
             animation: dashFlow 0.8s linear infinite reverse;
+            opacity: 1;
         }
 
         .comp.active { stroke-width: 2; }
@@ -299,16 +322,36 @@
 
     <div class="main-area">
         <svg viewBox="0 0 1100 650" id="datapath-svg">
+            <!--
+            ╔══════════════════════════════════════════════════════════════╗
+            ║              SVG ARROWHEAD MARKER DEFINITIONS                ║
+            ║                                                              ║
+            ║  Each marker is a small triangle (M 0 0 L 10 5 L 0 10 z).   ║
+            ║  - Data paths use orient="auto-start-reverse" — arrow points ║
+            ║    in the natural direction of the path.                     ║
+            ║  - Control paths use orient="auto" — arrow points forward.   ║
+            ║                                                              ║
+            ║  We predefine one marker per stage color + per control       ║
+            ║  signal color. The JS setMarker() function assigns the       ║
+            ║  correct marker-end URL at runtime.                          ║
+            ║                                                              ║
+            ║  markerWidth/markerHeight control the arrowhead size.        ║
+            ║  refX=8 positions the arrow tip at the path endpoint.        ║
+            ╚══════════════════════════════════════════════════════════════╝
+            -->
             <defs>
+                <!-- Default gray arrowhead (used when path is inactive) -->
                 <marker id="arrow-solid" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--inactive-stroke)" />
                 </marker>
+                <!-- Stage-colored arrowheads for data paths -->
                 <marker id="arrow-if" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-if)" /></marker>
                 <marker id="arrow-id" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-id)" /></marker>
                 <marker id="arrow-ex" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-ex)" /></marker>
                 <marker id="arrow-mem" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-mem)" /></marker>
                 <marker id="arrow-wb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-wb)" /></marker>
-                
+
+                <!-- Control-signal-colored arrowheads -->
                 <marker id="arrow-regwrite" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-regwrite)" /></marker>
                 <marker id="arrow-alusrc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-alusrc)" /></marker>
                 <marker id="arrow-memtoreg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-memtoreg)" /></marker>
@@ -318,50 +361,123 @@
                 <marker id="arrow-aluop" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-aluop)" /></marker>
             </defs>
 
+            <!--
+            ╔══════════════════════════════════════════════════════════════╗
+            ║              STAGE COLUMN BACKGROUNDS                        ║
+            ║                                                              ║
+            ║  5 vertical columns, each 200px wide, with fill-opacity      ║
+            ║  at 0.04 — nearly invisible in dark mode but provides        ║
+            ║  a subtle tint to visually group each pipeline stage.        ║
+            ║                                                              ║
+            ║  Column boundaries: IF=50–250, ID=250–450, EX=450–650,      ║
+            ║  MEM=650–850, WB=850–1050                                    ║
+            ╚══════════════════════════════════════════════════════════════╝
+            -->
             <rect x="50" y="0" width="200" height="650" class="bg-col" fill="var(--c-if)" />
             <rect x="250" y="0" width="200" height="650" class="bg-col" fill="var(--c-id)" />
             <rect x="450" y="0" width="200" height="650" class="bg-col" fill="var(--c-ex)" />
             <rect x="650" y="0" width="200" height="650" class="bg-col" fill="var(--c-mem)" />
             <rect x="850" y="0" width="200" height="650" class="bg-col" fill="var(--c-wb)" />
 
+            <!-- Stage column header labels (colored dynamically by JS) -->
             <text x="150" y="30" class="stage-label" id="lbl-IF" text-anchor="middle">IF · Fetch</text>
             <text x="350" y="30" class="stage-label" id="lbl-ID" text-anchor="middle">ID · Decode</text>
             <text x="550" y="30" class="stage-label" id="lbl-EX" text-anchor="middle">EX · Execute</text>
             <text x="750" y="30" class="stage-label" id="lbl-MEM" text-anchor="middle">MEM · Memory</text>
             <text x="950" y="30" class="stage-label" id="lbl-WB" text-anchor="middle">WB · WriteBack</text>
 
+        <!--
+        ╔══════════════════════════════════════════════════════════════╗
+        ║              SVG PATH NAMING CONVENTION                      ║
+        ║                                                              ║
+        ║  p_<source>_<dest>  — data path (solid line)                ║
+        ║    Example: p_alu_wbmux = path from ALU to WriteBack mux     ║
+        ║                                                              ║
+        ║  c_<signal>         — control signal path (dashed line)      ║
+        ║    Example: c_regwrite = RegWrite control signal             ║
+        ║                                                              ║
+        ║  p_<name>_trunk     — shared bus segment connecting a        ║
+        ║    component output to a junction where multiple paths       ║
+        ║    branch off. Prevents overlapping paths from obscuring     ║
+        ║    each other (critical fix for rendering correctness).      ║
+        ║    Example: p_alu_trunk = ALU output → junction (640,330)    ║
+        ║             p_imm_trunk = ImmGen output → junction (450,490) ║
+        ║                                                              ║
+        ║  SVG path 'd' attribute uses absolute commands:              ║
+        ║    M x y  = Move to (start point)                            ║
+        ║    H x    = Horizontal line to x (y stays same)              ║
+        ║    V y    = Vertical line to y (x stays same)                ║
+        ║                                                              ║
+        ║  Junction dots (r=3 circles) mark where paths branch or      ║
+        ║  merge. They're drawn AFTER data-lines but BEFORE comps,     ║
+        ║  so they sit on top of paths but under components.           ║
+        ╚══════════════════════════════════════════════════════════════╝
+        -->
             <g id="data-lines">
+                <!-- ===== IF Stage: PC → IMem → PC+4 loop ===== -->
                 <path id="p_pc_imem" class="path" d="M 140 310 H 180" marker-end="url(#arrow-solid)" />
                 <path id="p_pc_adder" class="path" d="M 160 310 V 125 H 180" marker-end="url(#arrow-solid)" />
+                <!-- PC → Branch Adder (used by BEQ, JAL, AUIPC for PC routing) -->
                 <path id="p_pc_badder" class="path" d="M 160 125 V 60 H 540 V 115 H 560" marker-end="url(#arrow-solid)" />
+                <!-- Branch from PC bus (540,60) → muxA (AUIPC: feeds PC into ALU via muxA) -->
                 <path id="p_pc_muxA" class="path" d="M 540 60 V 275 H 480" marker-end="url(#arrow-solid)" />
+                <!-- PC+4 adder output → PCSrc mux (normal PC+4 path) -->
                 <path id="p_adder_pcsrc" class="path" d="M 220 110 H 800" marker-end="url(#arrow-solid)" />
+                <!-- PC+4 adder output → WB mux (JAL/JALR: save return address to rd) -->
                 <path id="p_adder_wbmux" class="path" d="M 230 110 V 20 H 880 V 380 H 900" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- ===== ID Stage: IMem output bus → Register File / ImmGen / Control ===== -->
+                <!-- IMem → junction(320,310) → Register File rs1 read address -->
                 <path id="p_imem_reg1" class="path" d="M 240 310 H 320 V 290 H 360" marker-end="url(#arrow-solid)" />
+                <!-- junction(320,310) → (320,350) → Register File rs2 read address -->
                 <path id="p_imem_reg2" class="path" d="M 320 310 V 350 H 360" marker-end="url(#arrow-solid)" />
+                <!-- junction(320,350) → ImmGen input (feeds immediate field) -->
                 <path id="p_imem_imm" class="path" d="M 320 350 V 490 H 360" marker-end="url(#arrow-solid)" />
+                <!-- IMem → Control unit (instruction opcode decoding) -->
                 <path id="p_imem_ctrl" class="path" d="M 260 310 V 110 H 280" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- ===== EX Stage: Register File / ImmGen → Muxes → ALU ===== -->
+                <!-- Register File rs1 output → muxA input 0 -->
                 <path id="p_reg_muxA" class="path" d="M 440 290 H 480" marker-end="url(#arrow-solid)" />
+                <!-- Register File rs2 output → muxB input 0 -->
                 <path id="p_reg_muxB" class="path" d="M 440 350 H 480" marker-end="url(#arrow-solid)" />
+                <!-- Register File rs2 → Data Memory write data (SW: store rs2 to memory) -->
                 <path id="p_reg_dmem" class="path" d="M 460 350 V 450 H 680 V 390 H 700" marker-end="url(#arrow-solid)" />
-                <path id="p_imm_muxB" class="path" d="M 420 490 H 450 V 385 H 480" marker-end="url(#arrow-solid)" />
+                <!-- ImmGen output → junction(450,490) [TRUNK — shared bus, see convention above] -->
+                <path id="p_imm_trunk" class="path" d="M 420 490 H 450" marker-end="url(#arrow-solid)" />
+                <!-- junction(450,490) → muxB input 1 (ImmGen → ALU via muxB for I-type ops) -->
+                <path id="p_imm_muxB" class="path" d="M 450 490 V 385 H 480" marker-end="url(#arrow-solid)" />
+                <!-- junction(450,490) → Shift-left-1 unit (BEQ/JAL: immediate × 2 for branch offset) -->
                 <path id="p_imm_shift" class="path" d="M 450 490 V 160 H 480" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- muxA output → ALU input A -->
                 <path id="p_muxA_alu" class="path" d="M 510 290 H 560" marker-end="url(#arrow-solid)" />
+                <!-- muxB output → ALU input B -->
                 <path id="p_muxB_alu" class="path" d="M 510 370 H 560" marker-end="url(#arrow-solid)" />
+                <!-- Shift-left-1 output → Branch Adder (PC + shifted_imm for branch/jump target) -->
                 <path id="p_shift_badder" class="path" d="M 520 160 H 540 V 145 H 560" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- ===== MEM Stage: Branch Adder / ALU output → downstream ===== -->
+                <!-- Branch Adder result → PCSrc mux (branch/jump target address) -->
                 <path id="p_badder_pcsrc" class="path" d="M 620 130 H 800" marker-end="url(#arrow-solid)" />
-                <path id="p_alu_dmem" class="path" d="M 620 330 H 700" marker-end="url(#arrow-solid)" />
+                <!-- ALU output → junction(640,330) [TRUNK — shared bus, see convention above] -->
+                <path id="p_alu_trunk" class="path" d="M 620 330 H 640" marker-end="url(#arrow-solid)" />
+                <!-- junction(640,330) → Data Memory address input (LW/SW) -->
+                <path id="p_alu_dmem" class="path" d="M 640 330 H 700" marker-end="url(#arrow-solid)" />
+                <!-- junction(640,330) → junction(640,300) → WB mux input 0 (ALU result → WB) -->
                 <path id="p_alu_wbmux" class="path" d="M 640 330 V 300 H 900" marker-end="url(#arrow-solid)" />
+                <!-- junction(640,300) → PCSrc mux input (JALR: ALU-computed jump target) -->
                 <path id="p_alu_pcsrc" class="path" d="M 640 300 V 150 H 800" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- ===== WB Stage: Memory / WB mux → Register File ===== -->
+                <!-- Data Memory output → WB mux input 1 (LW: load data) -->
                 <path id="p_dmem_wbmux" class="path" d="M 780 360 V 340 H 900" marker-end="url(#arrow-solid)" />
+                <!-- WB mux output → Register File write port (loops back across all stages) -->
                 <path id="p_wbmux_reg" class="path" d="M 930 340 H 960 V 600 H 340 V 320 H 360" marker-end="url(#arrow-solid)" />
+                <!-- PCSrc mux output → PC (next PC value, routes across top of diagram back to left) -->
                 <path id="p_pcsrc_pc" class="path" d="M 830 130 H 850 V 10 H 80 V 310 H 100" marker-end="url(#arrow-solid)" />
-                
+
+                <!-- LUI: constant-0 → muxA (routes hardwired 0 into ALU for LUI instruction) -->
                 <path id="p_zero_muxA" class="path" d="M 460 275 H 480" marker-end="url(#arrow-solid)" />
             </g>
 
@@ -384,9 +500,11 @@
             <circle cx="230" cy="110" r="3" fill="var(--inactive-stroke)" />
             <circle cx="260" cy="310" r="3" fill="var(--inactive-stroke)" />
             <circle cx="320" cy="310" r="3" fill="var(--inactive-stroke)" />
+            <circle cx="320" cy="350" r="3" fill="var(--inactive-stroke)" />
             <circle cx="440" cy="290" r="3" fill="var(--inactive-stroke)" />
             <circle cx="460" cy="350" r="3" fill="var(--inactive-stroke)" />
             <circle cx="450" cy="490" r="3" fill="var(--inactive-stroke)" />
+            <circle cx="460" cy="275" r="3" fill="var(--inactive-stroke)" />
             <circle cx="540" cy="275" r="3" fill="var(--inactive-stroke)" />
             <circle cx="640" cy="330" r="3" fill="var(--inactive-stroke)" />
             <circle cx="640" cy="300" r="3" fill="var(--inactive-stroke)" />
@@ -452,238 +570,281 @@
         </div>
     </div>
 
+    <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║              JAVASCRIPT — INSTRUCTION VISUALIZER ENGINE     ║
+    ║                                                              ║
+    ║  Architecture overview:                                      ║
+    ║                                                              ║
+    ║  1. instData{} — declarative config per instruction. Each    ║
+    ║     entry specifies exactly which SVG elements to light up.  ║
+    ║     This is the "source of truth" — no imperative logic      ║
+    ║     per instruction.                                         ║
+    ║                                                              ║
+    ║  2. compStageMap{} — precomputed at init. Maps each          ║
+    ║     component id ("pc","alu",etc.) → glow CSS class          ║
+    ║     (glow-if, glow-ex, ...) based on its x-coordinate.       ║
+    ║     Avoids calling getBBox() on every instruction change.    ║
+    ║                                                              ║
+    ║  3. updateDatapath() — the main render loop. Called on       ║
+    ║     init and on every instruction change. Follows a strict   ║
+    ║     6-step pipeline: clear → text → signals → stages →       ║
+    ║     components → data paths → control paths.                 ║
+    ║                                                              ║
+    ║  4. CSS class-driven activation — instead of setting inline  ║
+    ║     styles, we toggle CSS classes (active, glow-*, stroke-*) ║
+    ║     so that all visual changes live in the stylesheet.       ║
+    ║                                                              ║
+    ║  Key design decisions:                                       ║
+    ║    - Trunk paths (p_imm_trunk, p_alu_trunk) prevent visual   ║
+    ║      gaps at component outputs where multiple paths branch.  ║
+    ║    - opacity:0.18 on inactive .path prevents SVG draw-order  ║
+    ║      issues — inactive lines can't obscure active ones.      ║
+    ║    - classList-based cleanup avoids className.baseVal        ║
+    ║      (SVG API) / className (HTML API) inconsistencies.       ║
+    ╚══════════════════════════════════════════════════════════════╝
+    -->
     <script>
+        // ===================================================================
+        // Shared configs to avoid copy-paste across similar instruction types.
+        // Each instruction only overrides the fields that differ.
+        // ===================================================================
+        const R_COMPS = ["pc","imem","pcadder","control","regfile","aluctrl","muxA","muxB","alu","wbmux"];
+        const I_ALU_COMPS = ["pc","imem","pcadder","control","regfile","immgen","aluctrl","muxA","muxB","alu","wbmux"];
+        const R_PATHS = {
+            if: ["p_pc_imem","p_pc_adder","p_adder_pcsrc","p_pcsrc_pc"],
+            id: ["p_imem_reg1","p_imem_reg2","p_imem_ctrl"],
+            ex: ["p_reg_muxA","p_reg_muxB","p_muxA_alu","p_muxB_alu"],
+            mem: ["p_alu_trunk","p_alu_wbmux"], wb: ["p_wbmux_reg"]
+        };
+        const I_ALU_PATHS = {
+            if: ["p_pc_imem","p_pc_adder","p_adder_pcsrc","p_pcsrc_pc"],
+            id: ["p_imem_reg1","p_imem_reg2","p_imem_imm","p_imem_ctrl"],
+            ex: ["p_reg_muxA","p_imm_trunk","p_imm_muxB","p_muxA_alu","p_muxB_alu"],
+            mem: ["p_alu_trunk","p_alu_wbmux"], wb: ["p_wbmux_reg"]
+        };
+        const R_ACTIVE = ["c_regwrite","c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_memtoreg"];
+        const ACTIVE_ALL = [1,1,1,1,1];
+        const NO_WB = [1,1,1,1,0];
+
         const instData = {
             "ADD": {
                 meta: "R-type | 0000000 rs2 rs1 000 rd 0110011",
                 desc: "Reads rs1 & rs2 from Register File. ALU computes sum. Result written back to rd.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_reg2", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_reg_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_wbmux"],
-                    wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0 (rs1)', ALUSrcB: '0 (rs2)', MemtoReg: '0 (ALU)', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1] // Conceptually mem stage is pass-through
+                comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0 (rs1)', ALUSrcB:'0 (rs2)', MemtoReg:'0 (ALU)', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "SUB": {
                 meta: "R-type | 0100000 rs2 rs1 000 rd 0110011",
                 desc: "Reads rs1 & rs2. ALU computes rs1 - rs2. Result written back to rd.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"], id: ["p_imem_reg1", "p_imem_reg2", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_reg_muxB", "p_muxA_alu", "p_muxB_alu"], mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '0', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'SUB' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'SUB' } }
             },
             "AND": {
                 meta: "R-type | 0000000 rs2 rs1 111 rd 0110011",
                 desc: "Reads rs1 & rs2. ALU computes bitwise AND. Result written back to rd.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"], id: ["p_imem_reg1", "p_imem_reg2", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_reg_muxB", "p_muxA_alu", "p_muxB_alu"], mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '0', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'AND' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'AND' } }
             },
             "ADDI": {
                 meta: "I-type | imm[11:0] rs1 000 rd 0010011",
                 desc: "Reads rs1 and sign-extends Immediate. ALU adds them. ALUSrc MUX selects Imm instead of rs2.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '1 (Imm)', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                comps: I_ALU_COMPS, paths: I_ALU_PATHS, stages: ACTIVE_ALL,
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "ORI": {
                 meta: "I-type | imm[11:0] rs1 110 rd 0010011",
                 desc: "Reads rs1 and sign-extends Immediate. ALU bitwise ORs them.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"], id: ["p_imem_reg1", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu"], mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '1', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'OR' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                comps: I_ALU_COMPS, paths: I_ALU_PATHS, stages: ACTIVE_ALL,
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'OR' } }
             },
             "LW": {
                 meta: "I-type (Load) | imm[11:0] rs1 010 rd 0000011",
                 desc: "Calculates address (rs1 + Imm). Reads Data Memory at address. MemtoReg MUX routes Data Memory output to Register File.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "dmem", "wbmux"],
+                comps: [...I_ALU_COMPS, "dmem"],
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_dmem", "p_dmem_wbmux"],
-                    wb: ["p_wbmux_reg"]
+                    ...I_ALU_PATHS,
+                    mem: ["p_alu_trunk", "p_alu_dmem", "p_dmem_wbmux"]
                 },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memread", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '1', MemtoReg: '1 (Mem)', MemWrite: '0', MemRead: '1', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                stages: ACTIVE_ALL,
+                ctrl: { active: [...R_ACTIVE, "c_memread"], vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'1 (Mem)', MemWrite:'0', MemRead:'1', Branch:'0', ALUOp:'ADD' } }
             },
             "SW": {
                 meta: "S-type | imm[11:5] rs2 rs1 010 imm[4:0] 0100011",
                 desc: "Calculates address (rs1 + Imm). Writes rs2 data into Data Memory. Writeback stage is completely inactive.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "dmem"],
+                comps: [...I_ALU_COMPS, "dmem"],
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_reg2", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu", "p_reg_dmem"],
-                    mem: ["p_alu_dmem"], wb: []
+                    ...I_ALU_PATHS,
+                    ex: [...I_ALU_PATHS.ex, "p_reg_dmem"],
+                    mem: ["p_alu_trunk", "p_alu_dmem"], wb: []
                 },
-                ctrl: {
-                    active: ["c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memwrite"],
-                    vals: { RegWrite: '0', ALUSrcA: '0', ALUSrcB: '1', MemtoReg: 'X', MemWrite: '1', MemRead: '0', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 0] // WB inactive
+                stages: NO_WB,
+                ctrl: { active: ["c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_memwrite"], vals: { RegWrite:'0', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'X', MemWrite:'1', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "BEQ": {
                 meta: "B-type | imm[12|10:5] rs2 rs1 000 imm[4:1|11] 1100011",
                 desc: "ALU subtracts rs1-rs2. If Zero, AND gate triggers PCSrc to MUX Branch Target (PC + shifted Imm). WB inactive.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "shift", "badder", "and", "pcsrc"],
+                comps: [...R_COMPS, "immgen", "shift", "badder", "and", "pcsrc"],
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_pc_badder", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_reg2", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_reg_muxB", "p_muxA_alu", "p_muxB_alu", "p_imm_shift", "p_shift_badder"],
+                    if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pcsrc_pc"],
+                    id: I_ALU_PATHS.id,
+                    ex: [...R_PATHS.ex, "p_imm_trunk", "p_imm_shift", "p_shift_badder"],
                     mem: ["p_badder_pcsrc"], wb: []
                 },
-                ctrl: {
-                    active: ["c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_branch", "c_alu_zero", "c_and_pcsrc"],
-                    vals: { RegWrite: '0', ALUSrcA: '0', ALUSrcB: '0', MemtoReg: 'X', MemWrite: '0', MemRead: '0', Branch: '1', ALUOp: 'SUB' }
-                },
-                stages: [1, 1, 1, 1, 0]
+                stages: NO_WB,
+                ctrl: { active: ["c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_branch","c_alu_zero","c_and_pcsrc"], vals: { RegWrite:'0', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'X', MemWrite:'0', MemRead:'0', Branch:'1', ALUOp:'SUB' } }
             },
             "LUI": {
                 meta: "U-type | imm[31:12] rd 0110111",
                 desc: "Loads upper 20 bits of Immediate into rd. ALUSrcA routes constant 0, ALUSrcB routes Imm.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
-                paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pcsrc_pc"],
-                    id: ["p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_zero_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
-                },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: 'X (0)', ALUSrcB: '1', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                comps: I_ALU_COMPS, stages: ACTIVE_ALL,
+                paths: { ...I_ALU_PATHS, ex: ["p_zero_muxA","p_imm_trunk","p_imm_muxB","p_muxA_alu","p_muxB_alu"] },
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'X (0)', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "AUIPC": {
                 meta: "U-type | imm[31:12] rd 0010111",
                 desc: "Adds upper 20 bits of Immediate to PC. Result to rd. ALUSrcA routes PC, ALUSrcB routes Imm.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "wbmux"],
+                comps: I_ALU_COMPS, stages: ACTIVE_ALL,
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_pcsrc", "p_pc_muxA", "p_pcsrc_pc"],
-                    id: ["p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_imm_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_wbmux"], wb: ["p_wbmux_reg"]
+                    if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pc_muxA","p_pcsrc_pc"],
+                    id: I_ALU_PATHS.id, ex: I_ALU_PATHS.ex, mem: I_ALU_PATHS.mem, wb: I_ALU_PATHS.wb
                 },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '1 (PC)', ALUSrcB: '1', MemtoReg: '0', MemWrite: '0', MemRead: '0', Branch: '0', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'1 (PC)', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "JAL": {
                 meta: "J-type | imm[20|10:1|11|19:12] rd 1101111",
-                desc: "Jumps to PC + Imm. Saves return address (PC+4) to rd. Main EX ALU bypassed.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "shift", "badder", "pcsrc", "wbmux"],
+                desc: "Jumps to PC + Imm. Saves return address (PC+4) to rd. Main EX ALU bypassed; shift and branch adder handle target calculation.",
+                comps: ["pc","imem","pcadder","control","regfile","immgen","shift","badder","pcsrc","wbmux"],
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_pc_badder", "p_adder_wbmux", "p_pcsrc_pc"],
-                    id: ["p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_imm_shift", "p_shift_badder"],
-                    mem: ["p_badder_pcsrc"], wb: ["p_wbmux_reg"]
+                    if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pcsrc_pc"],
+                    id: I_ALU_PATHS.id,
+                    ex: ["p_imm_trunk","p_imm_shift","p_shift_badder"],
+                    mem: ["p_badder_pcsrc"], wb: ["p_adder_wbmux","p_wbmux_reg"]
                 },
-                ctrl: {
-                    active: ["c_regwrite", "c_memtoreg", "c_branch"],
-                    vals: { RegWrite: '1', ALUSrcA: 'X', ALUSrcB: 'X', MemtoReg: '2 (PC+4)', MemWrite: '0', MemRead: '0', Branch: '1 (Jump)', ALUOp: 'X' }
-                },
-                stages: [1, 1, 0, 1, 1] // EX technically used for badder, but prompt requires 'No EX stage' logically for main datapath
+                stages: ACTIVE_ALL,
+                ctrl: { active: ["c_regwrite","c_memtoreg","c_branch"], vals: { RegWrite:'1', ALUSrcA:'X', ALUSrcB:'X', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'1 (Jump)', ALUOp:'X' } }
             },
             "JALR": {
                 meta: "I-type (Jump) | imm[11:0] rs1 000 rd 1100111",
                 desc: "Jumps to rs1 + Imm. Saves return address (PC+4) to rd. EX active for target calc.",
-                comps: ["pc", "imem", "pcadder", "control", "regfile", "immgen", "aluctrl", "muxA", "muxB", "alu", "pcsrc", "wbmux"],
+                comps: [...I_ALU_COMPS, "pcsrc"], stages: ACTIVE_ALL,
                 paths: {
-                    if: ["p_pc_imem", "p_pc_adder", "p_adder_wbmux", "p_pcsrc_pc"],
-                    id: ["p_imem_reg1", "p_imem_imm", "p_imem_ctrl"],
-                    ex: ["p_reg_muxA", "p_imm_muxB", "p_muxA_alu", "p_muxB_alu"],
-                    mem: ["p_alu_pcsrc"], wb: ["p_wbmux_reg"]
+                    if: ["p_pc_imem","p_pc_adder","p_pcsrc_pc"],
+                    id: I_ALU_PATHS.id, ex: I_ALU_PATHS.ex,
+                    mem: ["p_alu_trunk","p_alu_wbmux","p_alu_pcsrc"],
+                    wb: ["p_adder_wbmux","p_wbmux_reg"]
                 },
-                ctrl: {
-                    active: ["c_regwrite", "c_alusrcA", "c_alusrcB", "c_aluop", "c_aluctrl_alu", "c_memtoreg"],
-                    vals: { RegWrite: '1', ALUSrcA: '0', ALUSrcB: '1', MemtoReg: '2 (PC+4)', MemWrite: '0', MemRead: '0', Branch: 'Jump', ALUOp: 'ADD' }
-                },
-                stages: [1, 1, 1, 1, 1]
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'Jump', ALUOp:'ADD' } }
             }
         };
 
         const sel = document.getElementById("inst-select");
-        
+
+        // ===================================================================
+        // COMPONENT → STAGE GLOW MAPPING (precomputed once at init)
+        //
+        // Strategy: Each component's x-coordinate determines which pipeline
+        // stage column it sits in. We call getBBox() once at startup to build
+        // a lookup table, then reuse it on every instruction change.
+        //
+        // Column boundaries (x-axis):
+        //   IF:   50–250  (PC, IMem)
+        //   ID:  250–450  (Control, RegFile, ImmGen, ALUCtrl)
+        //   EX:  450–650  (muxA, muxB, ALU, Shift, Branch Adder)
+        //   MEM: 650–850  (Data Memory, AND gate)
+        //   WB:  850–1050 (PCSrc mux, WB mux)
+        //
+        // The thresholds array uses maxX with find() — first match wins.
+        // ===================================================================
+        const compStageMap = {};
+        function buildCompStageMap() {
+            const thresholds = [
+                { maxX: 250, cls: "glow-if" },
+                { maxX: 450, cls: "glow-id" },
+                { maxX: 650, cls: "glow-ex" },
+                { maxX: 850, cls: "glow-mem" },
+                { maxX: Infinity, cls: "glow-wb" }
+            ];
+            // Select only direct children of #comps with id starting with "comp-"
+            document.querySelectorAll('#comps > [id^="comp-"]').forEach(el => {
+                const name = el.id.replace("comp-", "");
+                const cx = el.getBBox().x;
+                const match = thresholds.find(t => cx <= t.maxX);
+                compStageMap[name] = match ? match.cls : "glow-if";
+            });
+        }
+        buildCompStageMap();
+
+        // Collect-then-remove: iterating a live DOMTokenList while removing
+        // from it would skip items as the index shifts underneath.
         function clearAll() {
             document.querySelectorAll('.active').forEach(el => {
-                el.classList.remove('active');
-                el.className.baseVal = el.className.baseVal.replace(/glow-\w+|stroke-\w+/g, '').trim();
+                const toRemove = ['active'];
+                el.classList.forEach(cls => {
+                    if (cls.startsWith('glow-') || cls.startsWith('stroke-')) {
+                        toRemove.push(cls);
+                    }
+                });
+                toRemove.forEach(cls => el.classList.remove(cls));
+                // Reset arrowhead to default while we already have this element
+                if (el.classList.contains('path')) {
+                    el.setAttribute('marker-end', 'url(#arrow-solid)');
+                }
             });
         }
 
+        // Assign color-coded arrowhead: dashed control paths derive the
+        // signal name from their id (c_regwrite → arrow-regwrite); solid
+        // data paths use the stage key directly (stroke-ex → arrow-ex).
         function setMarker(pathEl, colorClass) {
             if(pathEl.classList.contains('dashed')) {
-                // Dashed lines mapped specific colors
-                const ctrlType = pathEl.id.replace('c_', '').split('_')[0]; 
+                const ctrlType = pathEl.id.replace('c_', '').split('_')[0];
                 pathEl.setAttribute('marker-end', `url(#arrow-${ctrlType})`);
             } else {
                 pathEl.setAttribute('marker-end', `url(#arrow-${colorClass})`);
             }
         }
 
-        function resetMarkers() {
-            document.querySelectorAll('.path').forEach(p => p.setAttribute('marker-end', 'url(#arrow-solid)'));
-        }
-
+        // ===================================================================
+        // UPDATEDATAPATH — main render pipeline (6-step sequence)
+        //
+        // Called on init AND on every instruction change. The 6 steps are
+        // ordered to minimize visual flicker and ensure correct layering:
+        //
+        //   Step 1: TEXT — update sidebar description and encoding
+        //   Step 2: SIGNALS — update control signal value table (8 rows)
+        //   Step 3: STAGES — light up pipeline stage dots + column labels
+        //   Step 4: COMPONENTS — add "active" + "glow-<stage>" classes
+        //            to SVG component shapes. Uses precomputed compStageMap.
+        //   Step 5: DATA PATHS — for each stage (if→id→ex→mem→wb),
+        //            activate the listed path IDs. The stage key determines
+        //            stroke color: stroke-if=blue, stroke-ex=orange, etc.
+        //            Opacity jumps from 0.18→1, dash animation starts.
+        //   Step 6: CONTROL PATHS — activate dashed control signal lines.
+        //            Color is derived from the path's ID prefix:
+        //            c_regwrite → stroke-regwrite (magenta), etc.
+        //            Special mappings: aluctrl→aluop, and→branch.
+        //
+        // Each path also gets setMarker() to color its arrowhead.
+        // ===================================================================
         function updateDatapath() {
-            clearAll();
-            resetMarkers();
+            clearAll();  // also resets arrowhead markers in the same pass
 
             const instName = sel.value;
             const data = instData[instName];
+            if (!data) return;  // Guard: unknown instruction
 
             // 1. Text Info
             document.getElementById("desc-meta").innerText = data.meta;
             document.getElementById("desc-text").innerText = data.desc;
 
-            // 2. Control Signals
+            // 2. Control Signals — populate the sidebar table
             for(let key in data.ctrl.vals) {
                 document.getElementById("sig-" + key).innerText = data.ctrl.vals[key];
             }
 
-            // 3. Stage Indicators & Labels
+            // 3. Stage Indicators — light up the 5 pipeline-stage dots
+            //    and color the column header labels at the top of the SVG
             const stages = ["IF", "ID", "EX", "MEM", "WB"];
             stages.forEach((stg, idx) => {
                 const isActive = data.stages[idx];
@@ -700,23 +861,18 @@
                 }
             });
 
-            // 4. Activate Components
+            // 4. Activate Components — add 'active' class (border highlight)
+            //    + stage-specific glow class (colored drop-shadow + stroke)
             data.comps.forEach(c => {
                 const el = document.getElementById("comp-" + c);
                 if(el) {
                     el.classList.add("active");
-                    // Assign glow based on column
-                    const cx = el.getBBox().x;
-                    let stgClass = "glow-if";
-                    if(cx > 250) stgClass = "glow-id";
-                    if(cx > 450) stgClass = "glow-ex";
-                    if(cx > 650) stgClass = "glow-mem";
-                    if(cx > 850) stgClass = "glow-wb";
-                    el.classList.add(stgClass);
+                    el.classList.add(compStageMap[c]);  // e.g. "glow-ex"
                 }
             });
 
-            // 5. Activate Data Paths
+            // 5. Activate Data Paths — for each pipeline stage, activate
+            //    the listed SVG path elements with stage-color stroke
             for(let stg in data.paths) {
                 data.paths[stg].forEach(pid => {
                     const el = document.getElementById(pid);
@@ -727,7 +883,12 @@
                 });
             }
 
-            // 6. Activate Control Paths
+            // 6. Activate Control Paths — dashed lines for control signals.
+            //    The color class is derived from the path ID by stripping
+            //    the 'c_' prefix and taking the first underscore-delimited token.
+            //    Special cases: 'aluctrl' and 'alu' both map to 'aluop' (orange);
+            //    'and' maps to 'branch' (blue) since the AND gate is part of
+            //    the branch condition logic.
             data.ctrl.active.forEach(pid => {
                 const el = document.getElementById(pid);
                 if(el) {
@@ -740,9 +901,29 @@
             });
         }
 
+        // ===================================================================
+        // EVENT HANDLERS — dropdown change + keyboard navigation
+        //
+        // Arrow keys (Up/Down/Left/Right) cycle through the instruction
+        // dropdown, wrapping around at the boundaries. Guard clause skips
+        // keyboard navigation when focus is in an input/textarea.
+        // ===================================================================
         sel.addEventListener("change", updateDatapath);
-        
-        // Init
+
+        document.addEventListener("keydown", (e) => {
+            if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+            if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+                e.preventDefault();
+                sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+                updateDatapath();
+            } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                sel.selectedIndex = (sel.selectedIndex - 1 + sel.options.length) % sel.options.length;
+                updateDatapath();
+            }
+        });
+
+        // Bootstrap — render the default instruction (ADD) on page load
         updateDatapath();
 
     </script>
