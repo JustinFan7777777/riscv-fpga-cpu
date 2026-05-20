@@ -314,7 +314,7 @@ move_snake:
 
     # ---- 读取蛇头坐标 ----
     # SNAKE_X[head_index]: 地址 = s2 + head_index * 4
-    lw   t0, 0x0(s4)         # t0 = head_index
+    # (t0 = head_index 从第311行加载, 此处仍有效)
     slli t3, t0, 2               # t3 = head_index * 4
     add  t0, s2, t3              # t0 = &SNAKE_X[head_index]
     lw   t4, 0(t0)               # t4 = head_x
@@ -322,13 +322,13 @@ move_snake:
     lw   t5, 0(t0)               # t5 = head_y
 
     # ---- 根据方向计算新蛇头坐标 ----
-    li t6, 0x0
-    beq  t2, t6, mv_up
-    li t6, 0x1
-    beq  t2, t6, mv_down
-    li t6, 0x2
-    beq  t2, t6, mv_left
-    # 0x3:
+    # 减法链: dir=0→上, 1→下, 2→左, 3→右 (省去3条li)
+    beqz t2, mv_up
+    addi t2, t2, -1
+    beqz t2, mv_down
+    addi t2, t2, -1
+    beqz t2, mv_left
+    # dir=3: 右
     addi t4, t4, 1
     j    mv_check_wall
 mv_up:
@@ -615,9 +615,9 @@ write_char:
 clear_screen:
     li t0, 0               # 字节偏移 (0~4798, 步长2)
     li t1, 4800            # 2400 * 2
+    li t3, 0x20            # 空格字符 (在循环外预加载, 节省2400次li)
 cs_loop:
     add  t2, s0, t0              # VGA 地址
-    li t3, 0x20
     sw   t3, 0(t2)
     addi t0, t0, 2
     blt  t0, t1, cs_loop

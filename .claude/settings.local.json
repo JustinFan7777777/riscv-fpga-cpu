@@ -14,7 +14,12 @@
       "Bash(sed -n '206,225p' other/snake/snake.asm)",
       "Bash(sed -n '352,377p' other/snake/snake.asm)",
       "Bash(sed -n '510,530p' other/snake/snake.asm)",
-      "Bash(sed -n '558,565p' other/snake/snake.asm)"
+      "Bash(sed -n '558,565p' other/snake/snake.asm)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(awk '/mv_check_wall:/,/mv_done:/' other/snake/snake.asm)",
+      "Bash(iverilog -Wall -o /tmp/tb_final.vvp other/vga/tb_VGA.v cpu_project/cpu_project.srcs/sources_1/new/VGA.v)",
+      "Bash(vvp /tmp/tb_final.vvp)"
     ]
   }
 }

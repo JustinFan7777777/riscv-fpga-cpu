@@ -111,6 +111,13 @@ module VGA #(
 );
 
     // ==========================================================================
+    // fb_addr 预取时序常量 (由模块参数派生, 避免硬编码魔法数字)
+    // ==========================================================================
+    localparam H_PREFETCH      = H_TOTAL - 2;  // 798 — 行末预取触发点
+    localparam CHAR_SWITCH_PIX = CHAR_W - 2;   // 6   — 字符切换触发像素
+    localparam CHAR_LAST_PIX   = CHAR_W - 1;   // 7   — 字符内最后像素
+
+    // ==========================================================================
     // 第 1 部分 — 水平/垂直像素计数器
     // ==========================================================================
     // h_cnt: 0 → H_TOTAL-1 (800), 循环计数
@@ -207,7 +214,7 @@ module VGA #(
             // ---- fb_addr 预取控制 ----
             // 情况 1: 水平消隐末期 (h_cnt==798), 预取当前行首字符
             //         (h_cnt==799→0 时 v_cnt 递增, 所以需要提前指向新行)
-            if (h_cnt == 10'd798) begin
+            if (h_cnt == H_PREFETCH) begin
                 if (v_cnt < (V_ACTIVE - 1)) begin
                     // 不是最后一行: 指向下一行的第 0 列
                     // v_cnt 即将递增为 v_cnt+1, 新字符行号 = (v_cnt+1) >> 4
@@ -225,7 +232,7 @@ module VGA #(
             // 情况 2: 当前字符的倒数第 2 个像素 (h_cnt[2:0]==6),
             //         切换到下一个字符的帧缓冲地址
             //         限制: 仅在有效显示区域 (h<640, v<480) 内更新
-            else if (h_cnt[2:0] == 3'd6 && h_cnt < H_ACTIVE && v_cnt < V_ACTIVE) begin
+            else if (h_cnt[2:0] == CHAR_SWITCH_PIX && h_cnt < H_ACTIVE && v_cnt < V_ACTIVE) begin
                 if (h_cnt[9:3] == (COLS - 1)) begin
                     // 当前已是最后一列: 指向同行的第 0 列
                     // (实际显示时已进入消隐, 不会用到此数据)
@@ -271,24 +278,25 @@ module VGA #(
 
     // 从位图中取出对应 bit (bit7 对应 pix_x=0)
     wire pixel_on;
-    assign pixel_on = font_row[3'd7 - pix_x];
+    assign pixel_on = font_row[CHAR_LAST_PIX - pix_x];
 
     // ---- 生成 4-bit RGB 通道输出 ----
-    // 颜色扩展: R[3:0] = {R, R, R, I}
-    // 这样 1-bit 颜色信息扩展为有亮度层次的 4-bit 输出
+    // 颜色扩展: 将 1-bit 通道色 + 1-bit 亮度 扩展为 4-bit 输出
+    // 公式: 4-bit通道 = {通道色×3, 亮度}  (bit[3]=亮度, bit[2:0]=通道色)
     wire in_active;
     assign in_active = (h_d1 < H_ACTIVE) && (v_d1 < V_ACTIVE);
 
-    assign vga_r = in_active ? (pixel_on ? {fg_color[2], fg_color[2], fg_color[2], fg_color[3]}
-                                         : {bg_color[2], bg_color[2], bg_color[2], bg_color[3]})
-                             : 4'd0;
+    // 预计算前景/背景各通道的 4-bit 值 (消除三通道间复制粘贴)
+    wire [3:0] fg_r, fg_g, fg_b, bg_r, bg_g, bg_b;
+    assign fg_r = {fg_color[2], fg_color[2], fg_color[2], fg_color[3]};
+    assign fg_g = {fg_color[1], fg_color[1], fg_color[1], fg_color[3]};
+    assign fg_b = {fg_color[0], fg_color[0], fg_color[0], fg_color[3]};
+    assign bg_r = {bg_color[2], bg_color[2], bg_color[2], bg_color[3]};
+    assign bg_g = {bg_color[1], bg_color[1], bg_color[1], bg_color[3]};
+    assign bg_b = {bg_color[0], bg_color[0], bg_color[0], bg_color[3]};
 
-    assign vga_g = in_active ? (pixel_on ? {fg_color[1], fg_color[1], fg_color[1], fg_color[3]}
-                                         : {bg_color[1], bg_color[1], bg_color[1], bg_color[3]})
-                             : 4'd0;
-
-    assign vga_b = in_active ? (pixel_on ? {fg_color[0], fg_color[0], fg_color[0], fg_color[3]}
-                                         : {bg_color[0], bg_color[0], bg_color[0], bg_color[3]})
-                             : 4'd0;
+    assign vga_r = in_active ? (pixel_on ? fg_r : bg_r) : 4'd0;
+    assign vga_g = in_active ? (pixel_on ? fg_g : bg_g) : 4'd0;
+    assign vga_b = in_active ? (pixel_on ? fg_b : bg_b) : 4'd0;
 
 endmodule

@@ -88,7 +88,6 @@ module tb_VGA;
     // ===========================
     integer frame_count;
     integer test_errors;
-    integer pixel_in_frame;
 
     initial begin
         // ---- 初始化 ----
@@ -150,23 +149,25 @@ module tb_VGA;
     // 测试 1: HSYNC 时序
     // ===========================
     task check_hsync_timing;
-        reg [9:0] h_active_cnt, h_total_cnt;
-        reg [9:0] h_sync_start, h_sync_width;
+        reg [31:0] h_sync_start_time;
+        reg [31:0] h_sync_width_pix;
         begin
             $display("[Test 1] HSYNC 时序检查");
 
-            // 在 vsync 结束后的一行中测量
+            // 测量 HSYNC 脉冲宽度 (应为 H_SYNC = 96 像素 = 3840ns)
             @(negedge vga_hs);
-            h_sync_start = 0;  // 在同步脉冲期间, 我们无法直接读取 h_cnt
-                               // 所以改为检查同步脉冲宽度
-            @(posedge vga_hs);  // 同步脉冲结束
+            h_sync_start_time = $time;
+            @(posedge vga_hs);
+            h_sync_width_pix = ($time - h_sync_start_time) / 40;  // 40ns = 1像素时钟
 
-            // 检查同步脉冲宽度 = H_SYNC = 96 像素 = 96 × 40ns = 3840ns
-            // 在仿真中只能大致验证, 用 $time 做近似检查
-            // 这里通过观察两帧来验证稳定性
-
-            $display("  HSYNC 脉冲宽度: ~96 pixels (3840ns @25MHz)");
-            $display("  [PASS] HSYNC 时序正常 (肉眼观察波形确认)");
+            $display("  实测 HSYNC 宽度: %0d 像素时钟", h_sync_width_pix);
+            $display("  期望 HSYNC 宽度: 96 像素时钟");
+            if (h_sync_width_pix == 96) begin
+                $display("  [PASS] HSYNC 脉冲宽度 = 96");
+            end else begin
+                $display("  [FAIL] HSYNC 脉冲宽度 = %0d (期望 96)", h_sync_width_pix);
+                test_errors = test_errors + 1;
+            end
         end
     endtask
 

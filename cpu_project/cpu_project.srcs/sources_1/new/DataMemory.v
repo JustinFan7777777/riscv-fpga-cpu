@@ -88,13 +88,13 @@ module DataMemory (
     //   Port B (VGA 侧): posedge clk_vga (25MHz) — VGA 控制器扫描读出
     // 每字: [7:0]=ASCII 码, [11:8]=前景色(I+R+G+B), [15:12]=背景色(I+R+G+B)
 
-    (* ram_style = "block" *)
+    (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
     reg [15:0] vga_fb_mem [0:2399];      // 80×30 = 2400 个字符位
+    // WRITE_MODE="READ_FIRST": 同时读写同一地址时返回旧值, 匹配仿真语义
 
     // ---- CPU 侧读写信号 ----
     wire        vga_fb_we_cpu;            // CPU 写使能 (MMIO 区域命中 + MemWrite)
-    wire [11:0] vga_fb_waddr;            // CPU 写字地址 (0~2399)
-    wire [11:0] vga_fb_raddr;            // CPU 读字地址 (与写地址相同)
+    wire [11:0] vga_fb_waddr;            // CPU 读/写字地址 (0~2399)
     reg  [15:0] vga_fb_cpu_rdata;        // CPU 读数据寄存器
 
     // VGA 帧缓冲 MMIO 地址范围检测
@@ -109,7 +109,6 @@ module DataMemory (
     //   Addr[12:1] = 字节地址[12:1]
     //   fb_word_idx = Addr[12:1] - 128  (因为 0x0100 >> 1 = 128)
     assign vga_fb_waddr = Addr[12:1] - 12'd128;
-    assign vga_fb_raddr = vga_fb_waddr;
 
     // CPU 写使能: 非 Debug 模式、MemWrite 有效、且地址命中 VGA 帧缓冲
     assign vga_fb_we_cpu = ~dmem_dbg_en_sync && MemWrite && isVGA_CPU;
@@ -121,7 +120,7 @@ module DataMemory (
             vga_fb_cpu_rdata <= 16'd0;
         end else begin
             // 先读 (返回旧值, 即使同一周期有写操作)
-            vga_fb_cpu_rdata <= vga_fb_mem[vga_fb_raddr];
+            vga_fb_cpu_rdata <= vga_fb_mem[vga_fb_waddr];
             // 后写
             if (vga_fb_we_cpu)
                 vga_fb_mem[vga_fb_waddr] <= WriteData[15:0];
