@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RISC-V RV32I Single-Cycle Datapath</title>
+    <title>RISC-V RV32I 单周期数据通路</title>
     <!--
     ╔══════════════════════════════════════════════════════════════╗
-    ║                    CSS DESIGN SYSTEM                         ║
+    ║                    CSS 设计系统                               ║
     ║                                                              ║
-    ║  Color architecture has 3 layers:                            ║
-    ║    1. Stage colors (5 pipeline stages)  — used for stage     ║
-    ║       dots, column backgrounds, data-path glow/stroke.       ║
-    ║    2. Control signal colors (7 signals) — each control       ║
-    ║       signal has a distinct color for dashed-line tracing.   ║
-    ║    3. Inactive defaults — dark slate for unlit components    ║
-    ║       and paths.                                             ║
+    ║  颜色架构分为 3 层：                                          ║
+    ║    1. 阶段颜色（5 个流水线阶段）—— 用于阶段指示灯、          ║
+    ║       列背景、数据路径发光/描边。                             ║
+    ║    2. 控制信号颜色（7 个信号）—— 每个控制信号有独立          ║
+    ║       的颜色，用于虚线追踪。                                  ║
+    ║    3. 非活跃默认色 —— 深灰蓝用于未点亮的组件和路径。         ║
     ║                                                              ║
-    ║  SVG z-order / overlap strategy:                             ║
-    ║    - Inactive paths use opacity:0.18 so they DON'T visually  ║
-    ║      paint over active paths, even when drawn later in       ║
-    ║      SVG source order.                                       ║
-    ║    - Active paths use opacity:1 + animated dash pattern.     ║
-    ║    - This eliminates the need for dynamic DOM reordering.    ║
+    ║  SVG z-order / 重叠策略：                                     ║
+    ║    - 非活跃路径使用 opacity:0.18，即使按 SVG 源码顺序         ║
+    ║      后绘制，也不会在视觉上覆盖活跃路径。                     ║
+    ║    - 活跃路径使用 opacity:1 + 动画虚线。                      ║
+    ║    - 这消除了动态 DOM 重排序的需求。                          ║
     ╚══════════════════════════════════════════════════════════════╝
     -->
     <style>
@@ -32,24 +30,24 @@
             --text-main: #c9d1d9;
             --text-dim: #8b949e;
 
-            /* Stage Colors — each pipeline stage has a unique hue */
-            --c-if: #3b82f6; /* Blue   — Instruction Fetch  */
-            --c-id: #8b5cf6; /* Purple — Instruction Decode */
-            --c-ex: #f97316; /* Orange — Execute            */
-            --c-mem: #eab308; /* Yellow — Memory Access      */
-            --c-wb: #22c55e; /* Green  — Write Back          */
+            /* 阶段颜色 — 每个流水线阶段有独立的色相 */
+            --c-if: #3b82f6; /* 蓝色   — 取指 (Instruction Fetch)  */
+            --c-id: #8b5cf6; /* 紫色   — 译码 (Instruction Decode) */
+            --c-ex: #f97316; /* 橙色   — 执行 (Execute)            */
+            --c-mem: #eab308; /* 黄色  — 访存 (Memory Access)      */
+            --c-wb: #22c55e; /* 绿色   — 写回 (Write Back)         */
 
-            /* Control Signal Colors — each control line has a dedicated color */
-            --c-regwrite: #d946ef; /* Magenta — Register file write enable     */
-            --c-alusrc: #06b6d4;   /* Cyan    — ALU source mux select          */
-            --c-memtoreg: #a855f7; /* Purple   — Mem/ALU result mux select     */
-            --c-memwrite: #ef4444; /* Red     — Data memory write enable       */
-            --c-memread: #22c55e;  /* Green   — Data memory read enable        */
-            --c-branch: #3b82f6;   /* Blue    — Branch condition flag          */
-            --c-aluop: #f97316;    /* Orange  — ALU operation select           */
+            /* 控制信号颜色 — 每条控制线有独立的颜色 */
+            --c-regwrite: #d946ef; /* 品红 — 寄存器文件写使能        */
+            --c-alusrc: #06b6d4;   /* 青色 — ALU 源选择              */
+            --c-memtoreg: #a855f7; /* 紫色 — 内存/ALU 结果选择       */
+            --c-memwrite: #ef4444; /* 红色 — 数据内存写使能          */
+            --c-memread: #22c55e;  /* 绿色 — 数据内存读使能          */
+            --c-branch: #3b82f6;   /* 蓝色 — 分支条件标志            */
+            --c-aluop: #f97316;    /* 橙色 — ALU 操作选择            */
 
-            --inactive-stroke: #334155; /* Dark slate — unlit component borders */
-            --inactive-fill: #1e293b;   /* Darker slate — unlit component fill  */
+            --inactive-stroke: #334155; /* 深灰蓝 — 未点亮组件边框 */
+            --inactive-fill: #1e293b;   /* 深灰蓝 — 未点亮组件填充 */
         }
 
         body {
@@ -63,7 +61,7 @@
             overflow: hidden;
         }
 
-        /* Sidebar Layout */
+        /* 侧边栏布局 */
         .sidebar {
             width: 320px;
             background-color: var(--panel);
@@ -90,7 +88,7 @@
             cursor: pointer;
         }
 
-        /* Stage Indicators */
+        /* 流水线阶段指示灯 */
         .stage-indicators {
             display: flex;
             justify-content: space-between;
@@ -116,7 +114,7 @@
             transition: all 0.3s;
         }
         
-        /* Control Signal Table */
+        /* 控制信号 Table */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -130,7 +128,7 @@
         th { color: var(--text-dim); font-weight: normal; }
         .sig-val { font-family: monospace; font-weight: bold; }
 
-        /* Description Box */
+        /* 指令描述框 */
         .desc-box {
             background: var(--bg);
             padding: 12px;
@@ -147,7 +145,7 @@
             display: block;
         }
 
-        /* Main Area & SVG */
+        /* 主区域 & SVG */
         .main-area {
             flex: 1;
             position: relative;
@@ -165,7 +163,7 @@
             max-height: 650px;
         }
 
-        /* SVG Base Styles */
+        /* SVG 基础样式 */
         .bg-col { fill-opacity: 0.04; }
         .stage-label { font-size: 14px; font-weight: bold; fill: var(--inactive-stroke); transition: fill 0.3s; }
         
@@ -195,7 +193,7 @@
         }
         .path.dashed { stroke-dasharray: 4 4; }
 
-        /* Active State Animations */
+        /* 活跃状态动画 */
         @keyframes dashFlow {
             to { stroke-dashoffset: -16; }
         }
@@ -214,7 +212,7 @@
         .comp.active { stroke-width: 2; }
         .comp.active + .comp-label { fill: #fff; }
 
-        /* Filter Glows applied via JS classes */
+        /* 通过 JS 类名应用的发光滤镜 */
         .glow-if { filter: drop-shadow(0 0 6px var(--c-if)); stroke: var(--c-if); }
         .glow-id { filter: drop-shadow(0 0 6px var(--c-id)); stroke: var(--c-id); }
         .glow-ex { filter: drop-shadow(0 0 6px var(--c-ex)); stroke: var(--c-ex); }
@@ -227,7 +225,7 @@
         .stroke-mem { stroke: var(--c-mem) !important; }
         .stroke-wb { stroke: var(--c-wb) !important; }
 
-        /* Control Signal Active Colors */
+        /* 控制信号 Active Colors */
         .stroke-regwrite { stroke: var(--c-regwrite) !important; }
         .stroke-alusrc { stroke: var(--c-alusrc) !important; }
         .stroke-memtoreg { stroke: var(--c-memtoreg) !important; }
@@ -236,7 +234,7 @@
         .stroke-branch { stroke: var(--c-branch) !important; }
         .stroke-aluop { stroke: var(--c-aluop) !important; }
 
-        /* Legend */
+        /* 图例 */
         .legend {
             position: absolute;
             bottom: 20px;
@@ -258,34 +256,34 @@
 <body>
 
     <div class="sidebar">
-        <h1>RISC-V Datapath</h1>
+        <h1>RISC-V 数据通路</h1>
         
         <div>
-            <label for="inst-select" style="font-size: 12px; color: var(--text-dim); display:block; margin-bottom:6px;">Select Instruction</label>
+            <label for="inst-select" style="font-size: 12px; color: var(--text-dim); display:block; margin-bottom:6px;">选择指令</label>
             <select id="inst-select">
-                <optgroup label="R-Type">
+                <optgroup label="R-类型">
                     <option value="ADD" selected>ADD</option>
                     <option value="SUB">SUB</option>
                     <option value="AND">AND</option>
                 </optgroup>
-                <optgroup label="I-Type (ALU)">
+                <optgroup label="I-类型 (ALU)">
                     <option value="ADDI">ADDI</option>
                     <option value="ORI">ORI</option>
                 </optgroup>
-                <optgroup label="Load/Store">
-                    <option value="LW">LW (Load Word)</option>
-                    <option value="SW">SW (Store Word)</option>
+                <optgroup label="加载/存储">
+                    <option value="LW">LW (加载字)</option>
+                    <option value="SW">SW (存储字)</option>
                 </optgroup>
-                <optgroup label="Branch">
-                    <option value="BEQ">BEQ (Branch ==)</option>
+                <optgroup label="分支">
+                    <option value="BEQ">BEQ (分支 ==)</option>
                 </optgroup>
-                <optgroup label="U-Type">
-                    <option value="LUI">LUI (Load Upper Imm)</option>
-                    <option value="AUIPC">AUIPC (Add Upper Imm to PC)</option>
+                <optgroup label="U-类型">
+                    <option value="LUI">LUI (加载高位立即数)</option>
+                    <option value="AUIPC">AUIPC (PC 加高位立即数)</option>
                 </optgroup>
-                <optgroup label="Jump">
-                    <option value="JAL">JAL (Jump & Link)</option>
-                    <option value="JALR">JALR (Jump & Link Reg)</option>
+                <optgroup label="跳转">
+                    <option value="JAL">JAL (跳转 & Link)</option>
+                    <option value="JALR">JALR (跳转 & Link Reg)</option>
                 </optgroup>
             </select>
         </div>
@@ -299,7 +297,7 @@
         </div>
 
         <div>
-            <h2 style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase;">Control Signals</h2>
+            <h2 style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase;">控制信号</h2>
             <table>
                 <tbody>
                     <tr><th>RegWrite</th><td class="sig-val" id="sig-RegWrite" style="color: var(--c-regwrite)">0</td></tr>
@@ -315,8 +313,8 @@
         </div>
 
         <div class="desc-box">
-            <span class="inst-meta" id="desc-meta">Type | Encoding</span>
-            <span id="desc-text">Description goes here.</span>
+            <span class="inst-meta" id="desc-meta">类型 | 编码</span>
+            <span id="desc-text">选择一条指令以查看其数据通路。</span>
         </div>
     </div>
 
@@ -324,34 +322,34 @@
         <svg viewBox="0 0 1100 650" id="datapath-svg">
             <!--
             ╔══════════════════════════════════════════════════════════════╗
-            ║              SVG ARROWHEAD MARKER DEFINITIONS                ║
+            ║              SVG 箭头标记定义                                  ║
             ║                                                              ║
-            ║  Each marker is a small triangle (M 0 0 L 10 5 L 0 10 z).   ║
-            ║  - Data paths use orient="auto-start-reverse" — arrow points ║
-            ║    in the natural direction of the path.                     ║
-            ║  - Control paths use orient="auto" — arrow points forward.   ║
+            ║  每个标记是一个小三角形 (M 0 0 L 10 5 L 0 10 z)。            ║
+            ║  - 数据路径使用 orient="auto-start-reverse" — 箭头指向        ║
+            ║    路径的自然方向。                                            ║
+            ║  - 控制路径使用 orient="auto" — 箭头指向前方。                 ║
             ║                                                              ║
-            ║  We predefine one marker per stage color + per control       ║
-            ║  signal color. The JS setMarker() function assigns the       ║
-            ║  correct marker-end URL at runtime.                          ║
+            ║  我们为每个阶段颜色和控制信号颜色预定义一个标记。              ║
+            ║  JS setMarker() 函数在运行时分配正确的 marker-end URL。        ║
+            ║                                                                ║
             ║                                                              ║
-            ║  markerWidth/markerHeight control the arrowhead size.        ║
-            ║  refX=8 positions the arrow tip at the path endpoint.        ║
+            ║  markerWidth/markerHeight 控制箭头大小。                       ║
+            ║  refX=8 将箭头尖端定位在路径终点。                             ║
             ╚══════════════════════════════════════════════════════════════╝
             -->
             <defs>
-                <!-- Default gray arrowhead (used when path is inactive) -->
+                <!-- 默认灰色箭头（路径非活跃时使用） -->
                 <marker id="arrow-solid" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--inactive-stroke)" />
                 </marker>
-                <!-- Stage-colored arrowheads for data paths -->
+                <!-- 阶段颜色箭头（数据路径用） -->
                 <marker id="arrow-if" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-if)" /></marker>
                 <marker id="arrow-id" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-id)" /></marker>
                 <marker id="arrow-ex" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-ex)" /></marker>
                 <marker id="arrow-mem" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-mem)" /></marker>
                 <marker id="arrow-wb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-wb)" /></marker>
 
-                <!-- Control-signal-colored arrowheads -->
+                <!-- 控制信号颜色箭头 -->
                 <marker id="arrow-regwrite" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-regwrite)" /></marker>
                 <marker id="arrow-alusrc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-alusrc)" /></marker>
                 <marker id="arrow-memtoreg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--c-memtoreg)" /></marker>
@@ -363,13 +361,13 @@
 
             <!--
             ╔══════════════════════════════════════════════════════════════╗
-            ║              STAGE COLUMN BACKGROUNDS                        ║
+            ║              流水线阶段列背景                                  ║
             ║                                                              ║
-            ║  5 vertical columns, each 200px wide, with fill-opacity      ║
-            ║  at 0.04 — nearly invisible in dark mode but provides        ║
-            ║  a subtle tint to visually group each pipeline stage.        ║
+            ║  5 个垂直列，每列 200px 宽，fill-opacity 为                    ║
+            ║  0.04 — 暗色模式下几乎不可见，但提供了                         ║
+            ║  微妙的色调来在视觉上划分每个流水线阶段。                        ║
             ║                                                              ║
-            ║  Column boundaries: IF=50–250, ID=250–450, EX=450–650,      ║
+            ║  列边界: IF=50–250, ID=250–450, EX=450–650,                  ║
             ║  MEM=650–850, WB=850–1050                                    ║
             ╚══════════════════════════════════════════════════════════════╝
             -->
@@ -379,105 +377,105 @@
             <rect x="650" y="0" width="200" height="650" class="bg-col" fill="var(--c-mem)" />
             <rect x="850" y="0" width="200" height="650" class="bg-col" fill="var(--c-wb)" />
 
-            <!-- Stage column header labels (colored dynamically by JS) -->
-            <text x="150" y="30" class="stage-label" id="lbl-IF" text-anchor="middle">IF · Fetch</text>
-            <text x="350" y="30" class="stage-label" id="lbl-ID" text-anchor="middle">ID · Decode</text>
-            <text x="550" y="30" class="stage-label" id="lbl-EX" text-anchor="middle">EX · Execute</text>
-            <text x="750" y="30" class="stage-label" id="lbl-MEM" text-anchor="middle">MEM · Memory</text>
-            <text x="950" y="30" class="stage-label" id="lbl-WB" text-anchor="middle">WB · WriteBack</text>
+            <!-- 阶段列标题（由 JS 动态着色） -->
+            <text x="150" y="30" class="stage-label" id="lbl-IF" text-anchor="middle">IF · 取指</text>
+            <text x="350" y="30" class="stage-label" id="lbl-ID" text-anchor="middle">ID · 译码</text>
+            <text x="550" y="30" class="stage-label" id="lbl-EX" text-anchor="middle">EX · 执行</text>
+            <text x="750" y="30" class="stage-label" id="lbl-MEM" text-anchor="middle">MEM · 访存</text>
+            <text x="950" y="30" class="stage-label" id="lbl-WB" text-anchor="middle">WB · 写回</text>
 
         <!--
         ╔══════════════════════════════════════════════════════════════╗
-        ║              SVG PATH NAMING CONVENTION                      ║
+        ║              SVG 路径命名规范                                  ║
         ║                                                              ║
-        ║  p_<source>_<dest>  — data path (solid line)                ║
-        ║    Example: p_alu_wbmux = path from ALU to WriteBack mux     ║
+        ║  p_<源>_<目标> — 数据路径（实线）                             ║
+        ║    例: p_alu_wbmux = ALU 到写回多选器的路径                    ║
         ║                                                              ║
-        ║  c_<signal>         — control signal path (dashed line)      ║
-        ║    Example: c_regwrite = RegWrite control signal             ║
+        ║  c_<信号> — 控制信号路径（虚线）                              ║
+        ║    例: c_regwrite = RegWrite 控制信号                          ║
         ║                                                              ║
-        ║  p_<name>_trunk     — shared bus segment connecting a        ║
-        ║    component output to a junction where multiple paths       ║
-        ║    branch off. Prevents overlapping paths from obscuring     ║
-        ║    each other (critical fix for rendering correctness).      ║
-        ║    Example: p_alu_trunk = ALU output → junction (640,330)    ║
-        ║             p_imm_trunk = ImmGen output → junction (450,490) ║
+        ║  p_<名称>_trunk — 共享总线段，连接组件                         ║
+        ║    输出到多个路径分支的汇合点，防止重叠                          ║
+        ║    路径相互遮挡（渲染正确性的关键修复）。                         ║
+        ║                                                                ║
+        ║    例: p_alu_trunk = ALU 输出 → 汇合点 (640,330)               ║
+        ║         p_imm_trunk = ImmGen 输出 → 汇合点 (450,490)          ║
         ║                                                              ║
-        ║  SVG path 'd' attribute uses absolute commands:              ║
-        ║    M x y  = Move to (start point)                            ║
-        ║    H x    = Horizontal line to x (y stays same)              ║
-        ║    V y    = Vertical line to y (x stays same)                ║
+        ║  SVG path .d. 属性使用绝对坐标命令：                           ║
+        ║    M x y  = 移动到 (起点)                                      ║
+        ║    H x    = 水平线到 x (y 不变)                                ║
+        ║    V y    = 垂直线到 y (x 不变)                                ║
         ║                                                              ║
-        ║  Junction dots (r=3 circles) mark where paths branch or      ║
-        ║  merge. They're drawn AFTER data-lines but BEFORE comps,     ║
-        ║  so they sit on top of paths but under components.           ║
+        ║  汇合点（r=3 圆点）标记路径分支或                              ║
+        ║  合并的位置。在数据线之后、组件之前绘制，                       ║
+        ║  因此它们位于路径上方但组件下方。                              ║
         ╚══════════════════════════════════════════════════════════════╝
         -->
             <g id="data-lines">
-                <!-- ===== IF Stage: PC → IMem → PC+4 loop ===== -->
+                <!-- ===== IF 阶段: PC → IMem → PC+4 循环 ===== -->
                 <path id="p_pc_imem" class="path" d="M 140 310 H 180" marker-end="url(#arrow-solid)" />
                 <path id="p_pc_adder" class="path" d="M 160 310 V 125 H 180" marker-end="url(#arrow-solid)" />
-                <!-- PC → Branch Adder (used by BEQ, JAL, AUIPC for PC routing) -->
+                <!-- PC → 分支加法器 (BEQ/JAL/AUIPC 的 PC 路由) -->
                 <path id="p_pc_badder" class="path" d="M 160 125 V 60 H 540 V 115 H 560" marker-end="url(#arrow-solid)" />
-                <!-- Branch from PC bus (540,60) → muxA (AUIPC: feeds PC into ALU via muxA) -->
+                <!-- PC 总线分支 (540,60) → muxA (AUIPC: 将 PC 通过 muxA 送入 ALU) -->
                 <path id="p_pc_muxA" class="path" d="M 540 60 V 275 H 480" marker-end="url(#arrow-solid)" />
-                <!-- PC+4 adder output → PCSrc mux (normal PC+4 path) -->
+                <!-- PC+4 加法器输出 → PCSrc 多选器 (常规 PC+4 路径) -->
                 <path id="p_adder_pcsrc" class="path" d="M 220 110 H 800" marker-end="url(#arrow-solid)" />
-                <!-- PC+4 adder output → WB mux (JAL/JALR: save return address to rd) -->
+                <!-- PC+4 加法器输出 → WB 多选器 (JAL/JALR: 保存返回地址到 rd) -->
                 <path id="p_adder_wbmux" class="path" d="M 230 110 V 20 H 880 V 380 H 900" marker-end="url(#arrow-solid)" />
 
-                <!-- ===== ID Stage: IMem output bus → Register File / ImmGen / Control ===== -->
-                <!-- IMem → junction(320,310) → Register File rs1 read address -->
+                <!-- ===== ID 阶段: IMem 输出总线 → 寄存器文件 / ImmGen / Control ===== -->
+                <!-- IMem → 汇合点(320,310) → 寄存器文件 rs1 读地址 -->
                 <path id="p_imem_reg1" class="path" d="M 240 310 H 320 V 290 H 360" marker-end="url(#arrow-solid)" />
-                <!-- junction(320,310) → (320,350) → Register File rs2 read address -->
+                <!-- 汇合点(320,310) → (320,350) → 寄存器文件 rs2 读地址 -->
                 <path id="p_imem_reg2" class="path" d="M 320 310 V 350 H 360" marker-end="url(#arrow-solid)" />
-                <!-- junction(320,350) → ImmGen input (feeds immediate field) -->
+                <!-- 汇合点(320,350) → ImmGen 输入 (送入立即数字段) -->
                 <path id="p_imem_imm" class="path" d="M 320 350 V 490 H 360" marker-end="url(#arrow-solid)" />
-                <!-- IMem → Control unit (instruction opcode decoding) -->
+                <!-- IMem → Control 单元 (指令操作码译码) -->
                 <path id="p_imem_ctrl" class="path" d="M 260 310 V 110 H 280" marker-end="url(#arrow-solid)" />
 
-                <!-- ===== EX Stage: Register File / ImmGen → Muxes → ALU ===== -->
-                <!-- Register File rs1 output → muxA input 0 -->
+                <!-- ===== EX 阶段: 寄存器文件 / ImmGen → 多选器 → ALU ===== -->
+                <!-- 寄存器文件 rs1 输出 → muxA 输入 0 -->
                 <path id="p_reg_muxA" class="path" d="M 440 290 H 480" marker-end="url(#arrow-solid)" />
-                <!-- Register File rs2 output → muxB input 0 -->
+                <!-- 寄存器文件 rs2 输出 → muxB 输入 0 -->
                 <path id="p_reg_muxB" class="path" d="M 440 350 H 480" marker-end="url(#arrow-solid)" />
-                <!-- Register File rs2 → Data Memory write data (SW: store rs2 to memory) -->
+                <!-- 寄存器文件 rs2 → Data Memory 写数据 (SW: 将 rs2 存入内存) -->
                 <path id="p_reg_dmem" class="path" d="M 460 350 V 450 H 680 V 390 H 700" marker-end="url(#arrow-solid)" />
-                <!-- ImmGen output → junction(450,490) [TRUNK — shared bus, see convention above] -->
+                <!-- ImmGen 输出 → 汇合点(450,490) [TRUNK — 共享总线，见上方规范] -->
                 <path id="p_imm_trunk" class="path" d="M 420 490 H 450" marker-end="url(#arrow-solid)" />
-                <!-- junction(450,490) → muxB input 1 (ImmGen → ALU via muxB for I-type ops) -->
+                <!-- 汇合点(450,490) → muxB 输入 1 (ImmGen 通过 muxB 送入 ALU, I-类型操作) -->
                 <path id="p_imm_muxB" class="path" d="M 450 490 V 385 H 480" marker-end="url(#arrow-solid)" />
-                <!-- junction(450,490) → Shift-left-1 unit (BEQ/JAL: immediate × 2 for branch offset) -->
+                <!-- 汇合点(450,490) → 左移1单元 (BEQ/JAL: 立即数×2 计算分支偏移) -->
                 <path id="p_imm_shift" class="path" d="M 450 490 V 160 H 480" marker-end="url(#arrow-solid)" />
 
-                <!-- muxA output → ALU input A -->
+                <!-- muxA 输出 → ALU 输入 A -->
                 <path id="p_muxA_alu" class="path" d="M 510 290 H 560" marker-end="url(#arrow-solid)" />
-                <!-- muxB output → ALU input B -->
+                <!-- muxB 输出 → ALU 输入 B -->
                 <path id="p_muxB_alu" class="path" d="M 510 370 H 560" marker-end="url(#arrow-solid)" />
-                <!-- Shift-left-1 output → Branch Adder (PC + shifted_imm for branch/jump target) -->
+                <!-- 左移1输出 → 分支加法器 (PC + 移位立即数 = 分支/跳转目标) -->
                 <path id="p_shift_badder" class="path" d="M 520 160 H 540 V 145 H 560" marker-end="url(#arrow-solid)" />
 
-                <!-- ===== MEM Stage: Branch Adder / ALU output → downstream ===== -->
-                <!-- Branch Adder result → PCSrc mux (branch/jump target address) -->
+                <!-- ===== MEM 阶段: 分支加法器 / ALU 输出 → 下游 ===== -->
+                <!-- 分支加法器结果 → PCSrc 多选器 (分支/跳转目标地址) -->
                 <path id="p_badder_pcsrc" class="path" d="M 620 130 H 800" marker-end="url(#arrow-solid)" />
-                <!-- ALU output → junction(640,330) [TRUNK — shared bus, see convention above] -->
+                <!-- ALU 输出 → 汇合点(640,330) [TRUNK — 共享总线，见上方规范] -->
                 <path id="p_alu_trunk" class="path" d="M 620 330 H 640" marker-end="url(#arrow-solid)" />
-                <!-- junction(640,330) → Data Memory address input (LW/SW) -->
+                <!-- 汇合点(640,330) → Data Memory 地址输入 (LW/SW) -->
                 <path id="p_alu_dmem" class="path" d="M 640 330 H 700" marker-end="url(#arrow-solid)" />
-                <!-- junction(640,330) → junction(640,300) → WB mux input 0 (ALU result → WB) -->
+                <!-- 汇合点(640,330) → 汇合点(640,300) → WB 多选器输入 0 (ALU 结果 → WB) -->
                 <path id="p_alu_wbmux" class="path" d="M 640 330 V 300 H 900" marker-end="url(#arrow-solid)" />
-                <!-- junction(640,300) → PCSrc mux input (JALR: ALU-computed jump target) -->
+                <!-- 汇合点(640,300) → PCSrc 多选器输入 (JALR: ALU 计算的跳转目标) -->
                 <path id="p_alu_pcsrc" class="path" d="M 640 300 V 150 H 800" marker-end="url(#arrow-solid)" />
 
-                <!-- ===== WB Stage: Memory / WB mux → Register File ===== -->
-                <!-- Data Memory output → WB mux input 1 (LW: load data) -->
+                <!-- ===== WB 阶段: 内存 / WB 多选器 → 寄存器文件 ===== -->
+                <!-- Data Memory 输出 → WB 多选器输入 1 (LW: 加载数据) -->
                 <path id="p_dmem_wbmux" class="path" d="M 780 360 V 340 H 900" marker-end="url(#arrow-solid)" />
-                <!-- WB mux output → Register File write port (loops back across all stages) -->
+                <!-- WB 多选器输出 → 寄存器文件写端口 (跨所有阶段回环) -->
                 <path id="p_wbmux_reg" class="path" d="M 930 340 H 960 V 600 H 340 V 320 H 360" marker-end="url(#arrow-solid)" />
-                <!-- PCSrc mux output → PC (next PC value, routes across top of diagram back to left) -->
+                <!-- PCSrc 多选器输出 → PC (下一 PC 值，沿图顶部回传到左侧) -->
                 <path id="p_pcsrc_pc" class="path" d="M 830 130 H 850 V 10 H 80 V 310 H 100" marker-end="url(#arrow-solid)" />
 
-                <!-- LUI: constant-0 → muxA (routes hardwired 0 into ALU for LUI instruction) -->
+                <!-- LUI: 常数0 → muxA (将硬连线 0 送入 ALU 用于 LUI 指令) -->
                 <path id="p_zero_muxA" class="path" d="M 460 275 H 480" marker-end="url(#arrow-solid)" />
             </g>
 
@@ -515,7 +513,7 @@
                 <text x="120" y="310" class="comp-label">PC</text>
                 
                 <rect id="comp-imem" class="comp" x="180" y="250" width="60" height="120" rx="4" />
-                <text x="210" y="310" class="comp-label" style="writing-mode: vertical-rl;">Instruction Mem</text>
+                <text x="210" y="310" class="comp-label" style="writing-mode: vertical-rl;">指令内存</text>
                 
                 <polygon id="comp-pcadder" class="comp" points="180,80 220,95 220,125 180,140 180,115 170,110 180,105" />
                 <text x="200" y="110" class="comp-label">Add</text>
@@ -524,7 +522,7 @@
                 <text x="300" y="110" class="comp-label" style="writing-mode: vertical-rl;">Control</text>
 
                 <rect id="comp-regfile" class="comp" x="360" y="260" width="80" height="120" rx="4" />
-                <text x="400" y="320" class="comp-label">Registers</text>
+                <text x="400" y="320" class="comp-label">寄存器</text>
 
                 <rect id="comp-immgen" class="comp" x="360" y="460" width="60" height="60" rx="30" />
                 <text x="390" y="490" class="comp-label">ImmGen</text>
@@ -548,7 +546,7 @@
                 <text x="590" y="130" class="comp-label">Add</text>
 
                 <rect id="comp-dmem" class="comp" x="700" y="300" width="80" height="120" rx="4" />
-                <text x="740" y="360" class="comp-label" style="writing-mode: vertical-rl;">Data Memory</text>
+                <text x="740" y="360" class="comp-label" style="writing-mode: vertical-rl;">数据内存</text>
 
                 <path id="comp-and" class="comp" d="M 720 180 L 740 180 A 20 20 0 0 1 740 220 L 720 220 Z" />
                 <text x="735" y="200" class="comp-label">&amp;</text>
@@ -565,49 +563,49 @@
         </svg>
 
         <div class="legend">
-            <div class="leg-row"><div class="leg-line" style="background:var(--text-main);"></div> Data Path</div>
-            <div class="leg-row"><div class="leg-dash"></div> Control Signal</div>
+            <div class="leg-row"><div class="leg-line" style="background:var(--text-main);"></div> 数据通路</div>
+            <div class="leg-row"><div class="leg-dash"></div> 控制信号</div>
         </div>
     </div>
 
     <!--
     ╔══════════════════════════════════════════════════════════════╗
-    ║              JAVASCRIPT — INSTRUCTION VISUALIZER ENGINE     ║
+    ║              JAVASCRIPT — 指令可视化引擎                      ║
     ║                                                              ║
-    ║  Architecture overview:                                      ║
+    ║  架构概览:                                                    ║
     ║                                                              ║
-    ║  1. instData{} — declarative config per instruction. Each    ║
-    ║     entry specifies exactly which SVG elements to light up.  ║
-    ║     This is the "source of truth" — no imperative logic      ║
-    ║     per instruction.                                         ║
+    ║  1. instData{} — 每条指令的声明式配置。每个条目                ║
+    ║     精确声明需要点亮哪些 SVG 元素。                              ║
+    ║     这是"唯一真相源" — 没有针对每条指令的                      ║
+    ║     命令式逻辑。                                                ║
     ║                                                              ║
-    ║  2. compStageMap{} — precomputed at init. Maps each          ║
-    ║     component id ("pc","alu",etc.) → glow CSS class          ║
-    ║     (glow-if, glow-ex, ...) based on its x-coordinate.       ║
-    ║     Avoids calling getBBox() on every instruction change.    ║
+    ║  2. compStageMap{} — 初始化时预计算。将每个组件                ║
+    ║     id ("pc","alu"等) 映射到 glow CSS 类                        ║
+    ║     (glow-if, glow-ex, ...)，基于其 x 坐标。                    ║
+    ║     避免每次指令切换时调用 getBBox()。                          ║
     ║                                                              ║
-    ║  3. updateDatapath() — the main render loop. Called on       ║
-    ║     init and on every instruction change. Follows a strict   ║
-    ║     6-step pipeline: clear → text → signals → stages →       ║
-    ║     components → data paths → control paths.                 ║
+    ║  3. updateDatapath() — 主渲染循环。在初始化和                   ║
+    ║     每次指令切换时调用。遵循严格的                              ║
+    ║     6 步流水线: 清除 → 文本 → 信号 → 阶段 →                    ║
+    ║     组件 → 数据路径 → 控制路径。                                ║
     ║                                                              ║
-    ║  4. CSS class-driven activation — instead of setting inline  ║
-    ║     styles, we toggle CSS classes (active, glow-*, stroke-*) ║
-    ║     so that all visual changes live in the stylesheet.       ║
+    ║  4. CSS 类驱动激活 — 通过切换 CSS 类                            ║
+    ║     (active, glow-*, stroke-*) 而非设置内联样式，               ║
+    ║     使所有视觉变化都集中在样式表中。                            ║
     ║                                                              ║
-    ║  Key design decisions:                                       ║
-    ║    - Trunk paths (p_imm_trunk, p_alu_trunk) prevent visual   ║
-    ║      gaps at component outputs where multiple paths branch.  ║
-    ║    - opacity:0.18 on inactive .path prevents SVG draw-order  ║
-    ║      issues — inactive lines can't obscure active ones.      ║
-    ║    - classList-based cleanup avoids className.baseVal        ║
-    ║      (SVG API) / className (HTML API) inconsistencies.       ║
+    ║  关键设计决策:                                                  ║
+    ║    - 主干路径 (p_imm_trunk, p_alu_trunk) 防止                    ║
+    ║      组件输出处多路径分支时的视觉缺口。                         ║
+    ║    - 非活跃 .path 的 opacity:0.18 避免 SVG                       ║
+    ║      绘制顺序问题 — 非活跃线无法遮挡活跃线。                   ║
+    ║    - 基于 classList 的清理避免了 className.baseVal              ║
+    ║      (SVG API) / className (HTML API) 不一致的问题。            ║
     ╚══════════════════════════════════════════════════════════════╝
     -->
     <script>
         // ===================================================================
-        // Shared configs to avoid copy-paste across similar instruction types.
-        // Each instruction only overrides the fields that differ.
+        // 共享配置，避免在相似指令类型间复制粘贴。
+        // 每条指令只覆写不同的字段。
         // ===================================================================
         const R_COMPS = ["pc","imem","pcadder","control","regfile","aluctrl","muxA","muxB","alu","wbmux"];
         const I_ALU_COMPS = ["pc","imem","pcadder","control","regfile","immgen","aluctrl","muxA","muxB","alu","wbmux"];
@@ -626,41 +624,42 @@
         const R_ACTIVE = ["c_regwrite","c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_memtoreg"];
         const ACTIVE_ALL = [1,1,1,1,1];
         const NO_WB = [1,1,1,1,0];
+        const CTRL_COLOR_ALIAS = { aluctrl: 'aluop', alu: 'aluop', and: 'branch' };
 
         const instData = {
             "ADD": {
-                meta: "R-type | 0000000 rs2 rs1 000 rd 0110011",
-                desc: "Reads rs1 & rs2 from Register File. ALU computes sum. Result written back to rd.",
+                meta: "R-类型 | 0000000 rs2 rs1 000 rd 0110011",
+                desc: "从寄存器文件读取 rs1 和 rs2。ALU 计算和。结果写回 rd。",
                 comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0 (rs1)', ALUSrcB:'0 (rs2)', MemtoReg:'0 (ALU)', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "SUB": {
-                meta: "R-type | 0100000 rs2 rs1 000 rd 0110011",
-                desc: "Reads rs1 & rs2. ALU computes rs1 - rs2. Result written back to rd.",
+                meta: "R-类型 | 0100000 rs2 rs1 000 rd 0110011",
+                desc: "读取 rs1 和 rs2。ALU 计算 rs1 - rs2。结果写回 rd。",
                 comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'SUB' } }
             },
             "AND": {
-                meta: "R-type | 0000000 rs2 rs1 111 rd 0110011",
-                desc: "Reads rs1 & rs2. ALU computes bitwise AND. Result written back to rd.",
+                meta: "R-类型 | 0000000 rs2 rs1 111 rd 0110011",
+                desc: "读取 rs1 和 rs2。ALU 计算按位与。结果写回 rd。",
                 comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'AND' } }
             },
             "ADDI": {
-                meta: "I-type | imm[11:0] rs1 000 rd 0010011",
-                desc: "Reads rs1 and sign-extends Immediate. ALU adds them. ALUSrc MUX selects Imm instead of rs2.",
+                meta: "I-类型 | imm[11:0] rs1 000 rd 0010011",
+                desc: "读取 rs1 并对立即数进行符号扩展。ALU 执行加法。ALUSrc 多选器选择立即数而非 rs2。",
                 comps: I_ALU_COMPS, paths: I_ALU_PATHS, stages: ACTIVE_ALL,
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "ORI": {
-                meta: "I-type | imm[11:0] rs1 110 rd 0010011",
-                desc: "Reads rs1 and sign-extends Immediate. ALU bitwise ORs them.",
+                meta: "I-类型 | imm[11:0] rs1 110 rd 0010011",
+                desc: "读取 rs1 并对立即数进行符号扩展。ALU 执行按位或。",
                 comps: I_ALU_COMPS, paths: I_ALU_PATHS, stages: ACTIVE_ALL,
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'OR' } }
             },
             "LW": {
-                meta: "I-type (Load) | imm[11:0] rs1 010 rd 0000011",
-                desc: "Calculates address (rs1 + Imm). Reads Data Memory at address. MemtoReg MUX routes Data Memory output to Register File.",
+                meta: "I-类型 (加载) | imm[11:0] rs1 010 rd 0000011",
+                desc: "计算地址 (rs1 + 立即数)。从该地址读取数据内存。MemtoReg 多选器将数据内存输出路由到寄存器文件。",
                 comps: [...I_ALU_COMPS, "dmem"],
                 paths: {
                     ...I_ALU_PATHS,
@@ -670,8 +669,8 @@
                 ctrl: { active: [...R_ACTIVE, "c_memread"], vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'1 (Mem)', MemWrite:'0', MemRead:'1', Branch:'0', ALUOp:'ADD' } }
             },
             "SW": {
-                meta: "S-type | imm[11:5] rs2 rs1 010 imm[4:0] 0100011",
-                desc: "Calculates address (rs1 + Imm). Writes rs2 data into Data Memory. Writeback stage is completely inactive.",
+                meta: "S-类型 | imm[11:5] rs2 rs1 010 imm[4:0] 0100011",
+                desc: "计算地址 (rs1 + 立即数)。将 rs2 数据写入数据内存。写回阶段完全不活跃。",
                 comps: [...I_ALU_COMPS, "dmem"],
                 paths: {
                     ...I_ALU_PATHS,
@@ -682,8 +681,8 @@
                 ctrl: { active: ["c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_memwrite"], vals: { RegWrite:'0', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'X', MemWrite:'1', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "BEQ": {
-                meta: "B-type | imm[12|10:5] rs2 rs1 000 imm[4:1|11] 1100011",
-                desc: "ALU subtracts rs1-rs2. If Zero, AND gate triggers PCSrc to MUX Branch Target (PC + shifted Imm). WB inactive.",
+                meta: "B-类型 | imm[12|10:5] rs2 rs1 000 imm[4:1|11] 1100011",
+                desc: "ALU 计算 rs1-rs2。若为零，AND 门触发 PCSrc 选择分支目标 (PC + 移位立即数)。WB 不活跃。",
                 comps: [...R_COMPS, "immgen", "shift", "badder", "and", "pcsrc"],
                 paths: {
                     if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pcsrc_pc"],
@@ -695,15 +694,15 @@
                 ctrl: { active: ["c_alusrcA","c_alusrcB","c_aluop","c_aluctrl_alu","c_branch","c_alu_zero","c_and_pcsrc"], vals: { RegWrite:'0', ALUSrcA:'0', ALUSrcB:'0', MemtoReg:'X', MemWrite:'0', MemRead:'0', Branch:'1', ALUOp:'SUB' } }
             },
             "LUI": {
-                meta: "U-type | imm[31:12] rd 0110111",
-                desc: "Loads upper 20 bits of Immediate into rd. ALUSrcA routes constant 0, ALUSrcB routes Imm.",
+                meta: "U-类型 | imm[31:12] rd 0110111",
+                desc: "将立即数高 20 位加载到 rd。ALUSrcA 路由常数 0，ALUSrcB 路由立即数。",
                 comps: I_ALU_COMPS, stages: ACTIVE_ALL,
                 paths: { ...I_ALU_PATHS, ex: ["p_zero_muxA","p_imm_trunk","p_imm_muxB","p_muxA_alu","p_muxB_alu"] },
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'X (0)', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "AUIPC": {
-                meta: "U-type | imm[31:12] rd 0010111",
-                desc: "Adds upper 20 bits of Immediate to PC. Result to rd. ALUSrcA routes PC, ALUSrcB routes Imm.",
+                meta: "U-类型 | imm[31:12] rd 0010111",
+                desc: "将立即数高 20 位加到 PC。结果存入 rd。ALUSrcA 路由 PC，ALUSrcB 路由立即数。",
                 comps: I_ALU_COMPS, stages: ACTIVE_ALL,
                 paths: {
                     if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pc_muxA","p_pcsrc_pc"],
@@ -712,8 +711,8 @@
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'1 (PC)', ALUSrcB:'1 (Imm)', MemtoReg:'0', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'ADD' } }
             },
             "JAL": {
-                meta: "J-type | imm[20|10:1|11|19:12] rd 1101111",
-                desc: "Jumps to PC + Imm. Saves return address (PC+4) to rd. Main EX ALU bypassed; shift and branch adder handle target calculation.",
+                meta: "J-类型 | imm[20|10:1|11|19:12] rd 1101111",
+                desc: "跳转到 PC + 立即数。保存返回地址 (PC+4) 到 rd。绕过主 EX ALU；移位器和分支加法器处理目标计算。",
                 comps: ["pc","imem","pcadder","control","regfile","immgen","shift","badder","pcsrc","wbmux"],
                 paths: {
                     if: ["p_pc_imem","p_pc_adder","p_pc_badder","p_pcsrc_pc"],
@@ -722,11 +721,11 @@
                     mem: ["p_badder_pcsrc"], wb: ["p_adder_wbmux","p_wbmux_reg"]
                 },
                 stages: ACTIVE_ALL,
-                ctrl: { active: ["c_regwrite","c_memtoreg","c_branch"], vals: { RegWrite:'1', ALUSrcA:'X', ALUSrcB:'X', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'1 (Jump)', ALUOp:'X' } }
+                ctrl: { active: ["c_regwrite","c_memtoreg","c_branch"], vals: { RegWrite:'1', ALUSrcA:'X', ALUSrcB:'X', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'1 (跳转)', ALUOp:'X' } }
             },
             "JALR": {
-                meta: "I-type (Jump) | imm[11:0] rs1 000 rd 1100111",
-                desc: "Jumps to rs1 + Imm. Saves return address (PC+4) to rd. EX active for target calc.",
+                meta: "I-类型 (跳转) | imm[11:0] rs1 000 rd 1100111",
+                desc: "跳转到 rs1 + 立即数。保存返回地址 (PC+4) 到 rd。EX 阶段活跃用于目标计算。",
                 comps: [...I_ALU_COMPS, "pcsrc"], stages: ACTIVE_ALL,
                 paths: {
                     if: ["p_pc_imem","p_pc_adder","p_pcsrc_pc"],
@@ -734,27 +733,27 @@
                     mem: ["p_alu_trunk","p_alu_wbmux","p_alu_pcsrc"],
                     wb: ["p_adder_wbmux","p_wbmux_reg"]
                 },
-                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'Jump', ALUOp:'ADD' } }
+                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'跳转', ALUOp:'ADD' } }
             }
         };
 
         const sel = document.getElementById("inst-select");
 
         // ===================================================================
-        // COMPONENT → STAGE GLOW MAPPING (precomputed once at init)
+        // 组件 → 阶段发光映射 (初始化时预计算一次)
         //
-        // Strategy: Each component's x-coordinate determines which pipeline
-        // stage column it sits in. We call getBBox() once at startup to build
-        // a lookup table, then reuse it on every instruction change.
+        // 策略: 每个组件的 x 坐标决定它属于哪个流水线
+        // 阶段列。我们在启动时调用一次 getBBox() 构建
+        // 查找表，然后在每次指令切换时复用它。
         //
-        // Column boundaries (x-axis):
-        //   IF:   50–250  (PC, IMem)
-        //   ID:  250–450  (Control, RegFile, ImmGen, ALUCtrl)
-        //   EX:  450–650  (muxA, muxB, ALU, Shift, Branch Adder)
-        //   MEM: 650–850  (Data Memory, AND gate)
-        //   WB:  850–1050 (PCSrc mux, WB mux)
+        // 列边界 (x 轴):
+        //   IF:   50–250   (PC, IMem)
+        //   ID:  250–450   (Control, RegFile, ImmGen, ALUCtrl)
+        //   EX:  450–650  (muxA, muxB, ALU, Shift, 分支 Adder)
+        //   MEM: 650–850   (Data Memory, AND 门)
+        //   WB:  850–1050  (PCSrc 多选器, WB 多选器)
         //
-        // The thresholds array uses maxX with find() — first match wins.
+        // thresholds 数组使用 maxX + find() — 首个匹配获胜。
         // ===================================================================
         const compStageMap = {};
         function buildCompStageMap() {
@@ -765,7 +764,7 @@
                 { maxX: 850, cls: "glow-mem" },
                 { maxX: Infinity, cls: "glow-wb" }
             ];
-            // Select only direct children of #comps with id starting with "comp-"
+            // 只选择 #comps 下 id 以 "comp-" 开头的直接子元素
             document.querySelectorAll('#comps > [id^="comp-"]').forEach(el => {
                 const name = el.id.replace("comp-", "");
                 const cx = el.getBBox().x;
@@ -775,8 +774,8 @@
         }
         buildCompStageMap();
 
-        // Collect-then-remove: iterating a live DOMTokenList while removing
-        // from it would skip items as the index shifts underneath.
+        // 先收集再移除: 在活动 DOMTokenList 上边迭代边移除
+        // 会导致索引偏移而跳过元素。
         function clearAll() {
             document.querySelectorAll('.active').forEach(el => {
                 const toRemove = ['active'];
@@ -786,16 +785,16 @@
                     }
                 });
                 toRemove.forEach(cls => el.classList.remove(cls));
-                // Reset arrowhead to default while we already have this element
+                // 趁手里还有这个元素，顺便把箭头重置为默认
                 if (el.classList.contains('path')) {
                     el.setAttribute('marker-end', 'url(#arrow-solid)');
                 }
             });
         }
 
-        // Assign color-coded arrowhead: dashed control paths derive the
-        // signal name from their id (c_regwrite → arrow-regwrite); solid
-        // data paths use the stage key directly (stroke-ex → arrow-ex).
+        // 分配颜色编码的箭头: 虚线控制路径从
+        // id 中派生信号名 (c_regwrite → arrow-regwrite); 实线
+        // 数据路径直接使用阶段键 (stroke-ex → arrow-ex)。
         function setMarker(pathEl, colorClass) {
             if(pathEl.classList.contains('dashed')) {
                 const ctrlType = pathEl.id.replace('c_', '').split('_')[0];
@@ -806,54 +805,52 @@
         }
 
         // ===================================================================
-        // UPDATEDATAPATH — main render pipeline (6-step sequence)
+        // UPDATEDATAPATH — 主渲染流水线 (6 步序列)
         //
-        // Called on init AND on every instruction change. The 6 steps are
-        // ordered to minimize visual flicker and ensure correct layering:
+        // 在初始化和每次指令切换时调用。6 个步骤按
+        // 最小化视觉闪烁并确保正确分层的顺序排列:
         //
-        //   Step 1: TEXT — update sidebar description and encoding
-        //   Step 2: SIGNALS — update control signal value table (8 rows)
-        //   Step 3: STAGES — light up pipeline stage dots + column labels
-        //   Step 4: COMPONENTS — add "active" + "glow-<stage>" classes
-        //            to SVG component shapes. Uses precomputed compStageMap.
-        //   Step 5: DATA PATHS — for each stage (if→id→ex→mem→wb),
-        //            activate the listed path IDs. The stage key determines
-        //            stroke color: stroke-if=blue, stroke-ex=orange, etc.
-        //            Opacity jumps from 0.18→1, dash animation starts.
-        //   Step 6: CONTROL PATHS — activate dashed control signal lines.
-        //            Color is derived from the path's ID prefix:
-        //            c_regwrite → stroke-regwrite (magenta), etc.
-        //            Special mappings: aluctrl→aluop, and→branch.
+        //   第 1 步: 文本 — 更新侧边栏描述和编码
+        //   第 2 步: 信号 — 更新控制信号值表 (8 行)
+        //   第 3 步: 阶段 — 点亮流水线阶段点 + 列标签
+        //   第 4 步: 组件 — 添加 "active" + "glow-<阶段>" 类
+        //            到 SVG 组件形状。使用预计算的 compStageMap。
+        //   第 5 步: 数据路径 — 对每个阶段 (if→id→ex→mem→wb),
+        //            激活列出的路径 ID。阶段键决定
+        //            描边颜色: stroke-if=蓝, stroke-ex=橙, 等。
+        //            透明度从 0.18→1，虚线动画启动。
+        //   第 6 步: 控制路径 — 激活虚线控制信号线。
+        //            颜色由路径 ID 前缀派生:
+        //            c_regwrite → stroke-regwrite (品红), 等。
+        //            特殊映射: aluctrl→aluop, and→branch。
         //
-        // Each path also gets setMarker() to color its arrowhead.
+        // 每条路径也调用 setMarker() 为箭头着色。
         // ===================================================================
         function updateDatapath() {
-            clearAll();  // also resets arrowhead markers in the same pass
+            clearAll();
 
             const instName = sel.value;
             const data = instData[instName];
-            if (!data) return;  // Guard: unknown instruction
+            if (!data) return;
 
-            // 1. Text Info
             document.getElementById("desc-meta").innerText = data.meta;
             document.getElementById("desc-text").innerText = data.desc;
 
-            // 2. Control Signals — populate the sidebar table
             for(let key in data.ctrl.vals) {
                 document.getElementById("sig-" + key).innerText = data.ctrl.vals[key];
             }
 
-            // 3. Stage Indicators — light up the 5 pipeline-stage dots
-            //    and color the column header labels at the top of the SVG
             const stages = ["IF", "ID", "EX", "MEM", "WB"];
+            const stageColors = ["if", "id", "ex", "mem", "wb"];
             stages.forEach((stg, idx) => {
                 const isActive = data.stages[idx];
                 const dot = document.getElementById("dot-" + stg);
                 const lbl = document.getElementById("lbl-" + stg);
                 if(isActive) {
-                    dot.style.background = `var(--c-${stg.toLowerCase()})`;
-                    dot.style.borderColor = `var(--c-${stg.toLowerCase()})`;
-                    lbl.style.fill = `var(--c-${stg.toLowerCase()})`;
+                    const c = stageColors[idx];
+                    dot.style.background = `var(--c-${c})`;
+                    dot.style.borderColor = `var(--c-${c})`;
+                    lbl.style.fill = `var(--c-${c})`;
                 } else {
                     dot.style.background = "var(--inactive-fill)";
                     dot.style.borderColor = "var(--inactive-stroke)";
@@ -861,18 +858,16 @@
                 }
             });
 
-            // 4. Activate Components — add 'active' class (border highlight)
-            //    + stage-specific glow class (colored drop-shadow + stroke)
+            // 4. 激活组件
             data.comps.forEach(c => {
                 const el = document.getElementById("comp-" + c);
                 if(el) {
                     el.classList.add("active");
-                    el.classList.add(compStageMap[c]);  // e.g. "glow-ex"
+                    el.classList.add(compStageMap[c]);
                 }
             });
 
-            // 5. Activate Data Paths — for each pipeline stage, activate
-            //    the listed SVG path elements with stage-color stroke
+            // 5. 激活数据路径
             for(let stg in data.paths) {
                 data.paths[stg].forEach(pid => {
                     const el = document.getElementById(pid);
@@ -883,31 +878,19 @@
                 });
             }
 
-            // 6. Activate Control Paths — dashed lines for control signals.
-            //    The color class is derived from the path ID by stripping
-            //    the 'c_' prefix and taking the first underscore-delimited token.
-            //    Special cases: 'aluctrl' and 'alu' both map to 'aluop' (orange);
-            //    'and' maps to 'branch' (blue) since the AND gate is part of
-            //    the branch condition logic.
+            // 6. 激活控制路径
             data.ctrl.active.forEach(pid => {
                 const el = document.getElementById(pid);
                 if(el) {
-                    let colorClass = pid.replace('c_', '').split('_')[0]; // e.g. regwrite
-                    if(colorClass === 'aluctrl' || colorClass === 'alu') colorClass = 'aluop';
-                    if(colorClass === 'and') colorClass = 'branch';
+                    let colorClass = pid.replace('c_', '').split('_')[0];
+                    colorClass = CTRL_COLOR_ALIAS[colorClass] || colorClass;
                     el.classList.add("active", "stroke-" + colorClass);
                     setMarker(el, colorClass);
                 }
             });
         }
 
-        // ===================================================================
-        // EVENT HANDLERS — dropdown change + keyboard navigation
-        //
-        // Arrow keys (Up/Down/Left/Right) cycle through the instruction
-        // dropdown, wrapping around at the boundaries. Guard clause skips
-        // keyboard navigation when focus is in an input/textarea.
-        // ===================================================================
+        // 键盘导航：上下左右键循环切换指令，到达边界时回环
         sel.addEventListener("change", updateDatapath);
 
         document.addEventListener("keydown", (e) => {
@@ -923,7 +906,7 @@
             }
         });
 
-        // Bootstrap — render the default instruction (ADD) on page load
+        // 启动 — 页面加载时渲染默认指令 (ADD)
         updateDatapath();
 
     </script>
