@@ -1,0 +1,44 @@
+f3577f1 | JustinFan7777777 | 2026-05-20 | Merge branch 'main' into bonus
+25efbe2 | JustinFan7777777 | 2026-05-20 | convert English comments to Chinese version, then add a README for future documentation and video recording
+b1504b7 | JustinFan7777777 | 2026-05-20 | finish visualizer design
+c70dcd0 | JustinFan7777777 | 2026-05-20 | initial visualizer, invented by Gemini
+7e93fe5 | JustinFan7777777 | 2026-05-20 | feat: rebuild CPU visualizer — larger components, clean routing, sequential animation
+c7089a3 | JustinFan7777777 | 2026-05-19 | feat: rebuild CPU visualizer — stage-aligned layout, straight paths, flow animation
+0a4a1fe | JustinFan7777777 | 2026-05-19 | feat: add RISC-V single-cycle CPU datapath visualizer
+927431f | JustinFan7777777 | 2026-05-19 | first bonus to implement: A Visualizer of CPU, to help users better understand how CPU works and its architecture
+a0da4a2 | JustinFan7777777 | 2026-05-19 | fix: sync hex path in CPUTop.v to match Ifetch.v
+f969f44 | JustinFan7777777 | 2026-05-19 | fix: sync hex path in CPUTop.v to match Ifetch.v
+a0f658b | JustinFan7777777 | 2026-05-19 | fix: correct $readmemh relative path in Ifetch.v
+b9f326b | JustinFan7777777 | 2026-05-19 | docs: restructure project_log, add bonus master plan
+e9cd2e7 | JustinFan7777777 | 2026-05-19 | docs: add in-class design prep guide and code markers
+5f85e20 | JustinFan7777777 | 2026-05-19 | docs: update requirement to v1.4, add in-class design rules
+128d2be | JustinFan7777777 | 2026-05-18 | docs: remove debug/verification tutorials and test case spec
+f48a1ab | JustinFan7777777 | 2026-05-18 | update a trivial subtle nuance
+bdb01f9 | JustinFan7777777 | 2026-05-18 | update all project files for clear stucture and better submission of documentation
+14b6650 | JustinFan7777777 | 2026-05-18 | docs: update project_log with difftest 33/33 PASS results
+f214b29 | JustinFan7777777 | 2026-05-18 | clk: 25MHz -> 12.5MHz
+6eed19e | ChenJunxi | 2026-05-18 | debug, pass diff test
+4baa4f3 | JustinFan7777777 | 2026-05-17 | delete .claude file, no impact, no worry
+294d153 | JustinFan7777777 | 2026-05-17 | try two new plugins: simplify and review. They all work well, code is still valid
+b8cf3c2 | JustinFan7777777 | 2026-05-17 | write a summary, also a checkpoint markdown for tomorrow's usage
+540c7e1 | JustinFan7777777 | 2026-05-17 | we've done with all the cases in RARS, then clear up the sturcture, reorganize all markdown files in project_log, also provides a clear vision of what we should do next, finally add some necessary comments or annotations around all code files to attain optimal understanding. Eventually, this marks the end of the basic part of CO Project, congratulations!
+8e8fa5e | JustinFan7777777 | 2026-05-17 | fix the 4000 & 1000 issue
+5f82676 | JustinFan7777777 | 2026-05-17 | update all markdown files to summarize in phases
+0829937 | JustinFan7777777 | 2026-05-17 | add group information and our URL
+c95e30d | JustinFan7777777 | 2026-05-17 | delete space of hex file
+faf2108 | JustinFan7777777 | 2026-05-17 | fix an issue: start at 0x4000, but not 0x0000
+34000ba | JustinFan7777777 | 2026-05-17 | clear the whole file structure, make it clean
+b9de3b0 | JustinFan7777777 | 2026-05-17 | done with batch test hex
+d99a315 | JustinFan7777777 | 2026-05-17 | convert original requirement into a well-structured one, which is easier for us to understand
+dc5d85f | JustinFan7777777 | 2026-05-17 | debug four mistakes, now all codes are available
+32971f6 | JustinFan7777777 | 2026-05-17 | create a folder to record our progress, for project document, verification guidance and final submission
+dd859cd | JustinFan7777777 | 2026-05-17 | write all assembly in advance, for my teammate to check
+20cd110 | JustinFan7777777 | 2026-05-17 | fix problem with ego1
+8c7e255 | JustinFan7777777 | 2026-05-17 | upload ego1 files, and create skeleton for teammates
+e9a78d0 | JustinFan7777777 | 2026-05-17 | fix three bugs: 1. JAL/JALR write back mistake, 2. JALRTarget syntax error, 3. memory too small
+cf7e72e | JustinFan7777777 | 2026-05-17 | verilog code
+83c9149 | JustinFan7777777 | 2026-05-16 | organize file structure to meet with the requirement in project document
+de59b5e | JustinFan7777777 | 2026-05-13 | Add Comprehensive and plain Chinese annotations in three files of debug_code, to help you better understand at first sight
+c14e135 | JustinFan7777777 | 2026-05-13 | Create requirement
+3bef085 | JustinFan7777777 | 2026-05-13 | commit additional files
+a6475fa | JustinFan7777777 | 2026-05-11 | documents from BB

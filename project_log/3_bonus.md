@@ -8,13 +8,14 @@
 
 | # | Bonus 项目 | 类别 | 最高分 | 状态 |
 |---|-----------|------|--------|------|
-| 1 | VGA 文本显示 | 复杂外设接口 | 5 | 待实现 |
-| 2 | 贪吃蛇游戏 | 软硬件协同应用 | 5 | 待实现 |
-| 3 | ISA 指令扩展 | ISA 扩展 | 4 | 待确定 |
-| 4 | RISC-V CPU 通关游戏 | 教学效率工具 | 2 | 待实现 |
+| 1 | VGA 文本显示 | 复杂外设接口 | 5 | ✅ 已完成 |
+| 2 | 贪吃蛇游戏 | 软硬件协同应用 | 5 | ✅ 已完成 |
+| 3 | ISA 指令扩展 | ISA 扩展 | 4 | 待实现 |
+| 4 | RISC-V CPU 通关游戏 | 教学效率工具 | 2 | ✅ 已完成 |
 | 5 | 五级流水线 | 架构优化 | 6 | 待实现 |
 
-> 五项合计未设上限，但 Bonus 类总分封顶 10 分。建议优先实现 ①②④ (确保 10 分)，③⑤ 作为超额展示。
+> 当前得分: 80(基础) + 5(VGA) + 5(Snake) + 2(Visualizer) = 92 分 (已溢出, Bonus 类封顶 10 分)
+> ISA 扩展和流水线作为超额展示, 按时间窗口选做。
 
 ---
 
@@ -43,11 +44,21 @@ VGAController (新增 Verilog 模块)
 | 文件 | 改动 |
 |------|------|
 | `VGA.v` | **新增** — VGA 控制器 (含时序、字模ROM、帧缓冲) |
-| `TopDebug.v` | 添加 VGA 端口 (12-bit: hs/vs/r/g/b) + 实例化 VGA |
-| `DataMemory.v` | 新增 MMIO 区域: `0xFFFF_0100–0xFFFF_12BF` → VGA 帧缓冲 |
-| `ego1.xdc` | 添加 VGA 12 个引脚约束 |
+| `TopDebug.v` | 添加 VGA 端口 (14 引脚: hs/vs/r/g/b) + BUFG 25MHz + 实例化 VGA |
+| `DataMemory.v` | 新增 MMIO 区域: `0xFFFF_0100–0xFFFF_13BF` → VGA 帧缓冲 (双端口 BRAM, Port A=CPU 12.5MHz, Port B=VGA 25MHz) |
+| `CPUTop.v` | 添加 `clk_vga` + `vga_fb_*` 直通端口 |
+| `ego1.xdc` | 添加 VGA 14 个引脚约束 |
 
-### 1.3 MMIO 地址规划
+### 1.4 实现要点
+
+- **VGA 时钟:** 复用 TopDebug 已有 3-bit 计数器 `clk_div[1]` (100MHz/4=25MHz), 经 BUFG 推上全局时钟树
+- **字模 ROM:** 2048×8-bit 分布式 RAM (LUT), `$readmemh` 从 `other/vga/font_rom.hex` 加载, 组合逻辑读出 (零延迟)
+- **帧缓冲:** 2400×16-bit 真双端口 BRAM, CPU 通过 `sw` 指令写入低 16-bit
+- **像素流水线:** 2 级 (BRAM 读 1 拍 + 字模 ROM 组合读), fb_addr 在每字符第 6 像素预取下一个字符
+- **字符行预取修正:** 行末预取仅在 `v_cnt[3:0]==15` 时递增字符行号, 其余扫描线保持同行
+- **颜色:** 每通道 4-bit 输出 `{channel, channel, channel, intensity}`, 共 16 色
+
+详见 [5_vga.md](5_vga.md)。
 
 ```
 0xFFFF_0100 – 0xFFFF_12BF : VGA 帧缓冲
@@ -84,10 +95,19 @@ CPU 通过 `sw` 写显存：`sw x1, 0xFFFF0100(x0)` → 屏幕左上角显示字
 
 | 文件 | 内容 |
 |------|------|
-| `other/snake.asm` | 贪吃蛇完整汇编 (~300 行) |
-| `other/snake.hex` | 编译后机器码 |
+| `other/snake/snake.asm` | 贪吃蛇完整汇编 (RARS 兼容, 417 条指令) |
+| `other/snake/snake.hex` | 编译后机器码 |
 
-### 2.3 核心数据结构
+### 2.3 实现要点
+
+- **环形缓冲区:** 蛇身存储在 `SNAKE_X[512] + SNAKE_Y[512]` 环形缓冲区, HEAD/TAIL 索引追踪, `& 0x1FF` 取模
+- **自身碰撞:** 遍历 `(HEAD-LEN+1)` 到 `(HEAD-1)` 的环形区间, 跳过 TAIL
+- **LFSR 随机数:** 16-bit 反馈多项式 `x^16+x^15+x^14+x^13+x^4+1`, 防零死锁保护
+- **VGA 地址计算:** `行×80 = 行×64 + 行×16` (移位加法替代乘法, RV32I 无 MUL 指令)
+- **只绘增量:** 每帧只更新蛇头、旧蛇头变身体、擦除蛇尾三个位置, 不清全屏
+- **方向反跳保护:** 不允许 180° 反向 (UP↔DOWN, LEFT↔RIGHT)
+
+详见 [6_snake.md](6_snake.md)。
 
 ```
 游戏状态 (DMem 中):
@@ -284,7 +304,9 @@ other/cpu_viz/
 - SVG 使用 `<path marker-end="url(#arrow)">` 绘制箭头
 - 高亮通过 CSS class `.active` 切换实现 `transition: stroke 0.3s`
 - 控制信号表用 JS 对象字面量映射，按 opcode 索引
-- 单文件 HTML ~500 行，提交到 `other/cpu_viz/index.html`
+- 单文件 HTML ~900 行，已提交到 `other/cpu_viz/visualizer.html`
+
+详见 [4_visualizer.md](4_visualizer.md)。
 
 ---
 
@@ -349,18 +371,26 @@ wire cpu_mode;  // 0=单周期, 1=流水线 (通过拨码开关或 Debug 命令�
 ## 实现优先级 & 时间线
 
 ```
-第 15 周:
-  周一：  VGA.v 编写 + 字模 ROM           [范晓乐]
-  周二：  TopDebug 修改 + XDC + 综合测试    [范晓乐 + 陈俊希]
-  周三：  snake.asm 编写 + RARS 模拟       [刘一骏]
-  周四：  上板联调 VGA + 贪吃蛇             [全员]
-  周五：  RISC-V 通关游戏 HTML/JS/SVG      [范晓乐]
-  周末：  录制视频 + 填写问卷文档            [全员]
+第 15 周 (实际):
+  周一：   VGA.v 编写 + 字模 ROM + gen_font.py    [范晓乐]
+  周二：   TopDebug 修改 + DataMemory MMIO + XDC   [范晓乐]
+  周三：   snake.asm 编写 (417行) + RARS 编译      [范晓乐 + 刘一骏]
+  周四：   上板联调 VGA + 贪吃蛇                    [全员]
+  周五：   文档整理 + 代码审查 + Bug修复             [范晓乐]
+  周末：   录制视频 + 填写问卷文档                   [全员]
 
 第 16 周:
-  周一-周五: ISA 扩展 / 流水线 (超额展示)    [按时间窗口选做]
-  周末:     最终提交 (截止 15 周周一已过，迟交系数生效)
+  周一-周五: ISA 扩展 / 流水线 (超额展示)           [按时间窗口选做]
+  周末:     最终提交
 ```
+
+### 审查发现的 Bug 修复 (2026-05-20)
+
+| # | 严重度 | 问题 | 修复 |
+|---|--------|------|------|
+| 1 | 致命 | VGA.v FONT_FILE 路径指向 `bonus/` 而非 `other/` | 路径更正 |
+| 2 | 重大 | snake.asm 自身碰撞遍历 `SNAKE_X[0..len-1]` 而非环形缓冲区 | 改为 `(HEAD-len+1+i) & MASK` |
+| 3 | 中等 | VGA.v 行末预取字符行号总加 1, 15/16 扫描线指向错误行 | 仅在 `v_cnt[3:0]==15` 时递增 |
 
 ---
 

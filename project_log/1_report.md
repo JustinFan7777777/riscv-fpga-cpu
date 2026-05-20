@@ -37,7 +37,8 @@
 | 第 12 周 | 5.5–5.11 | 需求分析、架构设计、11 个 Verilog 模块编写、XDC 约束、batch_test.asm |
 | 第 13 周 | 5.12–5.18 | Bug 修复 (8 个)、TCL 一键建工程脚本、RARS 模拟验证 (21/21 PASS)、项目文档整理 |
 | 第 14 周 | 5.12–5.18 | Vivado 综合实现、EGO1 烧录、Difftest 调试 |
-| 第 15 周 | 5.19–5.25 | IMem 组合读修复、时钟降频至 12.5MHz、Difftest 33/33 PASS、文档与视频 |
+| 第 15 周 | 5.19–5.25 | IMem 组合读修复、时钟降频至 12.5MHz、Difftest 33/33 PASS、VGA 文本显示控制器 + 贪吃蛇游戏 Bonus 实现、文档与视频 |
+| 第 16 周 | 5.26–6.1 | ISA 扩展 / 流水线 (超额展示, 按时间窗口选做)、最终提交 |
 
 ### 3.2 协作模式
 
@@ -119,8 +120,9 @@ PC 复位为 0x4000 而非 0x0000 的原因：difftest 差分测试框架默认�
 | 数码管位选 (seg_cs) | 0xFFFF_000C | 8-bit | 读/写 |
 | 数码管段选组0 (左4位) | 0xFFFF_0010 | 8-bit | 读/写 |
 | 数码管段选组1 (右4位) | 0xFFFF_0014 | 8-bit | 读/写 |
+| VGA 帧缓冲 (2400字) | 0xFFFF_0100 – 0xFFFF_13BF | 16-bit/字 | 读/写 |
 
-MMIO 译码规则：地址高 16-bit 为 0xFFFF 时进入 MMIO 区域，低 4-bit 选择具体外设。CPU 通过 `lw`/`sw` 指令访问外设，如 `lw x1, 0(x31)` 其中 x31=0xFFFF0000 读取开关值。
+MMIO 译码规则：地址高 16-bit 为 0xFFFF 时进入 MMIO 区域，低 4-bit 选择传统外设 (0x0000–0x0014)，0x0100–0x13BF 为 VGA 帧缓冲。CPU 通过 `lw`/`sw` 指令访问外设，如 `lw x1, 0(x31)` 其中 x31=0xFFFF0000 读取开关值，`sw x1, 0xFFFF0100(x0)` 写入 VGA 帧缓冲首字。
 
 ### 4e. CPU 接口
 
@@ -136,6 +138,11 @@ MMIO 译码规则：地址高 16-bit 为 0xFFFF 时进入 MMIO 区域，低 4-bi
 | seg_cs[7:0] | 输出 | 8 位数码管位选 (共阳极，低有效) |
 | seg_data_0[7:0] | 输出 | 数码管段选组0 |
 | seg_data_1[7:0] | 输出 | 数码管段选组1 |
+| vga_hs | 输出 | VGA 水平同步 (D7) |
+| vga_vs | 输出 | VGA 垂直同步 (C4) |
+| vga_r[3:0] | 输出 | VGA 红色通道 4-bit |
+| vga_g[3:0] | 输出 | VGA 绿色通道 4-bit |
+| vga_b[3:0] | 输出 | VGA 蓝色通道 4-bit |
 
 **Debug 接口：** 通过 UART 支持 11 条调试命令 (PING/PONG, RESET, RUN, HALT, STEP, READ_REG, READ_PC, READ_INST, READ_DMEM, WRITE_INST, WRITE_DMEM)。DebugController 运行于 100MHz 域，CPU 运行于 12.5MHz 域，跨时钟域通过同步器 + 等待计数器实现。
 
@@ -145,6 +152,7 @@ MMIO 译码规则：地址高 16-bit 为 0xFFFF 时进入 MMIO 区域，低 4-bi
 2. **复位：** 按下 EGO1 右下角按键 P15 (低有效)，或通过 UART 发送 CMD_RESET (0x01)
 3. **差分测试：** PC 端运行 difftest Python 脚本，通过 UART 自动加载测试数据、控制 CPU 执行、读取结果并比对
 4. **传统 I/O 测试：** 拨码开关输入 CaseID (低 4 位)，LED[7:0] 显示结果低 8 位
+5. **VGA 显示：** 连接 VGA 线到 EGO1 和显示器，CPU 通过 `sw` 指令写入 0xFFFF_0100–0xFFFF_13BF 即可输出 80×30 彩色字符画面
 
 **CPU 内部结构简图：**
 
@@ -238,7 +246,50 @@ Verify OK: all 130 instructions correct
 
 ## 6. Bonus 设计说明
 
-(待实现后补充)
+### 6.1 总览
+
+实现了 3 项 Bonus，合计 12 分 (封顶 10 分)：
+
+| Bonus | 类别 | 分值 | 核心文件 |
+|-------|------|------|---------|
+| VGA 文本显示控制器 | 复杂外设接口 | 5 | `VGA.v` (新增), `DataMemory.v`/`TopDebug.v`/`ego1.xdc` (修改) |
+| 贪吃蛇游戏 | 软硬件协同应用 | 5 | `other/snake/snake.asm` (417条指令), `other/snake/snake.hex` |
+| CPU 数据通路可视化工具 | 教学效率工具 | 2 | `other/cpu_viz/visualizer.html` (纯前端单文件) |
+
+### 6.2 VGA 文本显示控制器
+
+**架构：** VGA.v (时序生成 + 字模 ROM + 像素着色) + DataMemory.v 内双端口帧缓冲 BRAM (2400×16-bit)。帧缓冲 Port A 挂载在 CPU 12.5MHz MMIO 空间 (0xFFFF_0100–0xFFFF_13BF)，Port B 由 VGA 模块以 25MHz 扫描读出。
+
+**关键技术点：**
+- 像素时钟 25MHz (100MHz/4, BUFG 驱动)
+- 字模 ROM 2048×8-bit 分布式 RAM (LUT), `$readmemh` 初始化, 组合逻辑读出 (零额外延迟)
+- 2 级像素流水线: BRAM 读 1 拍 → 字模 ROM 组合读 → 着色输出
+- 每字符共 8 像素, 在倒数第 2 像素 (h_cnt[2:0]==6) 预取下一字符, 行首在水平消隐期预取
+- 支持 16 种前景色 × 16 种背景色 (I+R+G+B), VGA 每通道 4-bit 输出 `{channel, channel, channel, I}`
+
+**验证方法：** 通过 Debug Controller 的 UART 接口写入帧缓冲特定地址, 观察 VGA 显示器上对应位置是否显示正确颜色和字符。
+
+### 6.3 贪吃蛇游戏
+
+**技术方案：** 纯 RISC-V RV32I 汇编 (417 条指令), 无需乘法器 (用移位加法替代 `行×80 = 行×64 + 行×16`)。游戏逻辑完全运行在自研 CPU 上, 通过 MMIO 读取按键方向、写入 VGA 帧缓冲渲染画面。
+
+**核心算法：**
+- **环形缓冲区:** 512 元素, HEAD/TAIL 索引追踪蛇身, `& 0x1FF` 取模
+- **自身碰撞:** 遍历 `(HEAD-LEN+1)` 到 `(HEAD-1)` 环形区间, 跳过即将擦除的 TAIL
+- **LFSR 伪随机:** 16-bit, 多项式 `x^16+x^15+x^14+x^13+x^4+1`, 防零死锁
+- **增量渲染:** 每帧仅更新 3 个位置 (新蛇头、旧头变身体、擦除蛇尾), 不清全屏
+
+**按键映射：** btn[0]=上, btn[1]=下, btn[2]=左, btn[3]=右, btn[4]=重新开始。含方向反跳保护 (不允许 180° 瞬间反向)。
+
+### 6.4 CPU 数据通路可视化工具
+
+纯 HTML/CSS/JS/SVG 单文件 (~900 行)，双击即用。支持 12 条 RISC-V RV32I 指令的数据通路动画展示，包含 5 阶段着色 (IF/ID/EX/MEM/WB)、控制信号实时显示、流动虚线动画。8 大创新点详见 `project_log/4_visualizer.md`。
+
+### 6.5 详细文档
+
+- VGA 实现与上板指南: `project_log/5_vga.md`
+- 贪吃蛇实现与上板指南: `project_log/6_snake.md`
+- 可视化工具说明: `project_log/4_visualizer.md`
 
 ---
 
@@ -305,21 +356,22 @@ Verify OK: all 130 instructions correct
 
 ## 附录 B. 文件清单
 
-### Verilog 源文件 (11 个)
+### Verilog 源文件 (12 个)
 
 ```
 cpu_project/cpu_project.srcs/sources_1/new/
-├── TopDebug.v          # 顶层: 时钟分频+BUFG, 复位合并, 组件实例化
-├── CPUTop.v            # CPU顶层: 单周期数据通路, 6子模块连线
+├── TopDebug.v          # 顶层: 时钟分频+BUFG, 复位合并, VGA+Chip+Debug 实例化
+├── CPUTop.v            # CPU顶层: 单周期数据通路, 6子模块连线, VGA直通
 ├── Ifetch.v            # 取指: PC+IMem BRAM(64KB), Next-PC MUX, 组合读
 ├── Decoder.v           # 译码: Main Decoder + ALU Decoder
 ├── ImmGen.v            # 立即数: I/S/B/U/J 六种格式
 ├── RegFile.v           # 寄存器堆: 32x32, x0=0
 ├── ALU.v               # ALU: 10种运算
-├── DataMemory.v        # 数据内存: DMem BRAM + MMIO (6外设)
+├── DataMemory.v        # 数据内存: DMem BRAM + MMIO (6传统外设 + VGA帧缓冲)
 ├── DebugController.v   # Debug控制器: FSM(6状态), 11命令
 ├── UartRx.v            # UART接收: 115200/8N1
-└── UartTx.v            # UART发送: 115200/8N1
+├── UartTx.v            # UART发送: 115200/8N1
+└── VGA.v               # VGA控制器: 时序+字模ROM+帧缓冲+像素着色 (Bonus)
 ```
 
 ### 工程文件
@@ -329,27 +381,17 @@ cpu_project/cpu_project.srcs/sources_1/new/
 ├── assembly/
 │   ├── batch_test.asm      # 10 Case 汇编 (390行)
 │   └── batch_test.hex      # 编译后 hex (130条指令)
-└── ego1.xdc                # EGO1 完整引脚约束
-```
-
-### 提交目录结构
-
-```
-c_小组编号_rv_FanXiaole_ChenJunxi_LiuYijun/
-├── cpu_project/
-│   ├── cpu_project.xpr
-│   ├── cpu_project.srcs/*
-│   └── cpu_project.runs/impl_1/
-│       ├── TopDebug.bit
-│       ├── TopDebug_opt.dcp
-│       ├── TopDebug_placed.dcp
-│       └── TopDebug_routed.dcp
-├── assembly/
-│   ├── batch_test.asm
-│   └── batch_test.hex
-├── other/
-└── gitlog.txt
-```
+├── cpu_project/.../ego1.xdc  # EGO1 完整引脚约束 (含VGA)
+└── other/
+    ├── cpu_viz/
+    │   ├── README.md
+    │   └── visualizer.html  # CPU数据通路可视化工具 (Bonus)
+    ├── snake/
+    │   ├── snake.asm        # 贪吃蛇汇编源码 (417条指令, Bonus)
+    │   └── snake.hex        # 编译后机器码
+    └── vga/
+        ├── gen_font.py      # 字模ROM生成脚本
+        └── font_rom.hex     # 128字符×8×16字模位图
 
 > **提交说明：** 文档通过问卷提交 (https://f.kdocs.cn/g/5JvFO9aZ/)，视频上传云盘 (链接后续发)，压缩包仅包含源代码 + gitlog.txt。文件夹命名需含小组编号 (见分组共享文档)。
 

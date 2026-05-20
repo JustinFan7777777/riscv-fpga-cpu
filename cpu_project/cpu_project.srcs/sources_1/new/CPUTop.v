@@ -92,7 +92,14 @@ module CPUTop (
     output [15:0] LEDOut,           // LED: [15:0]=16个LED
     output [7:0]  seg_cs,           // 数码管位选 (8位, 共阳极=低有效)
     output [7:0]  seg_data_0,       // 数码管段选组0 (左4位数字)
-    output [7:0]  seg_data_1        // 数码管段选组1 (右4位数字)
+    output [7:0]  seg_data_1,       // 数码管段选组1 (右4位数字)
+
+    // VGA 像素时钟 (直通 DataMemory 帧缓冲 Port B)
+    input         clk_vga,          // 25MHz VGA 像素时钟
+
+    // VGA 帧缓冲接口 (直通 DataMemory ↔ VGA)
+    input  [11:0] vga_fb_addr,      // VGA → DataMemory: 帧缓冲读地址
+    output [15:0] vga_fb_data       // DataMemory → VGA: 帧缓冲读数据
 );
 
     // ===========================
@@ -237,6 +244,7 @@ module CPUTop (
     DataMemory uDataMemory (
         .clk           (clk),
         .rst_n         (rst_n),
+        .clk_vga       (clk_vga),
         .MemWrite      (MemWrite),
         .Addr          (ALUResult),
         .WriteData     (rs2_val),
@@ -252,7 +260,10 @@ module CPUTop (
         .dmem_wr_en    (dmem_wr_en),
         .dmem_dbg_addr (dmem_dbg_addr),
         .dmem_wr_data  (dmem_wr_data),
-        .dmem_rd_data  (dmem_rd_data)
+        .dmem_rd_data  (dmem_rd_data),
+        // VGA 帧缓冲读口 (Port B, 25MHz)
+        .vga_fb_addr   (vga_fb_addr),
+        .vga_fb_data   (vga_fb_data)
     );
 
     // ===========================

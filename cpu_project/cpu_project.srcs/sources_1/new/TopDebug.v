@@ -77,7 +77,14 @@ module TopDebug (
     output [15:0] LEDOut,       // LED: led_pin[15:0] (16个LED)
     output [7:0]  seg_cs,       // 数码管位选: seg_cs_pin[7:0] (8位, 共阳极=低有效)
     output [7:0]  seg_data_0,   // 数码管段选组0: seg_data_0_pin[7:0] (对应左4位)
-    output [7:0]  seg_data_1    // 数码管段选组1: seg_data_1_pin[7:0] (对应右4位)
+    output [7:0]  seg_data_1,   // 数码管段选组1: seg_data_1_pin[7:0] (对应右4位)
+
+    // VGA 显示接口 (640×480@60Hz 文本模式, 12-bit 色彩)
+    output        vga_hs,       // VGA 水平同步 (EGO1: D7)
+    output        vga_vs,       // VGA 垂直同步 (EGO1: C4)
+    output [3:0]  vga_r,        // VGA 红色通道 (EGO1: vga_data_pin[3:0] = F5,C6,C5,B7)
+    output [3:0]  vga_g,        // VGA 绿色通道 (EGO1: vga_data_pin[7:4] = B6,A6,A5,D8)
+    output [3:0]  vga_b         // VGA 蓝色通道 (EGO1: vga_data_pin[11:8] = C7,E6,E5,E7)
 );
 
     // ===========================
@@ -100,12 +107,22 @@ module TopDebug (
     // clk_div[2]: 100MHz / 8 = 12.5MHz
     wire clk_12_5mhz = clk_div[2];
 
+    // clk_div[1]: 100MHz / 4 = 25MHz (VGA 像素时钟)
+    wire clk_25mhz = clk_div[1];
+
     // BUFG: 全局时钟 Buffer (Xilinx 原语)
     // 分频器输出是普通逻辑信号 (高skew), 经过 BUFG 推上全局时钟树 (低skew)
     wire cpu_clk;
     BUFG BUFG_cpu_clk (
         .O(cpu_clk),         // 全局时钟输出 (低skew)
         .I(clk_12_5mhz)      // 分频时钟输入 (高skew)
+    );
+
+    // VGA 像素时钟 BUFG: 25MHz 低skew 全局时钟
+    wire vga_clk;
+    BUFG BUFG_vga_clk (
+        .O(vga_clk),         // VGA 像素时钟 (25MHz, 低skew)
+        .I(clk_25mhz)        // 来自 clk_div[1] (100MHz/4)
     );
 
     // ===========================
@@ -235,7 +252,39 @@ module TopDebug (
         .LEDOut        (LEDOut),
         .seg_cs        (seg_cs),
         .seg_data_0    (seg_data_0),
-        .seg_data_1    (seg_data_1)
+        .seg_data_1    (seg_data_1),
+
+        // VGA 接口 (直通 DataMemory 内的帧缓冲 BRAM)
+        .clk_vga       (vga_clk),
+        .vga_fb_addr   (vga_fb_addr),
+        .vga_fb_data   (vga_fb_data)
+    );
+
+    // ===========================
+    // VGA 帧缓冲互连线
+    // ===========================
+    // DataMemory 内含 VGA 帧缓冲双端口 BRAM:
+    //   Port A: CPU 写入 (negedge cpu_clk)
+    //   Port B: VGA 读出 (posedge vga_clk)
+    // 数据流: VGA(fb_addr) → DataMemory(vga_fb_addr)
+    //         DataMemory(vga_fb_data) → VGA(fb_data)
+    wire [11:0] vga_fb_addr;   // VGA → DataMemory: 帧缓冲读地址 (0~2399)
+    wire [15:0] vga_fb_data;   // DataMemory → VGA: 帧缓冲读数据 ([7:0]=ASCII, [15:8]=颜色)
+
+    // ===========================
+    // VGA 控制器实例化
+    // ===========================
+    // VGA 模块运行于 25MHz 像素时钟域, 通过帧缓冲 BRAM Port B 读取数据
+    VGA uVGA (
+        .clk_pix   (vga_clk),        // 25MHz 像素时钟
+        .rst_n     (rst_n),          // 物理复位 (VGA 不复位CPU调试功能)
+        .fb_addr   (vga_fb_addr),    // → DataMemory: 帧缓冲读地址
+        .fb_data   (vga_fb_data),    // ← DataMemory: 帧缓冲读数据
+        .vga_hs    (vga_hs),         // → EGO1: 水平同步
+        .vga_vs    (vga_vs),         // → EGO1: 垂直同步
+        .vga_r     (vga_r),          // → EGO1: 红色 [3:0]
+        .vga_g     (vga_g),          // → EGO1: 绿色 [3:0]
+        .vga_b     (vga_b)           // → EGO1: 蓝色 [3:0]
     );
 
 endmodule
