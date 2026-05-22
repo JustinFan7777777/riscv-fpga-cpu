@@ -257,3 +257,81 @@ CPU 写入 = 软件表达意图。VGA 读出 = 硬件执行渲染。同一块 BR
 ### 一句话总结
 
 > **软件定义"画什么"，硬件负责"怎么画"。MMIO 是接口，BRAM 是共享内存，VGA 控制器是独立运行的硬件加速器。三者配合，12.5MHz 的简单 CPU 就能驱动 640×480@60Hz 的实时彩色游戏。**
+
+---
+
+## 创新点
+
+1. **纯 Verilog 文本模式 VGA 控制器** — 无需任何 IP 核或外部芯片，全部用 Verilog 手写。字模 ROM 用 `$readmemh` 从 hex 文件加载，可替换任意 8×16 点阵字体。
+
+2. **双端口 BRAM 软硬件通信** — CPU (12.5MHz) 和 VGA (25MHz) 完全异步，通过 FPGA 硬核双端口 BRAM 实现零开销共享内存。CPU 写一个 `sw` 指令，显示器下一帧就能看到。
+
+3. **MMIO 地址空间统一** — VGA 帧缓冲与传统外设 (开关/LED/数码管) 共用同一套 MMIO 译码器，CPU 用 `lw`/`sw` 操作所有外设，无需特殊指令。
+
+4. **像素级流水线** — 2 级流水 (BRAM读→字模查表→着色)，fb_addr 预取提前 2 像素，确保每个字符的第 0 像素就有正确数据。
+
+## 上板操作指南
+
+### 前置条件
+- Vivado 2017.4 工程已打开，16 个 .v 文件已添加
+- EGO1 通过 Micro-USB 连接学生机
+- VGA 线连接 EGO1 → 显示器
+- 显示器已开机
+
+### 步骤 1: 综合和烧录
+1. Vivado 点击 "Generate Bitstream" → 等待完成 (~10分钟)
+2. Open Hardware Manager → Open Target → Auto Connect
+3. Program Device → 选择 `TopDebug.bit` → Program
+4. EGO1 DONE 灯亮起，显示器从 "No Signal" 变黑屏
+
+### 步骤 2: 基础 VGA 测试
+1. 打开串口工具 (115200/8N1)，确认 COM 口
+2. 运行 Python 脚本:
+```python
+import serial, struct
+ser = serial.Serial('COM3', 115200, timeout=0.5)
+
+# 暂停CPU → 写VGA帧缓冲 → 恢复运行
+ser.write(b'\x03')  # HALT
+ser.read(1)
+
+# 地址 0xFFFF0100 (VGA帧缓冲首字): 亮绿 'A'
+addr, data = 0xFFFF0100, 0x0A41
+ser.write(b'\x41' + struct.pack('>I', addr) + struct.pack('>I', data))
+ser.read(1)
+
+ser.write(b'\x02')  # RUN
+ser.close()
+```
+3. **预期结果:** 显示器左上角出现亮绿色字母 'A'
+
+### 步骤 3: 清屏 + 写入测试画面
+```python
+ser.write(b'\x03'); ser.read(1)
+# 清屏: 2400个空格
+for i in range(2400):
+    addr = 0xFFFF0100 + 2*i
+    ser.write(b'\x41' + struct.pack('>I', addr) + struct.pack('>I', 0x0020))
+    ser.read(1)
+# 写入测试字符串
+msg = "Hello RISC-V CPU!"
+for i, ch in enumerate(msg):
+    addr = 0xFFFF0100 + 2*(5*80 + 30 + i)  # 第5行, 第30列起
+    ser.write(b'\x41' + struct.pack('>I', addr) + struct.pack('>I', 0x0F00 | ord(ch)))
+    ser.read(1)
+ser.write(b'\x02'); ser.close()
+```
+3. **预期结果:** 第 5 行显示白色 "Hello RISC-V CPU!"
+
+### 步骤 4: 验证结果
+- ✅ 显示器正常显示 80×30 字符网格
+- ✅ 无雪花/撕裂/抖动
+- ✅ 颜色正确 (亮绿 A, 亮红 B, 白色文字)
+- ✅ 不同位置显示不同字符
+
+### 故障排查
+| 现象 | 检查 |
+|------|------|
+| 显示器 "No Signal" | VGA 线是否插紧；ego1.xdc 中 VGA 引脚是否全部约束 |
+| 黑屏无字符 | 确认已写清屏脚本；检查串口通信正常 |
+| 花屏/乱码 | 帧缓冲未初始化 (BRAM 上电随机值)，先清屏 |

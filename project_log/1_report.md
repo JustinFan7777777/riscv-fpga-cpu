@@ -248,13 +248,16 @@ Verify OK: all 130 instructions correct
 
 ### 6.1 总览
 
-实现了 3 项 Bonus，合计 12 分 (封顶 10 分)：
+实现了 6 项 Bonus，合计 26 分 (封顶 10 分)：
 
-| Bonus | 类别 | 分值 | 核心文件 |
-|-------|------|------|---------|
-| VGA 文本显示控制器 | 复杂外设接口 | 5 | `VGA.v` (新增), `DataMemory.v`/`TopDebug.v`/`ego1.xdc` (修改) |
-| 贪吃蛇游戏 | 软硬件协同应用 | 5 | `other/snake/snake.asm` (417条指令), `other/snake/snake.hex` |
-| CPU 数据通路可视化工具 | 教学效率工具 | 2 | `other/cpu_viz/visualizer.html` (纯前端单文件) |
+| Bonus | 类别 | 分值 | 状态 |
+|-------|------|------|------|
+| VGA 文本显示控制器 | 复杂外设接口 | 5 | ✅ 完成 |
+| 贪吃蛇游戏 | 软硬件协同应用 | 5 | ✅ 完成 |
+| ISA 硬件加速指令 | ISA 扩展 | 4 | ✅ 完成 |
+| 五级流水线 | 架构优化 | 6 | ✅ 完成 |
+| CPU 数据通路可视化 | 教学效率工具 | 2 | ✅ 完成 |
+| 软件乘法 (移位相加) | 软硬件协同示例 | — | 溢出展示 |
 
 ### 6.2 VGA 文本显示控制器
 
@@ -285,11 +288,54 @@ Verify OK: all 130 instructions correct
 
 纯 HTML/CSS/JS/SVG 单文件 (~900 行)，双击即用。支持 12 条 RISC-V RV32I 指令的数据通路动画展示，包含 5 阶段着色 (IF/ID/EX/MEM/WB)、控制信号实时显示、流动虚线动画。8 大创新点详见 `project_log/4_visualizer.md`。
 
-### 6.5 详细文档
+### 6.5 ISA 硬件加速指令
 
-- VGA 实现与上板指南: `project_log/5_vga.md`
-- 贪吃蛇实现与上板指南: `project_log/6_snake.md`
-- 可视化工具说明: `project_log/4_visualizer.md`
+**指令编码：** 3 条自定义 R-type 指令，使用 RV32I 未占用的 funct7=0000001 编码空间：
+
+| 指令 | opcode | funct3 | funct7 | 功能 |
+|------|--------|--------|--------|------|
+| POPCNT | 0110011 | 001 | 0000001 | `rd = popcount(rs1)` |
+| CLZ | 0110011 | 010 | 0000001 | `rd = count_leading_zeros(rs1)` |
+| CTZ | 0110011 | 011 | 0000001 | `rd = count_trailing_zeros(rs1)` |
+
+**区分机制：** `custom_op = inst[25]` (funct7 第 0 位)。RV32I 全部 R-type 指令的 funct7=0000000 或 0100000，bit[0] 均为 0。自定义指令 funct7[0]=1 实现无冲突区分。
+
+**硬件实现：**
+- **POPCNT:** 32-bit 分治法，5 级加法树，纯组合逻辑 O(logN)
+- **CLZ:** 二分查找优先编码器，含 clz(0)=32 零值保护
+- **CTZ:** 位反转 + CLZ 组合实现
+
+**测试：** `other/isa/isa_test.hex` (63 条指令, 18 组边界值)，覆盖全零、全一、单比特、随机值。
+
+### 6.6 五级流水线
+
+**架构：** IF→ID→EX→MEM→WB，复用单周期的 Decoder/RegFile/ImmGen/ALU/DataMemory 模块。
+
+**新增模块：**
+- `Ifetch_Pipe.v` — BRAM 寄存器读取指 (延迟由流水线吸收)
+- `PipeRegs.v` — 4 组流水线寄存器 (IF/ID, ID/EX, EX/MEM, MEM/WB)
+- `HazardUnit.v` — 数据转发 + Load-Use stall + 控制冒险 flush
+- `CPUTopPipeline.v` — 五级流水线 CPU 顶层
+
+**冒险处理：**
+- 数据冒险 (RAW)：EX/MEM 和 MEM/WB → EX 转发，EX/MEM 优先级更高
+- Load-Use 冒险：stall 1 周期 + NOP 插入 (转发无法解决)
+- 控制冒险：假设不跳转，跳转时 flush IF/ID (1 周期 penalty)
+
+**模式切换：** TopDebug.v 同时实例化 CPUTop(单周期) 和 CPUTopPipeline(流水线)，SwitchIn[15] 拨码开关一键切换。Debug 读信号经 cpu_mode MUX 选择活跃 CPU，Debug 写信号同时发给两个 CPU 保持 IMem/DMem 同步。
+
+### 6.7 软件乘法 (移位相加)
+
+纯 RV32I 汇编实现的 32-bit 乘法子程序 (62 条指令)，作为软硬件协同的补充示例。同一乘法操作，软件移位相加需 ~200 周期，硬件加速 (如 POPCNT) 只需 1 周期——直观体现 ASIC 加速的价值。
+
+### 6.8 详细文档
+
+- VGA 实现与上板: `project_log/5_vga.md`
+- 贪吃蛇实现与上板: `project_log/6_snake.md`
+- ISA 扩展实现: `project_log/7_isa.md`
+- Pipeline 实现: `project_log/8_pipeline.md`
+- 软件乘法: `project_log/9_mul.md`
+- 可视化工具: `project_log/4_visualizer.md`
 
 ---
 

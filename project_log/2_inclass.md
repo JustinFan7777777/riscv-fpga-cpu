@@ -220,6 +220,36 @@ Ctrl+F 搜 `INCLASS_HEX` 附近，临时改 `INIT_FILE` 参数指向测试 hex�
 - [ ] 测试指令已写入 hex / 通过 Debug 注入
 - [ ] Synthesis 无 Error
 - [ ] Implementation 无 Error
+
+---
+
+## 当前工程文件清单 (现场设计速查)
+
+### 考试必改文件 (搜 `INCLASS` 定位)
+| 文件 | INCLASS 标记 | 用途 |
+|------|-------------|------|
+| `ALU.v:110` | `INCLASS_ALU` | 新 ALU 运算 case |
+| `Decoder.v:232` | `INCLASS_MAIN` | 新 opcode 主译码分支 |
+| `Decoder.v:276` | `INCLASS_ALU_R` | R-type ALU 译码表 |
+| `Decoder.v:293` | `INCLASS_ALU_I` | I-type ALU 译码表 |
+| `CPUTop.v:219` | `INCLASS_MUX_A` | ALU_A 来源 MUX |
+| `CPUTop.v:279` | `INCLASS_MUX_WD3` | 写回数据 MUX |
+| `Ifetch.v:51` | `INCLASS_HEX` | hex 文件路径 |
+
+### 考试不要动的文件 (Bonus 模块, 不影响基础分数)
+| 文件 | 原因 |
+|------|------|
+| `VGA.v` | VGA 控制器, 与考试无关 |
+| `CPUTopPipeline.v` | 流水线 CPU, 与考试无关 |
+| `PipeRegs.v`, `HazardUnit.v`, `Ifetch_Pipe.v` | 流水线子模块 |
+| `DataMemory.v` (VGA 帧缓冲部分) | MMIO 扩展区域 |
+
+### ISA 扩展技巧
+
+工程中已实现 3 条自定义指令 (POPCNT/CLZ/CTZ)，考试时可以直接参考这个模式：
+- **区分机制：** `custom_op = inst[25]` (funct7[0])。所有 RV32I 标准指令的 funct7[0]=0，自定义指令设 funct7[0]=1 即可无冲突区分
+- **ALU 编码：** 已占用 4'b1010-4'b1100，剩余 4'b1101-4'b1111 可用
+- **参考代码：** `ALU.v:50-95` (组合逻辑 function 写法), `Decoder.v:83-84, 280-283` (custom_op 译码)
 - [ ] Bitstream 生成成功
 - [ ] 上板结果与预期一致
 - [ ] 举手请老师/助教现场验证 ✅

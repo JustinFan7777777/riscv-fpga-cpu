@@ -213,3 +213,53 @@ li t1, 0x4B0      # DL_INNER (当前 1200)
 | 500 节最大蛇身 | 超过后视为胜利 (游戏结束)，80×30=2400 格远未用完 |
 | 速度固定 | 不支持变速 (可通过修改延迟参数调整) |
 | 仅 EGO1 | 依赖 EGO1 按键和 VGA 引脚 |
+
+---
+
+## 创新点
+
+1. **纯汇编实时游戏** — 416 条 RV32I 指令实现完整贪吃蛇，无操作系统、无库函数。环形缓冲区 + HEAD/TAIL 索引使 O(1) 蛇身移动。
+
+2. **增量渲染** — 每帧只重绘 3 个变化位置 (新蛇头、旧头变身体、擦除蛇尾)，而非清屏重绘 2400 个字符。VGA 帧缓冲 BRAM 的持久化特性使这成为可能。
+
+3. **LFSR 伪随机** — 16-bit 线性反馈移位寄存器生成食物坐标，防零死锁保护。无需硬件 RNG。
+
+4. **移位替代乘法** — `行×80 = 行×64 + 行×16`，用 `slli + add` 替代 RV32I 不具备的 MUL 指令。
+
+5. **自检碰撞 O(n)** — 遍历环形缓冲区 `(HEAD-LEN+1)` 到 `(HEAD-1)`，跳过即将擦除的尾段，一次遍历完成全部碰撞检测。
+
+## 上板操作指南
+
+### 前置条件
+- Vivado 工程已综合烧录 (VGA 基础测试已通过)
+- EGO1 按键正常、VGA 显示器正常
+
+### 步骤 1: 修改 Ifetch.v 加载蛇程序
+```verilog
+// Ifetch.v 中修改两处:
+parameter PC_RESET = 32'h00000000;                          // 行 143
+parameter INIT_FILE = "../../../../other/snake/snake.hex";  // 行 51
+```
+
+### 步骤 2: 重新综合烧录
+Vivado → Generate Bitstream → Program Device
+
+### 步骤 3: 操作游戏
+- 上电自动进入游戏
+- btn[0]=上 btn[1]=下 btn[2]=左 btn[3]=右
+- btn[4]=重新开始
+
+### 步骤 4: 验证清单
+- [ ] 屏幕显示 80×30 边界和蛇身 (@@@)
+- [ ] 按键方向控制正常 (无反向瞬间翻转)
+- [ ] 吃食物 (*) 蛇身增长
+- [ ] 撞墙显示 "GAME OVER"
+- [ ] 撞自己身体 Game Over
+- [ ] btn[4] 重启正常
+
+### 延迟调优
+游戏太快或太慢 → 修改 snake.asm 中 DL_OUTER/DL_INNER 后重新编译:
+```bash
+cd other/snake
+java -jar "Rars Assembler.jar" a dump .text HexText snake.hex snake.asm
+```
