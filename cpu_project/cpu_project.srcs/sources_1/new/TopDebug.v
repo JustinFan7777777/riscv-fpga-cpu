@@ -178,12 +178,18 @@ module TopDebug (
     wire        cpu_step;
     // cpu_reset already declared above (for reset combining)
     wire [4:0]  dbg_reg_addr;
-    wire [31:0] dbg_reg_data;
-    wire [31:0] dbg_pc;
+    wire [31:0] dbg_reg_data;       // → DebugController (来自MUX)
+    wire [31:0] dbg_pc;             // → DebugController (来自MUX)
     wire        inst_dbg_en,   inst_wr_en;
-    wire [31:0] inst_dbg_addr, inst_wr_data, inst_rd_data;
+    wire [31:0] inst_dbg_addr, inst_wr_data;
+    wire [31:0] inst_rd_data;       // → DebugController (来自MUX)
     wire        dmem_dbg_en,   dmem_wr_en;
-    wire [31:0] dmem_dbg_addr, dmem_wr_data, dmem_rd_data;
+    wire [31:0] dmem_dbg_addr, dmem_wr_data;
+    wire [31:0] dmem_rd_data;       // → DebugController (来自MUX)
+
+    // 双CPU Debug响应线
+    wire [31:0] single_dbg_reg, single_inst_rd, single_dmem_rd, single_dbg_pc;
+    wire [31:0] pipe_dbg_reg,   pipe_inst_rd,   pipe_dmem_rd,   pipe_dbg_pc;
 
     DebugController uDebugCtrl (
         .clk           (clk),           // 100MHz
@@ -194,20 +200,20 @@ module TopDebug (
         .tx_data       (tx_data),
         .tx_start      (tx_start),
         .tx_busy       (tx_busy),
-        // CPU control
+        // CPU control — 同时发给两个CPU
         .cpu_halt      (cpu_halt),
         .cpu_step      (cpu_step),
         .cpu_reset     (cpu_reset),
-        // Register read
+        // Register read — MUX选择活跃CPU
         .dbg_reg_addr  (dbg_reg_addr),
         .dbg_reg_data  (dbg_reg_data),
-        // Instruction memory debug
+        // Instruction memory debug — 写同时发给两CPU, 读MUX
         .inst_dbg_en   (inst_dbg_en),
         .inst_wr_en    (inst_wr_en),
         .inst_dbg_addr (inst_dbg_addr),
         .inst_wr_data  (inst_wr_data),
         .inst_rd_data  (inst_rd_data),
-        // Data memory debug
+        // Data memory debug — 写同时发给两CPU, 读MUX
         .dmem_dbg_en   (dmem_dbg_en),
         .dmem_wr_en    (dmem_wr_en),
         .dmem_dbg_addr (dmem_dbg_addr),
@@ -234,18 +240,18 @@ module TopDebug (
         .cpu_step      (cpu_step),
         .cpu_reset     (cpu_reset),
         .dbg_reg_addr  (dbg_reg_addr),
-        .dbg_reg_data  (dbg_reg_data),
+        .dbg_reg_data  (single_dbg_reg),
         .inst_dbg_en   (inst_dbg_en),
         .inst_wr_en    (inst_wr_en),
         .inst_dbg_addr (inst_dbg_addr),
         .inst_wr_data  (inst_wr_data),
-        .inst_rd_data  (inst_rd_data),
+        .inst_rd_data  (single_inst_rd),
         .dmem_dbg_en   (dmem_dbg_en),
         .dmem_wr_en    (dmem_wr_en),
         .dmem_dbg_addr (dmem_dbg_addr),
         .dmem_wr_data  (dmem_wr_data),
-        .dmem_rd_data  (dmem_rd_data),
-        .dbg_pc        (dbg_pc),
+        .dmem_rd_data  (single_dmem_rd),
+        .dbg_pc        (single_dbg_pc),
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
         .LEDOut        (single_LED),
@@ -254,7 +260,7 @@ module TopDebug (
         .seg_data_1    (single_s1),
         .clk_vga       (vga_clk),
         .vga_fb_addr   (vga_fb_addr),
-        .vga_fb_data   (vga_fb_data)
+        .vga_fb_data   (vga_fb_single)
     );
 
     // ===========================
@@ -264,18 +270,18 @@ module TopDebug (
         .clk(cpu_clk), .rst_n(rst_n_combined),
         .cpu_halt(cpu_halt), .cpu_step(cpu_step), .cpu_reset(cpu_reset),
         .dbg_reg_addr(dbg_reg_addr),
-        .dbg_reg_data(),           // Debug只读单周期
+        .dbg_reg_data(pipe_dbg_reg),           // 流水线Debug读
         .inst_dbg_en(inst_dbg_en), .inst_wr_en(inst_wr_en),
         .inst_dbg_addr(inst_dbg_addr), .inst_wr_data(inst_wr_data),
-        .inst_rd_data(),           // Debug只读单周期
+        .inst_rd_data(pipe_inst_rd),           // 流水线Debug读
         .dmem_dbg_en(dmem_dbg_en), .dmem_wr_en(dmem_wr_en),
         .dmem_dbg_addr(dmem_dbg_addr), .dmem_wr_data(dmem_wr_data),
-        .dmem_rd_data(),
-        .dbg_pc(),
+        .dmem_rd_data(pipe_dmem_rd),           // 流水线Debug读
+        .dbg_pc(pipe_dbg_pc),                  // 流水线Debug读
         .SwitchIn(SwitchIn), .ButtonIn(ButtonIn),
         .LEDOut(pipe_LED), .seg_cs(pipe_sc),
         .seg_data_0(pipe_s0), .seg_data_1(pipe_s1),
-        .clk_vga(vga_clk), .vga_fb_addr(vga_fb_addr), .vga_fb_data(vga_fb_data)
+        .clk_vga(vga_clk), .vga_fb_addr(vga_fb_addr), .vga_fb_data(vga_fb_pipe)
     );
 
     // ===========================
@@ -283,10 +289,20 @@ module TopDebug (
     // ===========================
     wire cpu_mode;
     assign cpu_mode = SwitchIn[15];  // 0=单周期, 1=流水线
-    assign LEDOut     = cpu_mode ? pipe_LED     : single_LED;
-    assign seg_cs     = cpu_mode ? pipe_sc      : single_sc;
-    assign seg_data_0 = cpu_mode ? pipe_s0      : single_s0;
-    assign seg_data_1 = cpu_mode ? pipe_s1      : single_s1;
+    // 外设输出 MUX
+    assign LEDOut      = cpu_mode ? pipe_LED      : single_LED;
+    assign seg_cs      = cpu_mode ? pipe_sc       : single_sc;
+    assign seg_data_0  = cpu_mode ? pipe_s0       : single_s0;
+    assign seg_data_1  = cpu_mode ? pipe_s1       : single_s1;
+    assign vga_fb_data = cpu_mode ? vga_fb_pipe   : vga_fb_single;
+
+    // Debug 读响应 MUX (Pipeline要求: 暂停观察寄存器)
+    // Debug写信号(inst_dbg_en/wr, dmem_dbg_en/wr)同时发给两个CPU,
+    // 确保两个IMem/DMem内容一致。
+    assign dbg_reg_data = cpu_mode ? pipe_dbg_reg   : single_dbg_reg;
+    assign inst_rd_data = cpu_mode ? pipe_inst_rd   : single_inst_rd;
+    assign dmem_rd_data = cpu_mode ? pipe_dmem_rd   : single_dmem_rd;
+    assign dbg_pc       = cpu_mode ? pipe_dbg_pc    : single_dbg_pc;
 
     // ===========================
     // VGA 帧缓冲互连线
@@ -296,8 +312,10 @@ module TopDebug (
     //   Port B: VGA 读出 (posedge vga_clk)
     // 数据流: VGA(fb_addr) → DataMemory(vga_fb_addr)
     //         DataMemory(vga_fb_data) → VGA(fb_data)
-    wire [11:0] vga_fb_addr;   // VGA → DataMemory: 帧缓冲读地址 (0~2399)
-    wire [15:0] vga_fb_data;   // DataMemory → VGA: 帧缓冲读数据 ([7:0]=ASCII, [15:8]=颜色)
+    wire [11:0] vga_fb_addr;          // VGA → DataMemory: 帧缓冲读地址 (0~2399)
+    wire [15:0] vga_fb_single;        // 单周期CPU → VGA: 帧缓冲读数据
+    wire [15:0] vga_fb_pipe;          // 流水线CPU → VGA: 帧缓冲读数据
+    wire [15:0] vga_fb_data;          // MUX后 → VGA: 帧缓冲读数据
 
     // ===========================
     // VGA 控制器实例化
