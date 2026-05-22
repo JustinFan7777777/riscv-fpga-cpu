@@ -1,12 +1,80 @@
 // =============================================================================
 // Module      : CPUTopPipeline.v
-// Description : RISC-V RV32I 五级流水线 CPU (IF→ID→EX→MEM→WB)
+// Description : RISC-V RV32I 五级流水线 CPU 顶层 (IF→ID→EX→MEM→WB)
 // =============================================================================
-// 复用模块: Decoder, RegFile, ImmGen, ALU, DataMemory
-// 新增模块: Ifetch_Pipe, PipeRegs, HazardUnit
 //
-// 冒险处理: RAW转发(EX/MEM,MEM/WB→EX), Load-Use stall, 分支flush IF/ID
-// 注: 本版本为pipeline演示, JAL/JALR链接地址(PC+4→rd)待后续完善
+// ================================ 中文说明 ================================
+// 【功能】五级流水线 RISC-V CPU 顶层模块, 复用单周期的 Decoder/RegFile/ImmGen/
+//        ALU/DataMemory 子模块, 新增 Ifetch_Pipe(取指)/PipeRegs(流水线寄存器)/
+//        HazardUnit(冒险处理) 三个模块, 串联成完整五级流水线。
+//
+// 【五级流水线结构】
+//   时钟周期:   T1        T2        T3        T4        T5        T6 ...
+//   ─────────────────────────────────────────────────────────────────────
+//   IF   :  inst1 →  inst2 →  inst3 →  inst4 →  inst5 →  inst6 → ...
+//   ID   :           inst1 →  inst2 →  inst3 →  inst4 →  inst5 → ...
+//   EX   :                    inst1 →  inst2 →  inst3 →  inst4 → ...
+//   MEM  :                             inst1 →  inst2 →  inst3 → ...
+//   WB   :                                      inst1 →  inst2 → ...
+//
+//   同一时刻有 5 条指令在不同阶段执行 (T5 时: inst5在IF, inst4在ID,
+//   inst3在EX, inst2在MEM, inst1在WB), 每条指令 5 个周期完成。
+//   CPI ≈ 1 (理想情况), 吞吐量是单周期的 5 倍。
+//
+// 【各阶段职责】
+//   IF  (取指): PC → IMem (BRAM寄存器读) → inst, 计算 PC+4
+//   ID  (译码): inst → Decoder(控制信号) + RegFile(读rs1/rs2) + ImmGen(立即数)
+//   EX  (执行): ALU(运算) + 分支/跳转目标计算 + 分支条件判断
+//   MEM (访存): DataMemory(读/写数据内存, MMIO, VGA帧缓冲)
+//   WB  (写回): 选择写回数据(ALU结果或内存值) → RegFile(写rd)
+//
+// 【流水线寄存器 (PipeRegs.v)】
+//   每个阶段之间有一组 D 触发器, 在时钟上升沿锁存上一级的输出:
+//     IF/ID  : PC+4, inst
+//     ID/EX  : 控制信号, rs1/rs2值, 立即数, PC
+//     EX/MEM : ALU结果, 写数据(rs2), 分支/跳转信息
+//     MEM/WB : 内存读出, ALU结果, 写回控制
+//
+// 【数据冒险 (Data Hazard / RAW) — 由 HazardUnit 处理】
+//   情况: 指令A 写入寄存器 rd, 紧接着指令B 读取同一个寄存器
+//   解决: 转发 (Forwarding) — 不等指令A 写回寄存器, 直接从流水线后级
+//         "偷"数据给前级用
+//   例: add x1, x2, x3    (写x1, 结果在EX/MEM)
+//        sub x4, x1, x5    (读x1, 需要EX阶段的值)
+//        → HazardUnit 检测到冲突, 把 EX/MEM.ALUResult 直接转发到
+//          sub 的 ALU 输入, 省去等待 WB 写回的一拍
+//
+// 【Load-Use 冒险 — 必须暂停】
+//   情况: lw 指令后紧跟一条使用加载值的指令
+//   例: lw  x1, 0(x2)     (x1在MEM阶段才读出)
+//        add x3, x1, x4    (x1在EX阶段就要用, 来不及!)
+//   解决: Stall 1 周期 — 冻结 IF/ID 寄存器, 在 ID/EX 插入一条 NOP,
+//        等 lw 的数据从 MEM 回来后再继续
+//
+// 【控制冒险 (Control Hazard)】
+//   情况: 分支指令在 EX 阶段才知道跳不跳, 但 IF 已经取了两条后续指令
+//   解决: 假设不跳转 (Predict Not Taken) — 如果分支成立, 把 IF/ID
+//         寄存器清零 (flush → NOP), 相当于那两条错误指令作废,
+//         PC 更新为分支目标。代价: 1 周期 penalty。
+//
+// 【与单周期 CPU 的对比】
+//   CPUTop (单周期): 每条指令 1 个长周期完成全部 5 步, CPI=1, 时钟慢
+//   CPUTopPipeline:  5 条指令重叠执行, CPI≈1, 但每周期只需完成 1 步,
+//                    时钟可以更快, 吞吐量提升 ~5 倍
+//
+// 【模块实例化清单】
+//   Ifetch_Pipe  : 取指 (BRAM 寄存器读, 1 周期延迟由流水线吸收)
+//   Decoder      : 译码 + 控制信号 (复用单周期)
+//   RegFile      : 寄存器堆 32×32 (复用)
+//   ImmGen       : 立即数生成 (复用)
+//   PipeRegs     : 4 组流水线寄存器 (新增)
+//   HazardUnit   : 转发控制 + Load-Use 检测 (新增)
+//   ALU          : 算术逻辑单元 (复用, 含 POPCNT/CLZ/CTZ)
+//   DataMemory   : 数据内存 + MMIO + VGA 帧缓冲 (复用)
+//
+// 【调试接口】
+//   与单周期共用一套 Debug 信号 (dbg_reg, inst_dbg, dmem_dbg, dbg_pc),
+//   由 TopDebug 层根据 cpu_mode 做 MUX 选择活跃 CPU。
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -56,7 +124,7 @@ module CPUTopPipeline (
     wire        ex_branch, ex_jump_wire, ex_jalrsrc_wire;
     wire [3:0]  ex_alucontrol; wire [2:0] ex_funct3;
     wire [31:0] ex_aluresult, ex_writedata;
-    wire [1:0]  forward_a, forward_b;
+    wire [1:0]  forward_a, forward_b;  // ALU输入选择: 00=rs值, 01=EX/MEM转发, 10=MEM/WB转发
 
     // MEM
     wire [31:0] mem_aluresult, mem_writedata, mem_branchtarget, mem_readdata;

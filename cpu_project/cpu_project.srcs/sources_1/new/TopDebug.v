@@ -86,9 +86,20 @@ module TopDebug (
     output [3:0]  vga_g,        // VGA 绿色通道 (EGO1: vga_data_pin[7:4] = B6,A6,A5,D8)
     output [3:0]  vga_b         // VGA 蓝色通道 (EGO1: vga_data_pin[11:8] = C7,E6,E5,E7)
 
-    // CPU 模式选择 (Bonus: Pipeline)
-    // 0 = 单周期 (CPUTop), 1 = 五级流水线 (CPUTopPipeline)
-    // 用 SwitchIn[15] (右8拨码开关最高位) 控制, 上电默认单周期
+    // ===========================
+    // CPU 模式选择 (Pipeline Bonus — 双 CPU 共存)
+    // ===========================
+    // SwitchIn[15] 是 EGO1 右8拨码开关 (dip_pin[7]) 的最高位:
+    //   SwitchIn[15] = 0 (拨下) → 单周期模式 (CPUTop)     ← 上电默认
+    //   SwitchIn[15] = 1 (拨上) → 五级流水线模式 (CPUTopPipeline)
+    //
+    // 两个 CPU 都持续运行, cpu_mode 只决定谁在"驾驶位":
+    //   谁驱动 LED/数码管/VGA?      → MUX 选择
+    //   谁响应 Debug 读命令?        → MUX 选择
+    //   Debug 写命令 (halt/step/reset/写IMem/写DMem) → 同时发给两个CPU
+    //   这样两个 CPU 的 IMem/DMem 内容始终一致, 切换模式无需重新加载程序
+    //
+    // 切换方法: 运行中直接拨 SwitchIn[15] 即可, 无需复位或重新烧录
 );
 
     // ===========================
@@ -224,8 +235,19 @@ module TopDebug (
     );
 
     // ===========================
-    // CPU 内部连线 (单周期 + 流水线)
+    // CPU 内部连线 — 双 CPU 共享 IO 架构
     // ===========================
+    // 每个 CPU 驱动自己的一组"内部"IO 线, 最后由 MUX 决定哪组
+    // 连到顶层物理引脚。Debug 读信号同理。
+    //
+    //  schematic:
+    //   CPUTop(single) ──→ single_LED, single_sc, ...
+    //   CPUTopPipeline ──→ pipe_LED,  pipe_sc,  ...
+    //                         │           │
+    //                         └─────┬─────┘
+    //                            cpu_mode MUX
+    //                               │
+    //                          LEDOut, seg_cs, ... (顶层物理引脚)
     wire [15:0] single_LED, pipe_LED;
     wire [7:0]  single_sc, single_s0, single_s1;
     wire [7:0]  pipe_sc, pipe_s0, pipe_s1;
@@ -285,20 +307,26 @@ module TopDebug (
     );
 
     // ===========================
-    // 输出 MUX: 单周期 vs 流水线
+    // 输出 MUX: 单周期 vs 流水线 (全部信号由 cpu_mode 二选一)
     // ===========================
+    // 原理: 每个输出信号都有两份 (single_* 和 pipe_*), MUX 根据
+    //       SwitchIn[15] 的值决定把哪份连到物理引脚。
+    //       不活跃的 CPU 仍然在运行, 只是它的输出被忽略了。
     wire cpu_mode;
     assign cpu_mode = SwitchIn[15];  // 0=单周期, 1=流水线
-    // 外设输出 MUX
+
+    // ---- 外设输出 (LED + 数码管) ----
     assign LEDOut      = cpu_mode ? pipe_LED      : single_LED;
     assign seg_cs      = cpu_mode ? pipe_sc       : single_sc;
     assign seg_data_0  = cpu_mode ? pipe_s0       : single_s0;
     assign seg_data_1  = cpu_mode ? pipe_s1       : single_s1;
+
+    // ---- VGA 帧缓冲数据 (两个 CPU 各连自己的 DataMemory, MUX 选活跃的) ----
     assign vga_fb_data = cpu_mode ? vga_fb_pipe   : vga_fb_single;
 
-    // Debug 读响应 MUX (Pipeline要求: 暂停观察寄存器)
-    // Debug写信号(inst_dbg_en/wr, dmem_dbg_en/wr)同时发给两个CPU,
-    // 确保两个IMem/DMem内容一致。
+    // ---- Debug 读响应 (寄存器值 / PC / IMem / DMem) ----
+    // Debug 写信号 (halt/step/reset/写IMem/写DMem) 同时发给两个 CPU,
+    // 所以两个 IMem/DMem 内容始终一致, 切换模式无需重新加载程序。
     assign dbg_reg_data = cpu_mode ? pipe_dbg_reg   : single_dbg_reg;
     assign inst_rd_data = cpu_mode ? pipe_inst_rd   : single_inst_rd;
     assign dmem_rd_data = cpu_mode ? pipe_dmem_rd   : single_dmem_rd;
