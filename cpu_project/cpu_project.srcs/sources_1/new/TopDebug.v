@@ -235,6 +235,14 @@ module TopDebug (
     );
 
     // ===========================
+    // VGA 帧缓冲互连线 (声明在 CPU 实例之前, 避免 implicit wire)
+    // ===========================
+    wire [11:0] vga_fb_addr;          // VGA → DataMemory: 帧缓冲读地址 (0~2399)
+    wire [15:0] vga_fb_single;        // 单周期CPU → VGA: 帧缓冲读数据
+    wire [15:0] vga_fb_pipe;          // 流水线CPU → VGA: 帧缓冲读数据
+    wire [15:0] vga_fb_data;          // MUX后 → VGA: 帧缓冲读数据
+
+    // ===========================
     // CPU 内部连线 — 双 CPU 共享 IO 架构
     // ===========================
     // 每个 CPU 驱动自己的一组"内部"IO 线, 最后由 MUX 决定哪组
@@ -340,10 +348,6 @@ module TopDebug (
     //   Port B: VGA 读出 (posedge vga_clk)
     // 数据流: VGA(fb_addr) → DataMemory(vga_fb_addr)
     //         DataMemory(vga_fb_data) → VGA(fb_data)
-    wire [11:0] vga_fb_addr;          // VGA → DataMemory: 帧缓冲读地址 (0~2399)
-    wire [15:0] vga_fb_single;        // 单周期CPU → VGA: 帧缓冲读数据
-    wire [15:0] vga_fb_pipe;          // 流水线CPU → VGA: 帧缓冲读数据
-    wire [15:0] vga_fb_data;          // MUX后 → VGA: 帧缓冲读数据
 
     // ===========================
     // VGA 控制器实例化

@@ -84,8 +84,10 @@ module DataMemory (
     // VGA 帧缓冲 BRAM — 真双端口 (True Dual-Port)
     // ==========================================================================
     // 规格: 2400 × 16-bit (80列 × 30行), 占用约 1.5 个 BRAM36
-    //   Port A (CPU 侧): negedge clk (12.5MHz) — CPU 通过 MMIO 写入/读取
+    //   Port A (CPU 侧): posedge clk (12.5MHz) — CPU 通过 MMIO 写入/读取
     //   Port B (VGA 侧): posedge clk_vga (25MHz) — VGA 控制器扫描读出
+    //   注: Port A 使用 posedge (非 negedge) 是因为 Xilinx TDP BRAM 要求
+    //   两端口均为 posedge 才能正确推断为 Block RAM
     // 每字: [7:0]=ASCII 码, [11:8]=前景色(I+R+G+B), [15:12]=背景色(I+R+G+B)
 
     (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
