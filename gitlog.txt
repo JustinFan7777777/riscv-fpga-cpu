@@ -1,3 +1,11 @@
+# ==============================================================================
+# Git Log — 提交人信息对应
+# ==============================================================================
+# JustinFan7777777 = 范晓乐 (12412307) — Verilog 设计、VGA 控制器、Pipeline、工具
+# ChenJunxi         = 陈俊希 (12411025) — Vivado 综合、上板测试、Difftest 验证
+# (刘一骏 12411922 — 汇编编码、RARS 模拟验证, 未通过 git 提交代码)
+# ==============================================================================
+
 f3577f1 | JustinFan7777777 | 2026-05-20 | Merge branch 'main' into bonus
 25efbe2 | JustinFan7777777 | 2026-05-20 | convert English comments to Chinese version, then add a README for future documentation and video recording
 b1504b7 | JustinFan7777777 | 2026-05-20 | finish visualizer design

@@ -19,6 +19,12 @@ xsim.dir/
 .DS_Store
 Thumbs.db
 
+# Icarus Verilog simulation artifacts
+*.vvp
+
+# Claude Code settings (per-user, not for submission)
+.claude/
+
 # Ignore the "runs" directory, but force the submission of the ".bit" and ".dcp" files under "runs/impl_1"
 *.runs/*
 !*.runs/impl_1/
