@@ -66,14 +66,12 @@ module Ifetch_Pipe #(
         inst_reg <= imem[imem_phys];
     end
 
+    // PC 寄存器 (声明在前, 供后续 assign 使用)
+    reg [31:0] pc_reg;
+
     assign inst_rd_data = imem[imem_phys];
     assign inst         = flush ? 32'd0 : inst_reg;  // flush → NOP
     assign pcplus4      = pc_reg + 32'd4;
-
-    // ========================================================================
-    // PC 寄存器
-    // ========================================================================
-    reg [31:0] pc_reg;
     parameter PC_RESET = 32'h00004000;
 
     localparam HEX_LOAD_OFFSET = 0;

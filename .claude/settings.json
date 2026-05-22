@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(iverilog -o /tmp/tb_bram.vvp other/vga/tb_VGA.v cpu_project/cpu_project.srcs/sources_1/new/VGA.v)",
-      "Bash(vvp /tmp/tb_bram.vvp)"
+      "Bash(vvp /tmp/tb_bram.vvp)",
+      "Bash(git tag *)",
+      "Bash(java -jar \"/Users/justinfan7777777/Code/CO/Rars Assembler.jar\" a dump .text HexText isa_test.hex isa_test.asm)",
+      "Bash(git commit -m ' *)",
+      "Bash(iverilog -Wall -o /tmp/pipe_check.vvp cpu_project/cpu_project.srcs/sources_1/new/CPUTopPipeline.v cpu_project/cpu_project.srcs/sources_1/new/PipeRegs.v cpu_project/cpu_project.srcs/sources_1/new/HazardUnit.v cpu_project/cpu_project.srcs/sources_1/new/Ifetch_Pipe.v cpu_project/cpu_project.srcs/sources_1/new/Decoder.v cpu_project/cpu_project.srcs/sources_1/new/RegFile.v cpu_project/cpu_project.srcs/sources_1/new/ImmGen.v cpu_project/cpu_project.srcs/sources_1/new/ALU.v cpu_project/cpu_project.srcs/sources_1/new/DataMemory.v cpu_project/cpu_project.srcs/sources_1/new/VGA.v cpu_project/cpu_project.srcs/sources_1/new/TopDebug.v cpu_project/cpu_project.srcs/sources_1/new/DebugController.v cpu_project/cpu_project.srcs/sources_1/new/UartRx.v cpu_project/cpu_project.srcs/sources_1/new/UartTx.v cpu_project/cpu_project.srcs/sources_1/new/CPUTop.v)",
+      "Bash(iverilog -Wall -o /tmp/pipe_check.vvp cpu_project/cpu_project.srcs/sources_1/new/CPUTopPipeline.v cpu_project/cpu_project.srcs/sources_1/new/PipeRegs.v cpu_project/cpu_project.srcs/sources_1/new/HazardUnit.v cpu_project/cpu_project.srcs/sources_1/new/Ifetch_Pipe.v cpu_project/cpu_project.srcs/sources_1/new/Decoder.v cpu_project/cpu_project.srcs/sources_1/new/RegFile.v cpu_project/cpu_project.srcs/sources_1/new/ImmGen.v cpu_project/cpu_project.srcs/sources_1/new/ALU.v cpu_project/cpu_project.srcs/sources_1/new/DataMemory.v)",
+      "Bash(iverilog -Wall -o /tmp/full_check.vvp cpu_project/cpu_project.srcs/sources_1/new/TopDebug.v cpu_project/cpu_project.srcs/sources_1/new/CPUTop.v cpu_project/cpu_project.srcs/sources_1/new/CPUTopPipeline.v cpu_project/cpu_project.srcs/sources_1/new/PipeRegs.v cpu_project/cpu_project.srcs/sources_1/new/HazardUnit.v cpu_project/cpu_project.srcs/sources_1/new/Ifetch_Pipe.v cpu_project/cpu_project.srcs/sources_1/new/Ifetch.v cpu_project/cpu_project.srcs/sources_1/new/Decoder.v cpu_project/cpu_project.srcs/sources_1/new/RegFile.v cpu_project/cpu_project.srcs/sources_1/new/ImmGen.v cpu_project/cpu_project.srcs/sources_1/new/ALU.v cpu_project/cpu_project.srcs/sources_1/new/DataMemory.v cpu_project/cpu_project.srcs/sources_1/new/VGA.v cpu_project/cpu_project.srcs/sources_1/new/DebugController.v cpu_project/cpu_project.srcs/sources_1/new/UartRx.v cpu_project/cpu_project.srcs/sources_1/new/UartTx.v)"
     ]
   }
 }

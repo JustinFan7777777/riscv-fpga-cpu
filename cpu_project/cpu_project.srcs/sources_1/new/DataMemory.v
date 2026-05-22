@@ -92,6 +92,10 @@ module DataMemory (
     reg [15:0] vga_fb_mem [0:2399];      // 80×30 = 2400 个字符位
     // WRITE_MODE="READ_FIRST": 同时读写同一地址时返回旧值, 匹配仿真语义
 
+    // ---- Debug 同步寄存器 (声明在先, 供后续逻辑使用) ----
+    reg         dmem_dbg_en_sync,   dmem_wr_en_sync;
+    reg [31:0] dmem_dbg_addr_sync, dmem_wr_data_sync;
+
     // ---- CPU 侧读写信号 ----
     wire        vga_fb_we_cpu;            // CPU 写使能 (MMIO 区域命中 + MemWrite)
     wire [11:0] vga_fb_waddr;            // CPU 读/写字地址 (0~2399)
@@ -141,9 +145,6 @@ module DataMemory (
     // ===========================
     // DebugController@100MHz → CPU@12.5MHz, 打一拍同步消除亚稳态
     // 使用 negedge: Debug写发生在clk下降沿, BRAM在上升沿之前有半拍setup
-    reg         dmem_dbg_en_sync,   dmem_wr_en_sync;
-    reg [31:0] dmem_dbg_addr_sync, dmem_wr_data_sync;
-
     always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             dmem_dbg_en_sync   <= 1'b0;
