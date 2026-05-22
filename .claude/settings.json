@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(iverilog -o /tmp/tb_bram.vvp other/vga/tb_VGA.v cpu_project/cpu_project.srcs/sources_1/new/VGA.v)",
+      "Bash(vvp /tmp/tb_bram.vvp)"
+    ]
+  }
+}

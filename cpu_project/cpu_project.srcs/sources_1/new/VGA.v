@@ -113,8 +113,8 @@ module VGA #(
     // ==========================================================================
     // fb_addr 预取时序常量 (由模块参数派生, 避免硬编码魔法数字)
     // ==========================================================================
-    localparam H_PREFETCH      = H_TOTAL - 2;  // 798 — 行末预取触发点
-    localparam CHAR_SWITCH_PIX = CHAR_W - 2;   // 6   — 字符切换触发像素
+    localparam H_PREFETCH      = H_TOTAL - 3;  // 797 — 行末预取触发点 (字模BRAM需额外1拍)
+    localparam CHAR_SWITCH_PIX = CHAR_W - 3;   // 5   — 字符切换触发像素 (提前3像素预取)
     localparam CHAR_LAST_PIX   = CHAR_W - 1;   // 7   — 字符内最后像素
 
     // ==========================================================================
@@ -157,12 +157,13 @@ module VGA #(
     assign in_display = (h_cnt < H_ACTIVE) && (v_cnt < V_ACTIVE);
 
     // ==========================================================================
-    // 第 3 部分 — 字模 ROM (分布式 RAM, 组合逻辑读出)
+    // 第 3 部分 — 字模 ROM (BRAM, 寄存器读出)
     // ==========================================================================
     // 128 个 ASCII 字符 × 16 行/字符 = 2048 个 8-bit 条目
-    // 分布式 RAM (LUT 实现) 提供零周期组合读出, 避免 BRAM 的额外延迟。
+    // 使用 BRAM 实现 (ram_style="block"), 节省 LUT 资源 (避免 LUT-as-Memory 耗尽)。
+    // BRAM 读延迟为 1 周期, 需在像素流水线中额外延迟 1 拍补偿。
     // 地址映射: font_rom[{ascii[6:0], row_in_char[3:0]}] → 该字符第 row_in_char 行的 8-bit 位图
-    (* ram_style = "distributed" *)
+    (* ram_style = "block" *)
     reg [7:0] font_rom [0:2047];
 
     // ---- 从 hex 文件加载字模数据 ----
@@ -172,28 +173,33 @@ module VGA #(
     end
 
     // ==========================================================================
-    // 第 4 部分 — 帧缓冲预取流水线
+    // 第 4 部分 — 帧缓冲预取流水线 (3 级流水)
     // ==========================================================================
     // 设计思路:
-    //   DataMemory 中的帧缓冲 BRAM 读延迟为 1 个周期 (寄存器输出),
-    //   字模 ROM 为组合逻辑读出 (0 周期延迟),
-    //   因此总流水延迟 = 1 周期。
+    //   DataMemory 帧缓冲 BRAM 读延迟 = 1 周期 (寄存器输出),
+    //   字模 ROM 为 BRAM (ram_style="block"), 读延迟 = 1 周期,
+    //   总流水延迟 = 2 周期。
     //
-    //   为了在每个字符的第 0 个像素就有正确的 fb_data:
-    //     - 在当前字符的第 6 个像素 (h_cnt[2:0]==6) 时,
+    //   为了在每个字符的第 0 个像素就有正确的像素数据:
+    //     - 在当前字符的第 5 个像素 (h_cnt[2:0]==5) 时,
     //       将 fb_addr 切换到下一个字符的地址
-    //     - 经过 1 周期: fb_data 在 h_cnt 走到下一字符第 0 像素时锁存到位
+    //     - 1 周期后 fb_data 到达 → 字模 ROM 地址设置
+    //     - 再 1 周期后 font_data 到达 → 像素输出
     //
-    //   每行首个字符的 fb_addr 在水平消隐期 (h_cnt==798) 预取,
+    //   每行首个字符的 fb_addr 在水平消隐期 (h_cnt==797) 预取,
     //   确保新行开始 (h_cnt==0) 时已有数据。
     //
     //   流水寄存器:
-    //     char_data:    fb_data 锁存, 对应 (h_d1, v_d1) 位置的字符数据
-    //     h_d1, v_d1:  h_cnt, v_cnt 延迟 1 拍, 用于像素输出阶段的对齐
+    //     char_data:    fb_data 锁存 (1 周期延迟)
+    //     font_data:    字模 ROM 读出锁存 (2 周期延迟)
+    //     h_d1/v_d1:   延迟 1 拍 (字模 ROM 地址阶段)
+    //     h_d2/v_d2:   延迟 2 拍 (像素输出阶段)
 
     reg [11:0] fb_addr_reg;      // fb_addr 输出寄存器
-    reg [15:0] char_data;        // 锁存的帧缓冲数据 (ASCII + 颜色)
-    reg [9:0]  h_d1,  v_d1;     // 延迟 1 拍的计数器 (像素输出阶段使用)
+    reg [15:0] char_data;        // 锁存的帧缓冲数据 (ASCII + 颜色), 1 周期延迟
+    reg [7:0]  font_data;        // 锁存的字模位图行, 2 周期延迟
+    reg [9:0]  h_d1,  v_d1;     // 延迟 1 拍的计数器 (字模 ROM 地址阶段)
+    reg [9:0]  h_d2,  v_d2;     // 延迟 2 拍的计数器 (像素输出阶段)
 
     assign fb_addr = fb_addr_reg;
 
@@ -201,15 +207,23 @@ module VGA #(
         if (!rst_n) begin
             fb_addr_reg <= 12'd0;
             char_data    <= 16'd0;
+            font_data    <= 8'd0;
             h_d1         <= 10'd0;
             v_d1         <= 10'd0;
+            h_d2         <= 10'd0;
+            v_d2         <= 10'd0;
         end else begin
-            // ---- 第 1 级: 锁存 BRAM 读出数据 ----
+            // ---- 第 1 级: 锁存 BRAM 读出数据 (帧缓冲 → char_data) ----
             char_data <= fb_data;
 
-            // ---- 延迟计数器: 用于像素输出阶段, 与 char_data 对齐 ----
+            // ---- 第 2 级: 字模 ROM 读出 (BRAM, 1 周期延迟) ----
+            font_data <= font_rom[{char_data[6:0], v_d1[3:0]}];
+
+            // ---- 延迟计数器: 用于像素输出阶段, 与 char_data / font_data 对齐 ----
             h_d1 <= h_cnt;
             v_d1 <= v_cnt;
+            h_d2 <= h_d1;
+            v_d2 <= v_d1;
 
             // ---- fb_addr 预取控制 ----
             // 情况 1: 水平消隐末期 (h_cnt==798), 预取当前行首字符
@@ -248,14 +262,15 @@ module VGA #(
     // ==========================================================================
     // 第 5 部分 — 像素生成 (组合逻辑)
     // ==========================================================================
-    // 使用延迟 1 拍的计数器 (h_d1, v_d1) 和锁存的字符数据 (char_data),
-    // 生成当前像素的 RGB 值。
+    // font_data 是字模 ROM (BRAM) 的寄存器输出, 在 always 块中已锁存:
+    //   font_data <= font_rom[{char_data[6:0], v_d1[3:0]}]
+    // 使用延迟 2 拍的计数器 (h_d2, v_d2) 与 font_data 对齐。
     //
     // 流程:
-    //   1. 从 char_data 提取 ASCII 码 → 查字模 ROM → 得到当前扫描行的 8-bit 位图
-    //   2. 用 h_d1[2:0] 选择位图中的具体 bit (bit7=最左, bit0=最右)
+    //   1. font_data 包含当前字符当前扫描行的 8-bit 位图 (已注册)
+    //   2. 用 h_d2[2:0] 选择位图中的具体 bit (bit7=最左, bit0=最右)
     //   3. 若该 bit=1 → 输出前景色; 若 bit=0 → 输出背景色
-    //   4. 若在消隐期 ((h_d1 >= 640) 或 (v_d1 >= 480)) → 输出全 0 (黑屏)
+    //   4. 若在消隐期 ((h_d2 >= 640) 或 (v_d2 >= 480)) → 输出全 0 (黑屏)
 
     // 提取前景色 / 背景色字段
     wire [3:0] fg_color;   // [3]=I  [2]=R  [1]=G  [0]=B
@@ -263,28 +278,19 @@ module VGA #(
     assign fg_color = char_data[11:8];
     assign bg_color = char_data[15:12];
 
-    // 字模 ROM 地址: {7-bit ASCII, 4-bit 行内偏移}
-    // 注: v_d1[3:0] 即字符行内的扫描行号 (0~15)
-    wire [10:0] font_addr;
-    assign font_addr = {char_data[6:0], v_d1[3:0]};
-
-    // 组合读出字模 ROM → 8-bit 位图
-    wire [7:0] font_row;
-    assign font_row = font_rom[font_addr];
-
     // 当前像素在字符内的水平位置 (0=最左, 7=最右)
     wire [2:0] pix_x;
-    assign pix_x = h_d1[2:0];
+    assign pix_x = h_d2[2:0];
 
-    // 从位图中取出对应 bit (bit7 对应 pix_x=0)
+    // 从已注册的位图中取出对应 bit (bit7 对应 pix_x=0)
     wire pixel_on;
-    assign pixel_on = font_row[CHAR_LAST_PIX - pix_x];
+    assign pixel_on = font_data[CHAR_LAST_PIX - pix_x];
 
     // ---- 生成 4-bit RGB 通道输出 ----
     // 颜色扩展: 将 1-bit 通道色 + 1-bit 亮度 扩展为 4-bit 输出
     // 公式: 4-bit通道 = {通道色×3, 亮度}  (bit[3]=亮度, bit[2:0]=通道色)
     wire in_active;
-    assign in_active = (h_d1 < H_ACTIVE) && (v_d1 < V_ACTIVE);
+    assign in_active = (h_d2 < H_ACTIVE) && (v_d2 < V_ACTIVE);
 
     // 预计算前景/背景各通道的 4-bit 值 (消除三通道间复制粘贴)
     wire [3:0] fg_r, fg_g, fg_b, bg_r, bg_g, bg_b;

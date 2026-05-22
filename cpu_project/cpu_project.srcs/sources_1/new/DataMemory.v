@@ -113,9 +113,11 @@ module DataMemory (
     // CPU 写使能: 非 Debug 模式、MemWrite 有效、且地址命中 VGA 帧缓冲
     assign vga_fb_we_cpu = ~dmem_dbg_en_sync && MemWrite && isVGA_CPU;
 
-    // ---- Port A: CPU 侧 (negedge clk, 12.5MHz) ----
+    // ---- Port A: CPU 侧 (posedge clk, 12.5MHz) ----
+    // 使用 posedge 而非 negedge: Xilinx 真双端口 BRAM 要求两端口均为 posedge
+    // 才能正确推断为 BRAM, 避免回退到 LUT RAM 耗尽 LUT 资源。
     // 读优先写: 先读后写, 确保读返回旧值 (read-before-write 语义)
-    always @(negedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             vga_fb_cpu_rdata <= 16'd0;
         end else begin

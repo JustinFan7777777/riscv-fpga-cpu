@@ -23,7 +23,8 @@
 //
 // 【指令内存 (IMem)】
 //   - 使用 BRAM (Block RAM, 综合为FPGA片上块RAM)
-//   - 大小: 64KB (16384 x 32-bit words), 对应14-bit 字地址 (addr[15:2])
+//   - 大小: 8KB (2048 x 32-bit words), 对应11-bit 物理字地址
+//     (逻辑地址 PC 0x4000–0x5FFF 映射到物理地址 0x0000–0x07FF)
 //   - 使用 $readmemh 初始化, hex文件路径由参数 INIT_FILE 指定
 //   - 组合读: 地址变化即时反映到输出 (写仍为同步时序)
 //   - Debug 口: 当 inst_dbg_en=1时, 地址/写使能/写数据由DebugController接管
@@ -72,10 +73,13 @@ module Ifetch #(
     output [31:0] inst_rd_data      // Debug 读出数据
 );
 
-    // 指令内存 BRAM: 16384 x 32-bit = 64KB
-    // (* ram_style = "block" *) 强制 Vivado 综合为 Block RAM
-    (* ram_style = "block" *)
-    reg [31:0] mem [0:16383];
+    // 指令内存: 2048 x 32-bit = 8KB (分布式 RAM, 大幅节省 LUT 资源)
+    // 原设计为 16384 x 32-bit = 64KB, 但组合读出强制 Vivado 使用分布式 RAM,
+    // 消耗约 16000 LUTs (存储 8192 + 地址译码 8000), 加上 VGA 后超出 XC7A35T
+    // 的 20800 LUT 上限。缩减至 2048 字节省约 14000 LUTs。
+    // 逻辑地址空间: PC 0x4000–0x5FFF → 物理地址 0x0000–0x07FF (2048条指令)
+    (* ram_style = "distributed" *)
+    reg [31:0] mem [0:2047];
 
     // ===========================
     // 跨时钟域同步 Debug 信号
@@ -100,33 +104,31 @@ module Ifetch #(
     end
 
     // ===========================
-    // IMem 地址 MUX: Debug地址 还是 正常PC地址
+    // IMem 地址 MUX + 逻辑→物理地址映射
     // ===========================
-    // PC是字节地址, IMem是32-bit字地址 → PC[15:2]取14-bit字地址
-    // Debug地址同样是字节地址 → inst_dbg_addr_sync[15:2]
-    wire [13:0] imem_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : PC[15:2];
-    wire        imem_wea  = inst_dbg_en_sync & inst_wr_en_sync;
+    // 逻辑字地址 = PC[15:2] (PC从0x4000开始, 逻辑字地址从4096开始)
+    // 物理字地址 = 逻辑字地址 - 4096 = PC[10:2] (仅取低11位)
+    // 物理地址范围: 0x0000–0x07FF (2048字, 覆盖PC 0x4000–0x5FFF)
+    wire [13:0] imem_logical_addr = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : PC[15:2];
+    wire [10:0] imem_phys_addr    = imem_logical_addr[10:0];  // 逻辑-4096 = 物理地址
+    wire        imem_wea          = inst_dbg_en_sync & inst_wr_en_sync;
 
-    // ===========================
-    // BRAM 实例化: 同步写, 组合读
-    // ===========================
-    // 写操作保留同步时序; 读操作使用组合读以保证当前 PC 对应的 inst
+    // 同步写 + 组合读 (分布式 RAM, 零延迟 → 单周期取指)
     always @(posedge clk) begin
         if (imem_wea)
-            mem[imem_addr] <= inst_wr_data_sync;
+            mem[imem_phys_addr] <= inst_wr_data_sync;
     end
 
-    // IMem 读取数据: Debug读和正常取指共用 (组合读)
-    assign inst_rd_data = mem[imem_addr];
-    assign inst         = mem[imem_addr];
+    // IMem 读取: Debug读和正常取指共用 (组合读, 零周期延迟)
+    assign inst_rd_data = mem[imem_phys_addr];
+    assign inst         = mem[imem_phys_addr];
 
     // ===========================
     // 使用 $readmemh 初始化指令内存
     // ===========================
-    // Vivado 综合时读取 hex 文件写入 BRAM 初始值.
-    // difftest 差分测试框架默认从 IMem 字节地址 0x4000 开始放置指令,
-    // 对应 mem 的字地址 = 0x4000 / 4 = 4096, 所以从 mem[4096] 开始加载.
-    localparam HEX_LOAD_OFFSET = PC_RESET >> 2;
+    // hex 文件中的指令从地址 0 开始排列, 直接载入物理地址 0 起始。
+    // PC_RESET 仍为 0x4000, 对应物理地址 0 (经 imem_phys_addr 映射)。
+    localparam HEX_LOAD_OFFSET = 0;
     initial begin
         if (INIT_FILE != "")
             $readmemh(INIT_FILE, mem, HEX_LOAD_OFFSET);
