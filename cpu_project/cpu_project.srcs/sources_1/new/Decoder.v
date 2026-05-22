@@ -81,6 +81,8 @@ module Decoder (
     wire [6:0] opcode = inst[6:0];
     wire [2:0] funct3 = inst[14:12];
     wire       funct7_5 = inst[30]; // funct7第5位,用于区分ADD/SUB, SRL/SRA
+    wire       custom_op = inst[25]; // funct7第0位, 用于区分自定义指令(POPCNT/CLZ/CTZ)
+                                      // RV32I所有R-type的funct7[0]=0, 自定义用funct7=0000001
 
     // ===========================
     // 主译码器
@@ -275,9 +277,10 @@ module Decoder (
                 // 模式: 3'bXXX: alucontrol_r = funct7_5 ? 4'b新编码 : 4'b旧编码;
                 case (funct3)
                     3'b000: alucontrol_r = funct7_5 ? 4'b0001 : 4'b0000; // SUB : ADD (无funct7_5区分时可复用此行)
-                    3'b001: alucontrol_r = 4'b0101; // SLL
-                    3'b010: alucontrol_r = 4'b1000; // SLT
-                    3'b011: alucontrol_r = 4'b1001; // SLTU
+                    // ===== ISA 扩展: custom_op=1 → 硬件加速指令 =====
+                    3'b001: alucontrol_r = custom_op ? 4'b1010 : 4'b0101; // POPCNT : SLL
+                    3'b010: alucontrol_r = custom_op ? 4'b1011 : 4'b1000; // CLZ : SLT
+                    3'b011: alucontrol_r = custom_op ? 4'b1100 : 4'b1001; // CTZ : SLTU
                     3'b100: alucontrol_r = 4'b0100; // XOR
                     3'b101: alucontrol_r = funct7_5 ? 4'b0111 : 4'b0110; // SRA : SRL
                     3'b110: alucontrol_r = 4'b0011; // OR

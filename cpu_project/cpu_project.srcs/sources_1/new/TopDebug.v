@@ -85,6 +85,10 @@ module TopDebug (
     output [3:0]  vga_r,        // VGA 红色通道 (EGO1: vga_data_pin[3:0] = F5,C6,C5,B7)
     output [3:0]  vga_g,        // VGA 绿色通道 (EGO1: vga_data_pin[7:4] = B6,A6,A5,D8)
     output [3:0]  vga_b         // VGA 蓝色通道 (EGO1: vga_data_pin[11:8] = C7,E6,E5,E7)
+
+    // CPU 模式选择 (Bonus: Pipeline)
+    // 0 = 单周期 (CPUTop), 1 = 五级流水线 (CPUTopPipeline)
+    // 用 SwitchIn[15] (右8拨码开关最高位) 控制, 上电默认单周期
 );
 
     // ===========================
@@ -214,51 +218,75 @@ module TopDebug (
     );
 
     // ===========================
-    // CPU 实例化
+    // CPU 内部连线 (单周期 + 流水线)
+    // ===========================
+    wire [15:0] single_LED, pipe_LED;
+    wire [7:0]  single_sc, single_s0, single_s1;
+    wire [7:0]  pipe_sc, pipe_s0, pipe_s1;
+
+    // ===========================
+    // 单周期 CPU 实例化
     // ===========================
     CPUTop uCPUTop (
-        .clk           (cpu_clk),        // 12.5MHz BUFG输出
-        .rst_n         (rst_n_combined), // 合并后的复位
-
-        // Debug: CPU 控制
+        .clk           (cpu_clk),
+        .rst_n         (rst_n_combined),
         .cpu_halt      (cpu_halt),
         .cpu_step      (cpu_step),
         .cpu_reset     (cpu_reset),
-
-        // Debug: 寄存器
         .dbg_reg_addr  (dbg_reg_addr),
         .dbg_reg_data  (dbg_reg_data),
-
-        // Debug: 指令内存
         .inst_dbg_en   (inst_dbg_en),
         .inst_wr_en    (inst_wr_en),
         .inst_dbg_addr (inst_dbg_addr),
         .inst_wr_data  (inst_wr_data),
         .inst_rd_data  (inst_rd_data),
-
-        // Debug: 数据内存
         .dmem_dbg_en   (dmem_dbg_en),
         .dmem_wr_en    (dmem_wr_en),
         .dmem_dbg_addr (dmem_dbg_addr),
         .dmem_wr_data  (dmem_wr_data),
         .dmem_rd_data  (dmem_rd_data),
-
-        // Debug: PC
         .dbg_pc        (dbg_pc),
-
-        // 外设 IO
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
-        .LEDOut        (LEDOut),
-        .seg_cs        (seg_cs),
-        .seg_data_0    (seg_data_0),
-        .seg_data_1    (seg_data_1),
-
-        // VGA 接口 (直通 DataMemory 内的帧缓冲 BRAM)
+        .LEDOut        (single_LED),
+        .seg_cs        (single_sc),
+        .seg_data_0    (single_s0),
+        .seg_data_1    (single_s1),
         .clk_vga       (vga_clk),
         .vga_fb_addr   (vga_fb_addr),
         .vga_fb_data   (vga_fb_data)
     );
+
+    // ===========================
+    // 流水线 CPU 实例化 (Bonus)
+    // ===========================
+    CPUTopPipeline uCPUPipe (
+        .clk(cpu_clk), .rst_n(rst_n_combined),
+        .cpu_halt(cpu_halt), .cpu_step(cpu_step), .cpu_reset(cpu_reset),
+        .dbg_reg_addr(dbg_reg_addr),
+        .dbg_reg_data(),           // Debug只读单周期
+        .inst_dbg_en(inst_dbg_en), .inst_wr_en(inst_wr_en),
+        .inst_dbg_addr(inst_dbg_addr), .inst_wr_data(inst_wr_data),
+        .inst_rd_data(),           // Debug只读单周期
+        .dmem_dbg_en(dmem_dbg_en), .dmem_wr_en(dmem_wr_en),
+        .dmem_dbg_addr(dmem_dbg_addr), .dmem_wr_data(dmem_wr_data),
+        .dmem_rd_data(),
+        .dbg_pc(),
+        .SwitchIn(SwitchIn), .ButtonIn(ButtonIn),
+        .LEDOut(pipe_LED), .seg_cs(pipe_sc),
+        .seg_data_0(pipe_s0), .seg_data_1(pipe_s1),
+        .clk_vga(vga_clk), .vga_fb_addr(vga_fb_addr), .vga_fb_data(vga_fb_data)
+    );
+
+    // ===========================
+    // 输出 MUX: 单周期 vs 流水线
+    // ===========================
+    wire cpu_mode;
+    assign cpu_mode = SwitchIn[15];  // 0=单周期, 1=流水线
+    assign LEDOut     = cpu_mode ? pipe_LED     : single_LED;
+    assign seg_cs     = cpu_mode ? pipe_sc      : single_sc;
+    assign seg_data_0 = cpu_mode ? pipe_s0      : single_s0;
+    assign seg_data_1 = cpu_mode ? pipe_s1      : single_s1;
 
     // ===========================
     // VGA 帧缓冲互连线
