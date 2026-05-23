@@ -6,6 +6,19 @@
 # (刘一骏 12411922 — 汇编编码、RARS 模拟验证, 未通过 git 提交代码)
 # ==============================================================================
 
+a8df056 | JustinFan7777777 | 2026-05-22 | fix: stale negedge comment + implicit wire in TopDebug.v
+1e62bdc | JustinFan7777777 | 2026-05-22 | docs: complete project_log overhaul for final submission
+4fee088 | JustinFan7777777 | 2026-05-22 | structure: move soft_mul into other/mul/ subdirectory
+cfe2890 | JustinFan7777777 | 2026-05-22 | bonus: add software multiply subroutine (shift-and-add)
+caa12ad | JustinFan7777777 | 2026-05-22 | docs: enhance Chinese annotations for pipeline modules
+6eeba75 | JustinFan7777777 | 2026-05-22 | Optimize project structure for submission
+7ef7d4a | JustinFan7777777 | 2026-05-22 | Pipeline: add debug MUX for register observation requirement
+101544d | JustinFan7777777 | 2026-05-22 | Pipeline integration: fix declaration order, CPUTopPipeline wiring
+4e296f2 | JustinFan7777777 | 2026-05-22 | ISA extension: add POPCNT/CLZ/CTZ hardware-accelerated instructions
+2c12783 | JustinFan7777777 | 2026-05-22 | fix LUT issue
+7fbaa9f | JustinFan7777777 | 2026-05-22 | update vga file, and create video guidance
+65b2fe7 | JustinFan7777777 | 2026-05-20 | make 9 revisions, all are proven to be valid. Now we finish VGA + Snake
+20ebe5a | JustinFan7777777 | 2026-05-20 | VGA + Snake implementation
 f3577f1 | JustinFan7777777 | 2026-05-20 | Merge branch 'main' into bonus
 25efbe2 | JustinFan7777777 | 2026-05-20 | convert English comments to Chinese version, then add a README for future documentation and video recording
 b1504b7 | JustinFan7777777 | 2026-05-20 | finish visualizer design
