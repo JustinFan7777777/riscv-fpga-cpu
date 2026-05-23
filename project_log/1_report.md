@@ -12,6 +12,12 @@
 | 刘一骏 | 12411922 | 汇编代码编写 (batch_test.asm)、RARS 模拟验证 | 33.3% |
 | 陈俊希 | 12411025 | Vivado 综合实现、EGO1 上板测试、差分测试 (difftest) | 33.3% |
 
+**AI 工具使用声明 (Requirement 1.1)：**
+- **Claude Code (Anthropic)** — 用于 Verilog 代码审查与优化、文档汇总与润色、汇编代码调试辅助、Python 字模生成脚本
+- **Gemini (Google)** — 用于 CPU 数据通路可视化工具 (other/cpu_viz/visualizer.html) 的初始 HTML 页面代码设计
+
+> 所有 AI 生成代码均经人工审查、修改和验证，最终版本由团队成员确认。项目核心架构设计、Verilog 模块实现、Difftest 上板测试由团队成员自行完成。
+
 ---
 
 ## 2. 开发环境
