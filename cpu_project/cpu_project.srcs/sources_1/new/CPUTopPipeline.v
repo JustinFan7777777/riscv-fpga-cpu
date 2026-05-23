@@ -105,7 +105,7 @@ module CPUTopPipeline (
     // ========================================================================
     // IF
     wire [31:0] if_pc, if_inst, if_pcplus4;
-    wire        stall, flush, ctrl_flush;
+    wire        stall, flush, flush_idex, ctrl_flush;
     wire        ex_branch_taken, ex_jump, ex_jalrsrc;
     wire [31:0] ex_branch_target, ex_jump_target, ex_jalr_target;
 
@@ -184,7 +184,7 @@ module CPUTopPipeline (
     // PipeRegs — 4组流水线寄存器
     // ========================================================================
     PipeRegs uPipeRegs (
-        .clk(clk), .rst_n(rst_n), .stall(stall), .flush(flush),
+        .clk(clk), .rst_n(rst_n), .stall(stall), .flush(flush), .flush_idex(flush_idex),
         // IF → IF/ID
         .if_pc(if_pc), .if_pcplus4(if_pcplus4), .if_inst(if_inst),
         // ID → ID/EX
@@ -234,7 +234,7 @@ module CPUTopPipeline (
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
         .ctrl_flush(ctrl_flush),
         .forward_a(forward_a), .forward_b(forward_b),
-        .stall(stall), .flush(flush)
+        .stall(stall), .flush(flush), .flush_idex(flush_idex)
     );
 
     // ========================================================================

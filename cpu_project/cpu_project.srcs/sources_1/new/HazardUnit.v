@@ -8,11 +8,11 @@
 //
 // Load-Use 冒险:
 //   - 检测 ID/EX.MemRead && (ID/EX.rd == IF/ID.rs1 || == IF/ID.rs2)
-//   - stall=1 冻结 IF/ID 和 PC, flush=1 将 ID/EX 清零 (插入 NOP)
+//   - stall=1 冻结 IF/ID 和 PC, flush_idex=1 清零 ID/EX (插入 NOP 气泡)
 //
 // 控制冒险:
-//   - 由 CPUTopPipeline 在 EX 阶段检测 branch_taken 后 flush IF/ID
-//   - 本模块只输出 flush 信号 (Load-Use 时 flush ID/EX)
+//   - 由 CPUTopPipeline 在 EX 阶段检测 branch_taken 后 flush IF/ID 和 ID/EX
+//   - flush=1 清零 IF/ID (清除错误取指), flush_idex=1 清零 ID/EX (插入气泡)
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -40,8 +40,9 @@ module HazardUnit (
     output [1:0]  forward_b,      // ALU B 口选择: 00=rs2_val, 01=EX/MEM, 10=MEM/WB
 
     // ==== 流水线控制 ====
-    output        stall,          // 1=冻结IF/ID (Load-Use)
-    output        flush           // 1=清零ID/EX (插入NOP)
+    output        stall,          // 1=冻结IF/ID + PC (Load-Use)
+    output        flush,          // 1=清零IF/ID (分支/跳转, 清除错误取指)
+    output        flush_idex      // 1=清零ID/EX (插入气泡: Load-Use或分支/跳转)
 );
 
     // ========================================================================
@@ -80,6 +81,7 @@ module HazardUnit (
                     && (idex_rd_addr != 5'd0);
 
     assign stall = load_use;
-    assign flush = load_use | ctrl_flush;
+    assign flush = ctrl_flush;
+    assign flush_idex = load_use | ctrl_flush;
 
 endmodule

@@ -8,9 +8,9 @@
 
 | 姓名 | 学号 | 负责工作 | 贡献比 |
 |------|------|---------|--------|
-| 范晓乐 | 12412307 | Verilog 代码设计、工程搭建、模块集成、Bug 修复、项目协调 | 1 |
-| 刘一骏 | 12411922 | 汇编代码编写 (batch_test.asm)、RARS 模拟验证 | 1 |
-| 陈俊希 | 12411025 | Vivado 综合实现、EGO1 上板测试、差分测试 (difftest) | 1 |
+| 范晓乐 | 12412307 | Verilog 代码设计、工程搭建、模块集成、Bug 修复、项目协调 | 33.3% |
+| 刘一骏 | 12411922 | 汇编代码编写 (batch_test.asm)、RARS 模拟验证 | 33.3% |
+| 陈俊希 | 12411025 | Vivado 综合实现、EGO1 上板测试、差分测试 (difftest) | 33.3% |
 
 ---
 
@@ -36,7 +36,7 @@
 |------|------|---------|
 | 第 12 周 | 5.5–5.11 | 需求分析、架构设计、11 个 Verilog 模块编写、XDC 约束、batch_test.asm |
 | 第 13 周 | 5.12–5.18 | Bug 修复 (8 个)、TCL 一键建工程脚本、RARS 模拟验证 (21/21 PASS)、项目文档整理 |
-| 第 14 周 | 5.12–5.18 | Vivado 综合实现、EGO1 烧录、Difftest 调试 |
+| 第 14 周 | 5.19–5.25 | Vivado 综合实现、EGO1 烧录、Difftest 调试 |
 | 第 15 周 | 5.19–5.25 | IMem 组合读修复、时钟降频至 12.5MHz、Difftest 33/33 PASS、VGA 文本显示控制器 + 贪吃蛇游戏 Bonus 实现、文档与视频 |
 | 第 16 周 | 5.26–6.1 | ISA 扩展 / 流水线 (超额展示, 按时间窗口选做)、最终提交 |
 
@@ -54,17 +54,41 @@
 
 **指令集：** RISC-V RV32I (基础整数指令集)，参考 RISC-V Unprivileged ISA Specification v2.2。
 
-**已实现指令 (31 条)：**
+**已实现指令 (31 条) — 编码与使用方式：**
 
-| 类型 | 指令 | 条数 |
-|------|------|------|
-| R-type | ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU | 10 |
-| I-type ALU | ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU | 9 |
-| I-type Load | LW | 1 |
-| S-type Store | SW | 1 |
-| B-type Branch | BEQ, BNE, BLT, BGE, BLTU, BGEU | 6 |
-| U-type | LUI, AUIPC | 2 |
-| Jump | JAL, JALR | 2 |
+| 指令 | 类型 | opcode | funct3 | funct7 | 汇编格式 | 功能描述 |
+|------|------|--------|--------|--------|---------|---------|
+| ADD | R | 0110011 | 000 | 0000000 | `ADD rd, rs1, rs2` | rd = rs1 + rs2 |
+| SUB | R | 0110011 | 000 | 0100000 | `SUB rd, rs1, rs2` | rd = rs1 - rs2 |
+| SLL | R | 0110011 | 001 | 0000000 | `SLL rd, rs1, rs2` | rd = rs1 << rs2[4:0] |
+| SLT | R | 0110011 | 010 | 0000000 | `SLT rd, rs1, rs2` | rd = (rs1 < rs2 有符号) ? 1 : 0 |
+| SLTU | R | 0110011 | 011 | 0000000 | `SLTU rd, rs1, rs2` | rd = (rs1 < rs2 无符号) ? 1 : 0 |
+| XOR | R | 0110011 | 100 | 0000000 | `XOR rd, rs1, rs2` | rd = rs1 ^ rs2 |
+| SRL | R | 0110011 | 101 | 0000000 | `SRL rd, rs1, rs2` | rd = rs1 >> rs2[4:0] (逻辑) |
+| SRA | R | 0110011 | 101 | 0100000 | `SRA rd, rs1, rs2` | rd = rs1 >> rs2[4:0] (算术) |
+| OR | R | 0110011 | 110 | 0000000 | `OR rd, rs1, rs2` | rd = rs1 \| rs2 |
+| AND | R | 0110011 | 111 | 0000000 | `AND rd, rs1, rs2` | rd = rs1 & rs2 |
+| ADDI | I | 0010011 | 000 | — | `ADDI rd, rs1, imm` | rd = rs1 + imm (符号扩展) |
+| SLLI | I | 0010011 | 001 | 0000000 | `SLLI rd, rs1, shamt` | rd = rs1 << shamt |
+| SLTI | I | 0010011 | 010 | — | `SLTI rd, rs1, imm` | rd = (rs1 < imm 有符号) ? 1 : 0 |
+| SLTIU | I | 0010011 | 011 | — | `SLTIU rd, rs1, imm` | rd = (rs1 < imm 无符号) ? 1 : 0 |
+| XORI | I | 0010011 | 100 | — | `XORI rd, rs1, imm` | rd = rs1 ^ imm |
+| SRLI | I | 0010011 | 101 | 0000000 | `SRLI rd, rs1, shamt` | rd = rs1 >> shamt (逻辑) |
+| SRAI | I | 0010011 | 101 | 0100000 | `SRAI rd, rs1, shamt` | rd = rs1 >> shamt (算术) |
+| ORI | I | 0010011 | 110 | — | `ORI rd, rs1, imm` | rd = rs1 \| imm |
+| ANDI | I | 0010011 | 111 | — | `ANDI rd, rs1, imm` | rd = rs1 & imm |
+| LW | I | 0000011 | 010 | — | `LW rd, offset(rs1)` | rd = mem[rs1 + offset] |
+| SW | S | 0100011 | 010 | — | `SW rs2, offset(rs1)` | mem[rs1 + offset] = rs2 |
+| BEQ | B | 1100011 | 000 | — | `BEQ rs1, rs2, offset` | if (rs1 == rs2) PC += offset |
+| BNE | B | 1100011 | 001 | — | `BNE rs1, rs2, offset` | if (rs1 != rs2) PC += offset |
+| BLT | B | 1100011 | 100 | — | `BLT rs1, rs2, offset` | if (rs1 < rs2 有符号) PC += offset |
+| BGE | B | 1100011 | 101 | — | `BGE rs1, rs2, offset` | if (rs1 >= rs2 有符号) PC += offset |
+| BLTU | B | 1100011 | 110 | — | `BLTU rs1, rs2, offset` | if (rs1 < rs2 无符号) PC += offset |
+| BGEU | B | 1100011 | 111 | — | `BGEU rs1, rs2, offset` | if (rs1 >= rs2 无符号) PC += offset |
+| LUI | U | 0110111 | — | — | `LUI rd, imm` | rd = imm << 12 |
+| AUIPC | U | 0010111 | — | — | `AUIPC rd, imm` | rd = PC + (imm << 12) |
+| JAL | J | 1101111 | — | — | `JAL rd, offset` | rd = PC+4; PC += offset |
+| JALR | I | 1100111 | 000 | — | `JALR rd, offset(rs1)` | rd = PC+4; PC = (rs1+offset) & ~1 |
 
 **未实现：** LH, LHU, LB, LBU, SH, SB (6 条 byte/halfword 指令，基础 Case 不涉及)。
 
@@ -72,7 +96,7 @@
 
 **异常处理：** 不支持 (基础版本)。
 
-**更新内容：** 无 ISA 扩展，严格遵循 RV32I 标准。
+**更新内容：** 基础 CPU 严格遵循 RV32I 标准，无 ISA 扩展。Bonus 部分新增 3 条自定义硬件加速指令 (POPCNT/CLZ/CTZ)，详见第 6.5 节。
 
 ### 4b. 时钟与 CPI
 
@@ -95,7 +119,7 @@
 | 寻址单位 | 字节 (Byte)，指令 32-bit 对齐 |
 | IMem | 64KB BRAM，地址空间 0x0000_0000–0x0000_FFFF，PC 复位地址 0x4000 |
 | DMem | 64KB BRAM，地址空间 0x0000_0000–0x0000_FFFF，测试数据基址 0x4000 |
-| 栈基址 | 未定义 (汇编测试未使用栈) |
+| 栈基址 | 0x0000_FF00 (预留, sp=x2 初始化至此; 汇编测试未使用栈, 赋默认值) |
 
 **Difftest 测试数据地址布局：**
 
@@ -150,9 +174,11 @@ MMIO 译码规则：地址高 16-bit 为 0xFFFF 时进入 MMIO 区域，低 4-bi
 
 1. **烧录：** Micro USB 连接 EGO1，Vivado Hardware Manager 烧录 `TopDebug.bit`
 2. **复位：** 按下 EGO1 右下角按键 P15 (低有效)，或通过 UART 发送 CMD_RESET (0x01)
-3. **差分测试：** PC 端运行 difftest Python 脚本，通过 UART 自动加载测试数据、控制 CPU 执行、读取结果并比对
-4. **传统 I/O 测试：** 拨码开关输入 CaseID (低 4 位)，LED[7:0] 显示结果低 8 位
-5. **VGA 显示：** 连接 VGA 线到 EGO1 和显示器，CPU 通过 `sw` 指令写入 0xFFFF_0100–0xFFFF_13BF 即可输出 80×30 彩色字符画面
+3. **模式切换：** SwitchIn[15] 拨码开关: 拨下(0)=单周期 CPU, 拨上(1)=五级流水线 CPU。两种模式共享 IMem/DMem，切换即时生效无需重新烧录
+4. **差分测试：** PC 端运行 difftest Python 脚本，通过 UART 自动加载测试数据、控制 CPU 执行、读取结果并比对
+5. **传统 I/O 测试：** 拨码开关输入 CaseID (低 4 位)，LED[7:0] 显示结果低 8 位
+6. **VGA 显示：** 连接 VGA 线到 EGO1 和显示器，CPU 通过 `sw` 指令写入 0xFFFF_0100–0xFFFF_13BF 即可输出 80×30 彩色字符画面
+7. **贪吃蛇游戏：** 按键 btn[0]=上, btn[1]=下, btn[2]=左, btn[3]=右, btn[4]=重开。游戏画面通过 VGA 显示
 
 **CPU 内部结构简图：**
 
@@ -182,6 +208,8 @@ PC(0x4000) → IMem(BRAM 64KB, 组合读) → inst
 - DebugController + UART @100MHz, CPU @12.5MHz
 - IMem Debug 信号 sync: posedge clk
 - DMem Debug 信号 sync: negedge clk (错半拍改善时序)
+- DMem BRAM 使用 negedge clk 读写: IMem 在 posedge 取指, DMem 在 negedge 访存,
+  将两次 BRAM 访问分散到时钟周期的不同半边, 降低峰值功耗和 BRAM 端口竞争
 - MEM_WAIT_CYCLES = 20, STEP_COUNTDOWN_INIT = 8 (100/12.5)
 
 ---
@@ -190,15 +218,32 @@ PC(0x4000) → IMem(BRAM 64KB, 组合读) → inst
 
 ### 5.1 测试方法
 
+**总览：**
+
 | 方法 | 类型 | 用例描述 | 结果 | 结论 |
 |------|------|---------|------|------|
-| RARS 模拟 | 单元测试 | 5 个 Case (0,4,6,8,9) 共 21 组数据逐组验证 | 21/21 PASS | 汇编逻辑正确 |
-| Difftest 上板 | 集成测试 | 10 个 Case (0–9) 共 33 组数据批量自动比对 | 33/33 PASS | CPU 硬件逻辑完全正确 |
+| RARS 模拟 | 单元测试 | 10 个 Case 共 33 组数据逐组验证 | 33/33 PASS | 汇编逻辑正确 |
+| Difftest 上板 | 集成测试 | 10 个 Case 共 33 组数据批量自动比对 | 33/33 PASS | CPU 硬件逻辑完全正确 |
 | 传统 I/O | 集成测试 | 开关输入 CaseID, LED 显示结果低 8 位 | PASS | 基本硬件链路正常 |
+
+**逐 Case 明细：**
+
+| Case | 名称 | 测试组数 | 核心指令 | 验证要点 | 方法 | 结果 |
+|------|------|---------|---------|---------|------|------|
+| 0 | AND | 2 | `and` | 按位与 + 全1掩码 | RARS + Difftest | PASS |
+| 1 | SLL | 2 | `sll` | 逻辑左移, 仅低5bit移位量 | RARS + Difftest | PASS |
+| 2 | SRA | 2 | `sra` | 算术右移, 符号扩展 | RARS + Difftest | PASS |
+| 3 | LUI+ADD | 2 | `lui, add` | U-type+R-type 组合 | RARS + Difftest | PASS |
+| 4 | JAL+AUIPC | 2 | `jal, auipc, sub` | PC 相对寻址, 返回地址验证 | RARS + Difftest | PASS |
+| 5 | JAL+JALR | 2 | `jal, jalr` | 函数调用-返回机制 | RARS + Difftest | PASS |
+| 6 | Fibonacci | 4 | `add, addi, bgtz` | n=1,2,3,4 迭代法, 循环控制 | RARS + Difftest | PASS |
+| 7 | Popcount | 2 | 分治法序列 | 8-bit popcount 边界值 | RARS + Difftest | PASS |
+| 8 | IEEE754 | 9 | 字段提取+分支 | 半精度浮点分类(0/+∞/-∞/NaN/规约/非规约) | RARS + Difftest | PASS |
+| 9 | Q3.4 | 6 | 定点量化 | 半精度→Q3.4, 正数截断/负数补码 | RARS + Difftest | PASS |
 
 **关于仿真：** 本项目采用 "Verilog 代码审查 + RARS 汇编验证 + Difftest 上板测试" 的流程，未进行子模块仿真或 CPU 集成仿真。理由：(1) 单周期 CPU 以组合逻辑为主，11 个模块端口和逻辑已通过逐行交叉审查验证；(2) RARS 对全部 10 个 Case 汇编逻辑验证 PASS；(3) 课程要求明确：能上板则无需仿真，仿真仅为无法上板时的降级方案（得分×0.3）；(4) Difftest 33/33 PASS 已全面验证硬件正确性。
 
-### 5.2 Difftest 完整结果 (2026-05-18, 12.5MHz) (2026-05-18, 12.5MHz)
+### 5.2 Difftest 完整结果 (2026-05-18, 12.5MHz)
 
 ```
 Loading 130 instructions to 0x00000000...
