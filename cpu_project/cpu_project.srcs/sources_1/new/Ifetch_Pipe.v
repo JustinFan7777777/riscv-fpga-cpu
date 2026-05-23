@@ -5,7 +5,7 @@
 // 与单周期版 Ifetch.v 的区别:
 //   1. IMem 使用 BRAM (ram_style="block") + 寄存器读, 1 周期延迟由流水线吸收
 //   2. PC 更新逻辑考虑 EX 阶段的分支/跳转信号 (延迟到达)
-//   3. stall 冻结 PC (Load-Use hazard), flush 由 HazardUnit 控制
+//   3. stall 冻结 PC (Load-Use hazard), flush_ifid 由 HazardUnit ctrl_flush 控制
 //
 // PC 更新优先级: stall > branch/jump taken > PC+4
 // =============================================================================
@@ -16,7 +16,7 @@ module Ifetch_Pipe #(
 )(
     input         clk, rst_n,
     input         stall,         // 1=冻结PC (Load-Use)
-    input         flush,         // 1=清零inst输出 (branch taken → NOP)
+    input         flush_ifid,    // 1=清零inst输出 (branch/jump taken → NOP)
     input         branch_taken,  // 1=分支成立 (来自EX阶段)
     input         jump,          // 1=JAL跳转 (来自EX阶段)
     input         jalrsrc,       // 1=JALR跳转 (来自EX阶段)
@@ -70,7 +70,7 @@ module Ifetch_Pipe #(
     reg [31:0] pc_reg;
 
     assign inst_rd_data = imem[imem_phys];
-    assign inst         = flush ? 32'd0 : inst_reg;  // flush → NOP
+    assign inst         = flush_ifid ? 32'd0 : inst_reg;
     assign pcplus4      = pc_reg + 32'd4;
     parameter PC_RESET = 32'h00004000;
 
@@ -82,7 +82,7 @@ module Ifetch_Pipe #(
 
     wire [31:0] pc_plus_4 = pc_reg + 32'd4;
 
-    // Next-PC MUX: stall > flush(branch_target) > JALR > JAL > branch > PC+4
+    // Next-PC MUX: stall > branch_target > JALR > JAL > branch > PC+4
     wire take_branch = branch_taken | jump | jalrsrc;
     wire [31:0] target = jalrsrc ? jalr_target :
                           jump   ? jump_target :

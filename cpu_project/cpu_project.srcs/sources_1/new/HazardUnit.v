@@ -11,8 +11,8 @@
 //   - stall=1 冻结 IF/ID 和 PC, flush_idex=1 清零 ID/EX (插入 NOP 气泡)
 //
 // 控制冒险:
-//   - 由 CPUTopPipeline 在 EX 阶段检测 branch_taken 后 flush IF/ID 和 ID/EX
-//   - flush=1 清零 IF/ID (清除错误取指), flush_idex=1 清零 ID/EX (插入气泡)
+//   - 由 CPUTopPipeline 在 EX 阶段检测 branch_taken/jump/jalrsrc 后 flush IF/ID 和 ID/EX
+//   - flush_ifid=1 清零 IF/ID (清除错误取指), flush_idex=1 清零 ID/EX (插入气泡)
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -41,7 +41,7 @@ module HazardUnit (
 
     // ==== 流水线控制 ====
     output        stall,          // 1=冻结IF/ID + PC (Load-Use)
-    output        flush,          // 1=清零IF/ID (分支/跳转, 清除错误取指)
+    output        flush_ifid,     // 1=清零IF/ID (分支/跳转, 清除错误取指)
     output        flush_idex      // 1=清零ID/EX (插入气泡: Load-Use或分支/跳转)
 );
 
@@ -81,7 +81,7 @@ module HazardUnit (
                     && (idex_rd_addr != 5'd0);
 
     assign stall = load_use;
-    assign flush = ctrl_flush;
+    assign flush_ifid = ctrl_flush;
     assign flush_idex = load_use | ctrl_flush;
 
 endmodule

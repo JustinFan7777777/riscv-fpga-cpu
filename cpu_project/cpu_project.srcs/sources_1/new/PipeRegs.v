@@ -3,7 +3,7 @@
 // Description : 五级流水线寄存器组 (IF/ID, ID/EX, EX/MEM, MEM/WB)
 // =============================================================================
 // 每个流水线寄存器在 clk 上升沿锁存上一级的输出, 包含数据信号和控制信号。
-// stall=1 时冻结 IF/ID (Load-Use), flush=1 时清零 IF/ID (分支/跳转),
+// stall=1 时冻结 IF/ID (Load-Use), flush_ifid=1 时清零 IF/ID (分支/跳转),
 // flush_idex=1 时清零 ID/EX 插入气泡 (Load-Use 或 分支/跳转)。
 // =============================================================================
 `timescale 1ns / 1ps
@@ -11,7 +11,7 @@
 module PipeRegs (
     input         clk, rst_n,
     input         stall,       // 1=冻结IF/ID + PC (Load-Use)
-    input         flush,       // 1=清零IF/ID (分支/跳转, 清除错误取指)
+    input         flush_ifid,  // 1=清零IF/ID (分支/跳转, 清除错误取指)
     input         flush_idex,  // 1=清零ID/EX (插入气泡: Load-Use或分支/跳转)
 
     // IF 阶段输出 → IF/ID 输入
@@ -70,7 +70,7 @@ module PipeRegs (
             ifid_pcplus4 <= 32'd0;
             ifid_inst    <= 32'd0;  // NOP after flush
         end else begin
-            if (flush) begin
+            if (flush_ifid) begin
                 ifid_inst    <= 32'd0;  // NOP (all zeros → default case in decoder)
                 ifid_pc      <= 32'd0;
                 ifid_pcplus4 <= 32'd0;
@@ -97,26 +97,8 @@ module PipeRegs (
     reg [2:0]  idex_funct3;
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            idex_pc        <= 32'd0;
-            idex_pcplus4   <= 32'd0;
-            idex_rs1_val   <= 32'd0;
-            idex_rs2_val   <= 32'd0;
-            idex_imm       <= 32'd0;
-            idex_rs1_addr  <= 5'd0;
-            idex_rs2_addr  <= 5'd0;
-            idex_rd_addr   <= 5'd0;
-            idex_regwrite  <= 1'b0;
-            idex_alusrc    <= 1'b0;
-            idex_memtoreg  <= 1'b0;
-            idex_memwrite  <= 1'b0;
-            idex_branch    <= 1'b0;
-            idex_jump      <= 1'b0;
-            idex_jalrsrc   <= 1'b0;
-            idex_alucontrol <= 4'd0;
-            idex_funct3    <= 3'd0;
-        end else if (flush_idex) begin
-            // 插入气泡: 清零所有控制信号 (等效 NOP)
+        if (!rst_n || flush_idex) begin
+            // 复位或插入气泡: 清零所有控制信号 (等效 NOP)
             idex_pc        <= 32'd0;
             idex_pcplus4   <= 32'd0;
             idex_rs1_val   <= 32'd0;

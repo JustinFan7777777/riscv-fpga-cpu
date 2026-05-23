@@ -54,7 +54,7 @@
 // 【控制冒险 (Control Hazard)】
 //   情况: 分支指令在 EX 阶段才知道跳不跳, 但 IF 已经取了两条后续指令
 //   解决: 假设不跳转 (Predict Not Taken) — 如果分支成立, 把 IF/ID
-//         寄存器清零 (flush → NOP), 相当于那两条错误指令作废,
+//         寄存器清零 (flush_ifid → NOP), 相当于那两条错误指令作废,
 //         PC 更新为分支目标。代价: 1 周期 penalty。
 //
 // 【与单周期 CPU 的对比】
@@ -105,7 +105,7 @@ module CPUTopPipeline (
     // ========================================================================
     // IF
     wire [31:0] if_pc, if_inst, if_pcplus4;
-    wire        stall, flush, flush_idex, ctrl_flush;
+    wire        stall, flush_ifid, flush_idex, ctrl_flush;
     wire        ex_branch_taken, ex_jump, ex_jalrsrc;
     wire [31:0] ex_branch_target, ex_jump_target, ex_jalr_target;
 
@@ -143,7 +143,7 @@ module CPUTopPipeline (
 
     Ifetch_Pipe uIfetch (
         .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective),
-        .flush(flush), .branch_taken(ex_branch_taken),
+        .flush_ifid(flush_ifid), .branch_taken(ex_branch_taken),
         .jump(ex_jump), .jalrsrc(ex_jalrsrc),
         .branch_target(ex_branch_target), .jump_target(ex_jump_target),
         .jalr_target(ex_jalr_target),
@@ -184,7 +184,7 @@ module CPUTopPipeline (
     // PipeRegs — 4组流水线寄存器
     // ========================================================================
     PipeRegs uPipeRegs (
-        .clk(clk), .rst_n(rst_n), .stall(stall), .flush(flush), .flush_idex(flush_idex),
+        .clk(clk), .rst_n(rst_n), .stall(stall), .flush_ifid(flush_ifid), .flush_idex(flush_idex),
         // IF → IF/ID
         .if_pc(if_pc), .if_pcplus4(if_pcplus4), .if_inst(if_inst),
         // ID → ID/EX
@@ -234,7 +234,7 @@ module CPUTopPipeline (
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
         .ctrl_flush(ctrl_flush),
         .forward_a(forward_a), .forward_b(forward_b),
-        .stall(stall), .flush(flush), .flush_idex(flush_idex)
+        .stall(stall), .flush_ifid(flush_ifid), .flush_idex(flush_idex)
     );
 
     // ========================================================================
