@@ -23,9 +23,9 @@ module PipeRegs (
     input         id_regwrite, id_alusrc, id_memtoreg, id_memwrite,
     input         id_branch, id_jump, id_jalrsrc,
     input  [3:0]  id_alucontrol,
-    input  [2:0]  id_funct3,        // funct3 (用于EX阶段分支判断)
-    input         id_lui,           // 1=LUI 指令 (ALU_A=0)
-    input         id_auipc,         // 1=AUIPC 指令 (ALU_A=PC)
+    input  [2:0]  id_funct3,
+    input         id_lui,           // LUI: ALU_A=0
+    input         id_auipc,         // AUIPC: ALU_A=PC
 
     // EX 阶段输出 → EX/MEM 输入
     input  [31:0] ex_aluresult, ex_writedata,
@@ -46,9 +46,8 @@ module PipeRegs (
     output        ex_o_regwrite, ex_o_alusrc, ex_o_memtoreg, ex_o_memwrite,
     output        ex_o_branch, ex_o_jump, ex_o_jalrsrc,
     output [3:0]  ex_o_alucontrol,
-    output [2:0]  ex_o_funct3,        // funct3 (用于EX分支判断)
-    output        ex_o_lui,           // 1=LUI 指令
-    output        ex_o_auipc,         // 1=AUIPC 指令
+    output [2:0]  ex_o_funct3;
+    output        ex_o_lui, ex_o_auipc;
 
     // ==== EX/MEM 输出 (MEM 阶段用) ====
     output [31:0] mem_o_aluresult, mem_o_writedata,

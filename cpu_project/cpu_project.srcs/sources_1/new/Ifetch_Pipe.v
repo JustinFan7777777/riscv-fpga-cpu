@@ -75,9 +75,8 @@ module Ifetch_Pipe #(
         end
     end
 
-    // PC 寄存器
-    reg [31:0] pc_reg;
-    reg [31:0] pc_prev;   // 与 inst_reg 对齐的 PC (pc_reg 的上一拍)
+    // PC 寄存器: pc_reg=超前取指地址, pc_prev=与 inst_reg 对齐的指令PC
+    reg [31:0] pc_reg, pc_prev;
 
     // Debug 读使用 inst_reg (同步寄存器读), 避免组合读破坏 BRAM 推断
     assign inst_rd_data = inst_reg;

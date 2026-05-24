@@ -124,7 +124,7 @@ module CPUTopPipeline (
     wire        ex_branch, ex_jump_wire, ex_jalrsrc_wire;
     wire        ex_lui, ex_auipc;      // LUI/AUIPC 标志 (经ID/EX传入)
     wire [3:0]  ex_alucontrol; wire [2:0] ex_funct3;
-    wire [31:0] ex_aluresult, ex_writedata;
+    wire [31:0] ex_alu_raw, ex_writedata;
     wire [1:0]  forward_a, forward_b;  // ALU输入选择: 00=rs值, 01=EX/MEM转发, 10=MEM/WB转发
 
     // MEM
@@ -249,7 +249,7 @@ module CPUTopPipeline (
     wire [31:0] ex_alu_a_fwd;
     assign ex_alu_a_fwd = (forward_a == 2'b01) ? mem_aluresult :
                           (forward_a == 2'b10) ? wb_wd3 : ex_rs1_val;
-    // Bug#2 修复: LUI → ALU_A=0, AUIPC → ALU_A=PC, 其他 → 转发rs1
+    // LUI → ALU_A=0, AUIPC → ALU_A=PC (覆盖转发, 因inst[19:15]在U-type不是rs1)
     wire [31:0] ex_alu_a = ex_lui ? 32'd0 :
                            ex_auipc ? ex_pc : ex_alu_a_fwd;
 
@@ -260,10 +260,10 @@ module CPUTopPipeline (
     wire [31:0] ex_alu_b = ex_alusrc ? ex_imm : ex_alu_b_fwd;
 
     ALU uALU (.A(ex_alu_a), .B(ex_alu_b), .ALUControl(ex_alucontrol),
-              .ALUResult(ex_aluresult), .Zero());
+              .ALUResult(ex_alu_raw), .Zero());
 
-    // Bug#1 修复: JAL/JALR 需写回 PC+4 (返回地址), 而非 ALU 算出的跳转目标
-    wire [31:0] ex_alu_result = (ex_jump_wire | ex_jalrsrc_wire) ? ex_pcplus4 : ex_aluresult;
+    // JAL/JALR 的写回值是 PC+4 (返回地址), 而非 ALU 算出的跳转目标
+    wire [31:0] ex_alu_result = (ex_jump_wire | ex_jalrsrc_wire) ? ex_pcplus4 : ex_alu_raw;
 
     // 分支/跳转目标
     assign ex_branch_target = ex_pc + ex_imm;
