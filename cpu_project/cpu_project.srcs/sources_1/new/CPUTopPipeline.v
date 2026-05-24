@@ -100,6 +100,16 @@ module CPUTopPipeline (
 
     wire cpu_halt_effective = cpu_halt & ~cpu_step;
 
+    // 复位预热: 复位后 inst_reg 需 1 拍从 BRAM 加载首条指令,
+    // 此期间冻结 IF/ID 防止捕获 NOP。仅影响 IF 取指, 不影响已流水化的 NOP。
+    reg reset_stall;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            reset_stall <= 1'b1;
+        else
+            reset_stall <= 1'b0;
+    end
+
     // ========================================================================
     // 所有内部信号声明 (必须在模块实例化之前)
     // ========================================================================
@@ -142,7 +152,7 @@ module CPUTopPipeline (
     // ========================================================================
 
     Ifetch_Pipe uIfetch (
-        .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective),
+        .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective | reset_stall),
         .flush_ifid(flush_ifid), .branch_taken(ex_branch_taken),
         .jump(ex_jump), .jalrsrc(ex_jalrsrc),
         .branch_target(ex_branch_target), .jump_target(ex_jump_target),
