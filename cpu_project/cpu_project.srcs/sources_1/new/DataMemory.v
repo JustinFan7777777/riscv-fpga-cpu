@@ -71,7 +71,9 @@ module DataMemory (
 );
 
     // 数据内存 BRAM: 16384 x 32-bit = 64KB
-    (* ram_style = "block" *)
+    // WRITE_MODE="READ_FIRST" 告知 Vivado 读写同一地址时先返回旧值再写入,
+    // 匹配下方 always 块的 read-before-write 语义, 是正确推断为 Block RAM 的关键。
+    (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
     reg [31:0] mem [0:16383];
 
     // IO 外设寄存器 (MMIO中可读可写, 宽度匹配 EGO1 实际硬件)
@@ -123,16 +125,14 @@ module DataMemory (
     // 使用 posedge 而非 negedge: Xilinx 真双端口 BRAM 要求两端口均为 posedge
     // 才能正确推断为 BRAM, 避免回退到 LUT RAM 耗尽 LUT 资源。
     // 读优先写: 先读后写, 确保读返回旧值 (read-before-write 语义)
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            vga_fb_cpu_rdata <= 16'd0;
-        end else begin
-            // 先读 (返回旧值, 即使同一周期有写操作)
-            vga_fb_cpu_rdata <= vga_fb_mem[vga_fb_waddr];
-            // 后写
-            if (vga_fb_we_cpu)
-                vga_fb_mem[vga_fb_waddr] <= WriteData[15:0];
-        end
+    // 注意: 移除了 rst_n 异步复位 — Xilinx BRAM 不支持复位信号,
+    // 若 always 块包含 rst_n 会让 Vivado 误判为分布式 RAM 从而耗尽 LUT。
+    always @(posedge clk) begin
+        // 先读 (返回旧值, 即使同一周期有写操作)
+        vga_fb_cpu_rdata <= vga_fb_mem[vga_fb_waddr];
+        // 后写
+        if (vga_fb_we_cpu)
+            vga_fb_mem[vga_fb_waddr] <= WriteData[15:0];
     end
 
     // ---- Port B: VGA 侧 (posedge clk_vga, 25MHz) — 只读 ----

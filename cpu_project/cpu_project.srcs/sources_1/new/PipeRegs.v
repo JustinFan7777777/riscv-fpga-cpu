@@ -24,12 +24,13 @@ module PipeRegs (
     input         id_branch, id_jump, id_jalrsrc,
     input  [3:0]  id_alucontrol,
     input  [2:0]  id_funct3,        // funct3 (用于EX阶段分支判断)
+    input         id_lui,           // 1=LUI 指令 (ALU_A=0)
+    input         id_auipc,         // 1=AUIPC 指令 (ALU_A=PC)
 
     // EX 阶段输出 → EX/MEM 输入
-    input  [31:0] ex_aluresult, ex_writedata, ex_branchtarget,
+    input  [31:0] ex_aluresult, ex_writedata,
     input  [4:0]  ex_rd_addr,
     input         ex_regwrite, ex_memtoreg, ex_memwrite,
-    input         ex_branch, ex_jump, ex_branch_taken,
 
     // MEM 阶段输出 → MEM/WB 输入
     input  [31:0] mem_readdata, mem_aluresult,
@@ -46,12 +47,13 @@ module PipeRegs (
     output        ex_o_branch, ex_o_jump, ex_o_jalrsrc,
     output [3:0]  ex_o_alucontrol,
     output [2:0]  ex_o_funct3,        // funct3 (用于EX分支判断)
+    output        ex_o_lui,           // 1=LUI 指令
+    output        ex_o_auipc,         // 1=AUIPC 指令
 
     // ==== EX/MEM 输出 (MEM 阶段用) ====
-    output [31:0] mem_o_aluresult, mem_o_writedata, mem_o_branchtarget,
+    output [31:0] mem_o_aluresult, mem_o_writedata,
     output [4:0]  mem_o_rd_addr,
     output        mem_o_regwrite, mem_o_memtoreg, mem_o_memwrite,
-    output        mem_o_branch, mem_o_jump, mem_o_branch_taken,
 
     // ==== MEM/WB 输出 (WB 阶段用) ====
     output [31:0] wb_o_readdata, wb_o_aluresult,
@@ -95,6 +97,7 @@ module PipeRegs (
     reg        idex_branch, idex_jump, idex_jalrsrc;
     reg [3:0]  idex_alucontrol;
     reg [2:0]  idex_funct3;
+    reg        idex_lui, idex_auipc;  // LUI/AUIPC 标志
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n || flush_idex) begin
@@ -116,6 +119,8 @@ module PipeRegs (
             idex_jalrsrc   <= 1'b0;
             idex_alucontrol <= 4'd0;
             idex_funct3    <= 3'd0;
+            idex_lui       <= 1'b0;
+            idex_auipc     <= 1'b0;
         end else begin
             idex_pc        <= id_pc;
             idex_pcplus4   <= id_pcplus4;
@@ -134,6 +139,8 @@ module PipeRegs (
             idex_jalrsrc   <= id_jalrsrc;
             idex_alucontrol <= id_alucontrol;
             idex_funct3    <= id_funct3;
+            idex_lui       <= id_lui;
+            idex_auipc     <= id_auipc;
         end
     end
 
@@ -154,51 +161,40 @@ module PipeRegs (
     assign ex_o_jalrsrc    = idex_jalrsrc;
     assign ex_o_alucontrol = idex_alucontrol;
     assign ex_o_funct3     = idex_funct3;
+    assign ex_o_lui        = idex_lui;
+    assign ex_o_auipc      = idex_auipc;
 
     // ========================================================================
     // EX/MEM 寄存器
     // ========================================================================
-    reg [31:0] exmem_aluresult, exmem_writedata, exmem_branchtarget;
+    reg [31:0] exmem_aluresult, exmem_writedata;
     reg [4:0]  exmem_rd_addr;
     reg        exmem_regwrite, exmem_memtoreg, exmem_memwrite;
-    reg        exmem_branch, exmem_jump, exmem_branch_taken;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            exmem_aluresult     <= 32'd0;
-            exmem_writedata     <= 32'd0;
-            exmem_branchtarget  <= 32'd0;
-            exmem_rd_addr       <= 5'd0;
-            exmem_regwrite      <= 1'b0;
-            exmem_memtoreg      <= 1'b0;
-            exmem_memwrite      <= 1'b0;
-            exmem_branch        <= 1'b0;
-            exmem_jump          <= 1'b0;
-            exmem_branch_taken  <= 1'b0;
+            exmem_aluresult <= 32'd0;
+            exmem_writedata <= 32'd0;
+            exmem_rd_addr   <= 5'd0;
+            exmem_regwrite  <= 1'b0;
+            exmem_memtoreg  <= 1'b0;
+            exmem_memwrite  <= 1'b0;
         end else begin
-            exmem_aluresult     <= ex_aluresult;
-            exmem_writedata     <= ex_writedata;
-            exmem_branchtarget  <= ex_branchtarget;
-            exmem_rd_addr       <= ex_rd_addr;
-            exmem_regwrite      <= ex_regwrite;
-            exmem_memtoreg      <= ex_memtoreg;
-            exmem_memwrite      <= ex_memwrite;
-            exmem_branch        <= ex_branch;
-            exmem_jump          <= ex_jump;
-            exmem_branch_taken  <= ex_branch_taken;
+            exmem_aluresult <= ex_aluresult;
+            exmem_writedata <= ex_writedata;
+            exmem_rd_addr   <= ex_rd_addr;
+            exmem_regwrite  <= ex_regwrite;
+            exmem_memtoreg  <= ex_memtoreg;
+            exmem_memwrite  <= ex_memwrite;
         end
     end
 
-    assign mem_o_aluresult    = exmem_aluresult;
-    assign mem_o_writedata    = exmem_writedata;
-    assign mem_o_branchtarget = exmem_branchtarget;
-    assign mem_o_rd_addr      = exmem_rd_addr;
-    assign mem_o_regwrite     = exmem_regwrite;
-    assign mem_o_memtoreg     = exmem_memtoreg;
-    assign mem_o_memwrite     = exmem_memwrite;
-    assign mem_o_branch       = exmem_branch;
-    assign mem_o_jump         = exmem_jump;
-    assign mem_o_branch_taken = exmem_branch_taken;
+    assign mem_o_aluresult = exmem_aluresult;
+    assign mem_o_writedata = exmem_writedata;
+    assign mem_o_rd_addr   = exmem_rd_addr;
+    assign mem_o_regwrite  = exmem_regwrite;
+    assign mem_o_memtoreg  = exmem_memtoreg;
+    assign mem_o_memwrite  = exmem_memwrite;
 
     // ========================================================================
     // MEM/WB 寄存器

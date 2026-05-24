@@ -113,7 +113,7 @@ module CPUTopPipeline (
     wire [31:0] id_pc, id_pcplus4, id_inst;
     wire        id_regwrite, id_alusrc, id_memtoreg, id_memwrite;
     wire        id_branch, id_jump, id_jalrsrc;
-    wire [1:0]  id_aluop; wire [3:0] id_alucontrol; wire [2:0] id_funct3;
+    wire [3:0]  id_alucontrol; wire [2:0] id_funct3;
     wire [31:0] id_rs1_val, id_rs2_val, id_imm;
     wire [4:0]  id_rs1_addr, id_rs2_addr, id_rd_addr;
 
@@ -122,15 +122,15 @@ module CPUTopPipeline (
     wire [4:0]  ex_rs1_addr, ex_rs2_addr, ex_rd_addr;
     wire        ex_regwrite, ex_alusrc, ex_memtoreg, ex_memwrite;
     wire        ex_branch, ex_jump_wire, ex_jalrsrc_wire;
+    wire        ex_lui, ex_auipc;      // LUI/AUIPC 标志 (经ID/EX传入)
     wire [3:0]  ex_alucontrol; wire [2:0] ex_funct3;
     wire [31:0] ex_aluresult, ex_writedata;
     wire [1:0]  forward_a, forward_b;  // ALU输入选择: 00=rs值, 01=EX/MEM转发, 10=MEM/WB转发
 
     // MEM
-    wire [31:0] mem_aluresult, mem_writedata, mem_branchtarget, mem_readdata;
+    wire [31:0] mem_aluresult, mem_writedata, mem_readdata;
     wire [4:0]  mem_rd_addr;
     wire        mem_regwrite, mem_memtoreg, mem_memwrite;
-    wire        mem_branch, mem_jump, mem_branch_taken;
 
     // WB
     wire [31:0] wb_readdata, wb_aluresult, wb_wd3;
@@ -162,7 +162,7 @@ module CPUTopPipeline (
         .inst(id_inst), .RegWrite(id_regwrite), .ALUSrc(id_alusrc),
         .MemtoReg(id_memtoreg), .MemWrite(id_memwrite),
         .Branch(id_branch), .Jump(id_jump), .JALRSrc(id_jalrsrc),
-        .ALUOp(id_aluop), .ALUControl(id_alucontrol)
+        .ALUControl(id_alucontrol)
     );
     assign id_funct3 = id_inst[14:12];
 
@@ -180,6 +180,11 @@ module CPUTopPipeline (
 
     ImmGen uImmGen (.inst(id_inst), .Imm(id_imm));
 
+    // LUI/AUIPC 检测 (用于 EX 阶段 ALU_A 选择)
+    // 单周期 CPUTop 用 inst 直接判断, 流水线需把此信息传到 EX 阶段
+    wire id_isLUI   = (id_inst[6:0] == 7'b0110111);
+    wire id_isAUIPC = (id_inst[6:0] == 7'b0010111);
+
     // ========================================================================
     // PipeRegs — 4组流水线寄存器
     // ========================================================================
@@ -194,11 +199,11 @@ module CPUTopPipeline (
         .id_regwrite(id_regwrite), .id_alusrc(id_alusrc), .id_memtoreg(id_memtoreg),
         .id_memwrite(id_memwrite), .id_branch(id_branch), .id_jump(id_jump),
         .id_jalrsrc(id_jalrsrc), .id_alucontrol(id_alucontrol), .id_funct3(id_funct3),
+        .id_lui(id_isLUI), .id_auipc(id_isAUIPC),
         // EX → EX/MEM
-        .ex_aluresult(ex_aluresult), .ex_writedata(ex_writedata),
-        .ex_branchtarget(ex_branch_target), .ex_rd_addr(ex_rd_addr),
+        .ex_aluresult(ex_alu_result), .ex_writedata(ex_writedata),
+        .ex_rd_addr(ex_rd_addr),
         .ex_regwrite(ex_regwrite), .ex_memtoreg(ex_memtoreg), .ex_memwrite(ex_memwrite),
-        .ex_branch(ex_branch), .ex_jump(ex_jump), .ex_branch_taken(ex_branch_taken),
         // MEM → MEM/WB
         .mem_readdata(mem_readdata), .mem_aluresult(mem_aluresult),
         .mem_rd_addr(mem_rd_addr), .mem_regwrite(mem_regwrite), .mem_memtoreg(mem_memtoreg),
@@ -211,12 +216,12 @@ module CPUTopPipeline (
         .ex_o_regwrite(ex_regwrite), .ex_o_alusrc(ex_alusrc), .ex_o_memtoreg(ex_memtoreg),
         .ex_o_memwrite(ex_memwrite), .ex_o_branch(ex_branch), .ex_o_jump(ex_jump_wire),
         .ex_o_jalrsrc(ex_jalrsrc_wire), .ex_o_alucontrol(ex_alucontrol), .ex_o_funct3(ex_funct3),
+        .ex_o_lui(ex_lui), .ex_o_auipc(ex_auipc),
         // EX/MEM → MEM
         .mem_o_aluresult(mem_aluresult), .mem_o_writedata(mem_writedata),
-        .mem_o_branchtarget(mem_branchtarget), .mem_o_rd_addr(mem_rd_addr),
+        .mem_o_rd_addr(mem_rd_addr),
         .mem_o_regwrite(mem_regwrite), .mem_o_memtoreg(mem_memtoreg),
-        .mem_o_memwrite(mem_memwrite), .mem_o_branch(mem_branch),
-        .mem_o_jump(mem_jump), .mem_o_branch_taken(mem_branch_taken),
+        .mem_o_memwrite(mem_memwrite),
         // MEM/WB → WB
         .wb_o_readdata(wb_readdata), .wb_o_aluresult(wb_aluresult),
         .wb_o_rd_addr(wb_rd_addr), .wb_o_regwrite(wb_regwrite), .wb_o_memtoreg(wb_memtoreg)
@@ -240,11 +245,13 @@ module CPUTopPipeline (
     // ========================================================================
     // EX — ALU + 分支/跳转
     // ========================================================================
-    // ALU A: 转发MUX (来自EX/MEM或MEM/WB)
+    // ALU A: 转发MUX (来自EX/MEM或MEM/WB) + LUI/AUIPC 选择
     wire [31:0] ex_alu_a_fwd;
     assign ex_alu_a_fwd = (forward_a == 2'b01) ? mem_aluresult :
                           (forward_a == 2'b10) ? wb_wd3 : ex_rs1_val;
-    wire [31:0] ex_alu_a = ex_alu_a_fwd;
+    // Bug#2 修复: LUI → ALU_A=0, AUIPC → ALU_A=PC, 其他 → 转发rs1
+    wire [31:0] ex_alu_a = ex_lui ? 32'd0 :
+                           ex_auipc ? ex_pc : ex_alu_a_fwd;
 
     // ALU B: 转发MUX + ALUSrc选择
     wire [31:0] ex_alu_b_fwd;
@@ -255,10 +262,14 @@ module CPUTopPipeline (
     ALU uALU (.A(ex_alu_a), .B(ex_alu_b), .ALUControl(ex_alucontrol),
               .ALUResult(ex_aluresult), .Zero());
 
+    // Bug#1 修复: JAL/JALR 需写回 PC+4 (返回地址), 而非 ALU 算出的跳转目标
+    wire [31:0] ex_alu_result = (ex_jump_wire | ex_jalrsrc_wire) ? ex_pcplus4 : ex_aluresult;
+
     // 分支/跳转目标
     assign ex_branch_target = ex_pc + ex_imm;
     assign ex_jump_target   = ex_pc + ex_imm;
-    wire [31:0] ex_jalr_sum = ex_alu_a + ex_imm;  // rs1(forwarded) + imm
+    // JALR 跳转目标 = rs1 + imm (JALR不是LUI/AUIPC, 直接用转发后的rs1)
+    wire [31:0] ex_jalr_sum = ex_alu_a_fwd + ex_imm;
     assign ex_jalr_target   = {ex_jalr_sum[31:1], 1'b0};
 
     // 分支条件

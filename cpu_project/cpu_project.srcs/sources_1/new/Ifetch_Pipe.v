@@ -33,6 +33,8 @@ module Ifetch_Pipe #(
 );
 
     // IMem: 8KB BRAM (2048 × 32-bit), 寄存器读
+    // ram_style="block" 避免 Vivado 回退为分布式 RAM 耗尽 LUT
+    (* ram_style = "block" *)
     reg [31:0] imem [0:2047];
 
     // Debug 同步
@@ -54,24 +56,34 @@ module Ifetch_Pipe #(
     end
 
     // 地址映射: PC 0x4000–0x5FFF → 物理 0x0000–0x07FF
-    wire [13:0] imem_logical = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : pc[15:2];
+    // 使用 pc_reg 而非 pc: inst_reg 需提前读取下一条指令, 而 pc 输出的
+    // 是 pc_prev (与 inst_reg 对齐的 PC), 用于 IF/ID 阶段
+    wire [13:0] imem_logical = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : pc_reg[15:2];
     wire [10:0] imem_phys    = imem_logical[10:0];
     wire        imem_wea     = inst_dbg_en_sync & inst_wr_en_sync;
 
     // BRAM 寄存器读 (与组合读不同: inst_reg 延迟1周期)
+    // 同步复位 inst_reg 消除仿真 X, 不影响 BRAM 推断 (imem 数组无复位)
     reg [31:0] inst_reg;
     always @(posedge clk) begin
-        if (imem_wea)
-            imem[imem_phys] <= inst_wr_data_sync;
-        inst_reg <= imem[imem_phys];
+        if (!rst_n) begin
+            inst_reg <= 32'd0;  // NOP
+        end else begin
+            if (imem_wea)
+                imem[imem_phys] <= inst_wr_data_sync;
+            inst_reg <= imem[imem_phys];
+        end
     end
 
-    // PC 寄存器 (声明在前, 供后续 assign 使用)
+    // PC 寄存器
     reg [31:0] pc_reg;
+    reg [31:0] pc_prev;   // 与 inst_reg 对齐的 PC (pc_reg 的上一拍)
 
-    assign inst_rd_data = imem[imem_phys];
+    // Debug 读使用 inst_reg (同步寄存器读), 避免组合读破坏 BRAM 推断
+    assign inst_rd_data = inst_reg;
     assign inst         = flush_ifid ? 32'd0 : inst_reg;
-    assign pcplus4      = pc_reg + 32'd4;
+    // pcplus4: 当前指令的 PC+4, 用于 JAL/JALR 链接地址
+    assign pcplus4      = pc_prev + 32'd4;
     parameter PC_RESET = 32'h00004000;
 
     localparam HEX_LOAD_OFFSET = 0;
@@ -94,12 +106,16 @@ module Ifetch_Pipe #(
                                    pc_plus_4;      // 顺序执行
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            pc_reg <= PC_RESET;
-        else
-            pc_reg <= next_pc;
+        if (!rst_n) begin
+            pc_reg  <= PC_RESET;
+            pc_prev <= PC_RESET;
+        end else begin
+            pc_reg  <= next_pc;
+            pc_prev <= pc_reg;  // 保存当前 inst_reg 对应的 PC, 使 PC 与 inst 对齐
+        end
     end
 
-    assign pc = pc_reg;
+    // 输出与 inst 对齐的 PC (pc_prev), 而非已超前的 pc_reg
+    assign pc = pc_prev;
 
 endmodule
