@@ -259,8 +259,6 @@ module CPUTopPipeline (
         .id_rs1_addr(id_rs1_addr), .id_rs2_addr(id_rs2_addr),
         .idex_rs1_addr(ex_rs1_addr), .idex_rs2_addr(ex_rs2_addr),
         .idex_rd_addr(ex_rd_addr), .idex_memread(ex_memtoreg),
-        // regwrite=1 但 rd=x0 (如 addi x0,x0,0) 是伪 NOP, 不应算作有用指令
-        .idex_is_nop(!((ex_regwrite && ex_rd_addr != 5'd0) | ex_memwrite | ex_memtoreg | ex_branch | ex_jump_wire | ex_jalrsrc_wire)),
         .exmem_rd_addr(mem_rd_addr), .exmem_regwrite(mem_regwrite),
         .exmem_memread(mem_memtoreg),
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
