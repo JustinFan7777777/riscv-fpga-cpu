@@ -33,8 +33,8 @@ module Ifetch_Pipe #(
 );
 
     // IMem: 8KB BRAM (2048 × 32-bit), 寄存器读
-    // ram_style="block" 避免 Vivado 回退为分布式 RAM 耗尽 LUT
-    (* ram_style = "block" *)
+    // ram_style="block" + WRITE_MODE="READ_FIRST" 匹配 RTL 先读后写语义
+    (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
     reg [31:0] imem [0:2047];
 
     // Debug 同步

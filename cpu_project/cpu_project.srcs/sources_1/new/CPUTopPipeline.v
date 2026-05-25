@@ -206,9 +206,8 @@ module CPUTopPipeline (
     ImmGen uImmGen (.inst(id_inst), .Imm(id_imm));
 
     // LUI/AUIPC 检测 (用于 EX 阶段 ALU_A 选择)
-    // 单周期 CPUTop 用 inst 直接判断, 流水线需把此信息传到 EX 阶段
-    wire id_isLUI   = (id_inst[6:0] == 7'b0110111);
-    wire id_isAUIPC = (id_inst[6:0] == 7'b0010111);
+    wire id_lui   = (id_inst[6:0] == 7'b0110111);
+    wire id_auipc = (id_inst[6:0] == 7'b0010111);
 
     // ========================================================================
     // PipeRegs — 4组流水线寄存器
@@ -224,7 +223,7 @@ module CPUTopPipeline (
         .id_regwrite(id_regwrite), .id_alusrc(id_alusrc), .id_memtoreg(id_memtoreg),
         .id_memwrite(id_memwrite), .id_branch(id_branch), .id_jump(id_jump),
         .id_jalrsrc(id_jalrsrc), .id_alucontrol(id_alucontrol), .id_funct3(id_funct3),
-        .id_lui(id_isLUI), .id_auipc(id_isAUIPC),
+        .id_lui(id_lui), .id_auipc(id_auipc),
         // EX → EX/MEM
         .ex_aluresult(ex_alu_result), .ex_writedata(ex_writedata),
         .ex_rd_addr(ex_rd_addr),
@@ -292,7 +291,7 @@ module CPUTopPipeline (
 
     // 分支/跳转目标
     assign ex_branch_target = ex_pc + ex_imm;
-    assign ex_jump_target   = ex_pc + ex_imm;
+    assign ex_jump_target   = ex_branch_target;     // JAL 与 Branch 目标相同 (PC+imm)
     // JALR 跳转目标 = rs1 + imm (JALR不是LUI/AUIPC, 直接用转发后的rs1)
     wire [31:0] ex_jalr_sum = ex_alu_a_fwd + ex_imm;
     assign ex_jalr_target   = {ex_jalr_sum[31:1], 1'b0};
