@@ -27,6 +27,7 @@ module HazardUnit (
     // EX/MEM 阶段 (上一指令在 MEM 阶段)
     input  [4:0]  exmem_rd_addr,
     input         exmem_regwrite,
+    input         exmem_memread,   // 1=EX/MEM中的指令是Load
 
     // MEM/WB 阶段 (上上指令在 WB 阶段)
     input  [4:0]  memwb_rd_addr,
@@ -48,11 +49,15 @@ module HazardUnit (
     // ========================================================================
     // 转发检测: EX 阶段需要的数据是否在 EX/MEM 或 MEM/WB 中
     // ========================================================================
+    // 注意: Load 在 MEM 阶段时 exmem_aluresult 是访存地址而非数据,
+    // 正确的加载值要等到 WB 阶段, 因此 !exmem_memread 禁止从 MEM 阶段的 Load 转发。
     // Forward A (ALU input A ← rs1)
-    wire fwd_a_exmem = exmem_regwrite && (exmem_rd_addr != 5'd0)
+    wire fwd_a_exmem = exmem_regwrite && !exmem_memread
+                       && (exmem_rd_addr != 5'd0)
                        && (exmem_rd_addr == idex_rs1_addr);
     wire fwd_a_memwb = memwb_regwrite && (memwb_rd_addr != 5'd0)
-                       && !(exmem_regwrite && (exmem_rd_addr != 5'd0)
+                       && !(exmem_regwrite && !exmem_memread
+                            && (exmem_rd_addr != 5'd0)
                             && (exmem_rd_addr == idex_rs1_addr))
                        && (memwb_rd_addr == idex_rs1_addr);
 
@@ -61,10 +66,12 @@ module HazardUnit (
                        2'b00;
 
     // Forward B (ALU input B ← rs2)
-    wire fwd_b_exmem = exmem_regwrite && (exmem_rd_addr != 5'd0)
+    wire fwd_b_exmem = exmem_regwrite && !exmem_memread
+                       && (exmem_rd_addr != 5'd0)
                        && (exmem_rd_addr == idex_rs2_addr);
     wire fwd_b_memwb = memwb_regwrite && (memwb_rd_addr != 5'd0)
-                       && !(exmem_regwrite && (exmem_rd_addr != 5'd0)
+                       && !(exmem_regwrite && !exmem_memread
+                            && (exmem_rd_addr != 5'd0)
                             && (exmem_rd_addr == idex_rs2_addr))
                        && (memwb_rd_addr == idex_rs2_addr);
 
@@ -73,15 +80,22 @@ module HazardUnit (
                        2'b00;
 
     // ========================================================================
-    // Load-Use 冒险检测
+    // Load-Use 冒险检测 (两级)
     // ========================================================================
-    // ID/EX 阶段是 Load 指令, 且其 rd 是 IF/ID 阶段某条指令的 rs1 或 rs2
-    wire load_use = idex_memread
+    // Level 1: ID/EX 阶段是 Load, 且其 rd 被 IF/ID 阶段的指令使用
+    wire load_use_idex = idex_memread
                     && ((idex_rd_addr == id_rs1_addr) || (idex_rd_addr == id_rs2_addr))
                     && (idex_rd_addr != 5'd0);
 
-    assign stall = load_use;
+    // Level 2: EX/MEM 阶段是 Load, 且其 rd 被 ID 阶段的指令使用。
+    // 此时 Load 数据还在 DMem 中 (negedge 才读出), EX/MEM 存的是访存地址。
+    // 必须 stall 1 拍等 Load 到 WB, 才能从 MEM/WB 正确转发数据。
+    wire load_use_exmem = exmem_memread
+                    && ((exmem_rd_addr == id_rs1_addr) || (exmem_rd_addr == id_rs2_addr))
+                    && (exmem_rd_addr != 5'd0);
+
+    assign stall = load_use_idex | load_use_exmem;
     assign flush_ifid = ctrl_flush;
-    assign flush_idex = load_use | ctrl_flush;
+    assign flush_idex = load_use_idex | load_use_exmem | ctrl_flush;
 
 endmodule

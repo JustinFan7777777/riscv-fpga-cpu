@@ -260,6 +260,7 @@ module CPUTopPipeline (
         .idex_rs1_addr(ex_rs1_addr), .idex_rs2_addr(ex_rs2_addr),
         .idex_rd_addr(ex_rd_addr), .idex_memread(ex_memtoreg),
         .exmem_rd_addr(mem_rd_addr), .exmem_regwrite(mem_regwrite),
+        .exmem_memread(mem_memtoreg),
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
         .ctrl_flush(ctrl_flush),
         .forward_a(forward_a), .forward_b(forward_b),
