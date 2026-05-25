@@ -108,6 +108,7 @@ dispatcher_dead:
 case0_and:
     lw   t1, 4(s0)          # t1 = OperandA
     lw   t2, 8(s0)          # t2 = OperandB
+    addi x0, x0, 0           # NOP: 增加 Load→ALU 间距防 RegFile 写竞争
     and  t3, t1, t2          # t3 = A & B
     sw   t3, 12(s0)          # 结果写入 Base+C
     j    dispatcher_loop
@@ -121,6 +122,7 @@ case0_and:
 case1_sll:
     lw   t1, 4(s0)
     lw   t2, 8(s0)
+    addi x0, x0, 0           # NOP
     sll  t3, t1, t2          # t3 = A << B[4:0]
     sw   t3, 12(s0)
     j    dispatcher_loop
@@ -134,6 +136,7 @@ case1_sll:
 case2_sra:
     lw   t1, 4(s0)
     lw   t2, 8(s0)
+    addi x0, x0, 0           # NOP
     sra  t3, t1, t2          # t3 = A >>> B[4:0] (算术右移, 保留符号)
     sw   t3, 12(s0)
     j    dispatcher_loop
