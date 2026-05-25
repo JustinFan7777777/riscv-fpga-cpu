@@ -22,7 +22,7 @@
 //   CPI ≈ 1 (理想情况), 吞吐量是单周期的 5 倍。
 //
 // 【各阶段职责】
-//   IF  (取指): PC → IMem (BRAM寄存器读) → inst, 计算 PC+4
+//   IF  (取指): PC → IMem (分布式RAM组合读) → inst, 计算 PC+4
 //   ID  (译码): inst → Decoder(控制信号) + RegFile(读rs1/rs2) + ImmGen(立即数)
 //   EX  (执行): ALU(运算) + 分支/跳转目标计算 + 分支条件判断
 //   MEM (访存): DataMemory(读/写数据内存, MMIO, VGA帧缓冲)
@@ -63,7 +63,7 @@
 //                    时钟可以更快, 吞吐量提升 ~5 倍
 //
 // 【模块实例化清单】
-//   Ifetch_Pipe  : 取指 (BRAM 寄存器读, 1 周期延迟由流水线吸收)
+//   Ifetch_Pipe  : 取指 (分布式RAM 组合读, 零延迟, PC与inst天然同步)
 //   Decoder      : 译码 + 控制信号 (复用单周期)
 //   RegFile      : 寄存器堆 32×32 (复用)
 //   ImmGen       : 立即数生成 (复用)
@@ -100,28 +100,6 @@ module CPUTopPipeline (
 
     wire cpu_halt_effective = cpu_halt & ~cpu_step;
 
-    // 复位预热: 复位后 inst_reg 需 1 拍从 BRAM 加载首条指令,
-    // 此期间冻结 IF/ID 防止捕获 NOP。仅影响 IF 取指, 不影响已流水化的 NOP。
-    reg reset_stall;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            reset_stall <= 1'b1;
-        else
-            reset_stall <= 1'b0;
-    end
-
-    // BRAM 读延迟补偿: ctrl_flush 延长 1 拍兜住 inst_reg 中已超前的指令。
-    // BRAM 有 1 周期读延迟, inst_reg 比标准 IF 阶段多超前一条指令。
-    // 分支在 EX 时, flush_ifid 清除 IF/ID(PC+8), 但 PC+12 已在 inst_reg
-    // 中且 1 拍后才出现, 此时 ctrl_flush 已结束 → flush_ifid_delay 兜底。
-    reg flush_ifid_delay;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            flush_ifid_delay <= 1'b0;
-        else
-            flush_ifid_delay <= ctrl_flush;
-    end
-
     // ========================================================================
     // 所有内部信号声明 (必须在模块实例化之前)
     // ========================================================================
@@ -130,9 +108,6 @@ module CPUTopPipeline (
     wire        stall, flush_ifid, flush_idex, ctrl_flush;
     wire        ex_branch_taken, ex_jump, ex_jalrsrc;
     wire [31:0] ex_branch_target, ex_jump_target, ex_jalr_target;
-
-    // 延长后的 IF 刷新: HazardUnit 原始输出 + 延迟 1 拍的 ctrl_flush
-    wire flush_ifid_ext = flush_ifid | flush_ifid_delay;
 
     // ID
     wire [31:0] id_pc, id_pcplus4, id_inst;
@@ -163,12 +138,12 @@ module CPUTopPipeline (
     wire        wb_regwrite, wb_memtoreg;
 
     // ========================================================================
-    // IF — 取指 (Ifetch_Pipe: BRAM寄存器读)
+    // IF — 取指 (Ifetch_Pipe: 分布式RAM组合读)
     // ========================================================================
 
     Ifetch_Pipe uIfetch (
-        .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective | reset_stall),
-        .flush_ifid(flush_ifid_ext), .branch_taken(ex_branch_taken),
+        .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective),
+        .branch_taken(ex_branch_taken),
         .jump(ex_jump), .jalrsrc(ex_jalrsrc),
         .branch_target(ex_branch_target), .jump_target(ex_jump_target),
         .jalr_target(ex_jalr_target),
@@ -213,7 +188,7 @@ module CPUTopPipeline (
     // PipeRegs — 4组流水线寄存器
     // ========================================================================
     PipeRegs uPipeRegs (
-        .clk(clk), .rst_n(rst_n), .stall(stall), .flush_ifid(flush_ifid_ext), .flush_idex(flush_idex),
+        .clk(clk), .rst_n(rst_n), .stall(stall), .flush_ifid(flush_ifid), .flush_idex(flush_idex),
         // IF → IF/ID
         .if_pc(if_pc), .if_pcplus4(if_pcplus4), .if_inst(if_inst),
         // ID → ID/EX
