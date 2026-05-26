@@ -196,7 +196,7 @@ module CPUTopPipeline (
     assign id_rs2_addr = id_inst[24:20];
     assign id_rd_addr  = id_inst[11:7];
 
-    RegFile_Pipe uRegFile (
+    RegFile uRegFile (
         .clk(clk), .rst_n(rst_n), .RegWrite(wb_regwrite),
         .rs1_addr(id_rs1_addr), .rs2_addr(id_rs2_addr),
         .rd_addr(wb_rd_addr), .WD3(wb_wd3),
