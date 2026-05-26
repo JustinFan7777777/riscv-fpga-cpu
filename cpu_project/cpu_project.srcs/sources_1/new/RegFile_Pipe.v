@@ -48,10 +48,10 @@ module RegFile_Pipe (
                           dbg_bypass              ? WD3  : regFile[dbg_reg_addr];
 
     // ===========================
-    // 写口 (negedge clk, negedge rst_n 异步复位)
+    // 写口 (posedge clk, negedge rst_n 异步复位)
     // ===========================
-    // negedge 写: 在 posedge (ID/EX 锁存) 之前完成, 使下一拍 ID 读到新值
-    always @(negedge clk or negedge rst_n) begin
+    // posedge 写 + 旁路: ID/EX 锁存时用 OLD WB 信号的旁路数据, 下一拍 regFile 也有新值
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 32; i = i + 1)
                 regFile[i] <= 32'd0;
