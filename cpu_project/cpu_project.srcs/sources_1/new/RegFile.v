@@ -1,8 +1,27 @@
 // =============================================================================
 // Module      : RegFile.v
-// Description : 32 x 32-bit Register File for RISC-V RV32I (单周期 CPU 用)
+// Description : 32 x 32-bit Register File for RISC-V RV32I
 // =============================================================================
-// 写口: posedge clk, 无 bypass (单周期无流水线 RAW 竞争)
+//
+// ================================ 中文说明 ================================
+// 【功能】RISC-V 32x32 寄存器堆 —— 两读一写，x0 硬连线为 0。
+//         同时提供 Debug 调试读口 (dbg_reg_addr → dbg_reg_data)。
+//
+// 【在 CPU 数据通路中的位置】
+//                    ┌──▶ 读口1 (rs1_val) ──▶ ALU A端口
+//   Decoder(rs1,rs2)─┤
+//                    └──▶ 读口2 (rs2_val) ──▶ MUX ──▶ ALU B端口
+//
+//   写回: MEM/WB阶段 → RegWrite=1 → rd 被写入 WD3
+//
+// 【Debug 口】
+//   dbg_reg_addr[4:0] — DebugController 选中的寄存器编号
+//   dbg_reg_data[31:0] — 对应寄存器的值 (组合逻辑直出, 可随时读取)
+//   0号寄存器读取返回0 (与RISC-V规范一致)
+//
+// 【RISC-V 寄存器约定 (ABI名仅供汇编编程参考, 硬件不关心)】
+//   x0=zero, x1=ra, x2=sp, x3=gp, x4=tp, x5-7=t0-2
+//   x8=s0/fp, x9=s1, x10-17=a0-7, x18-27=s2-11, x28-31=t3-6
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -27,17 +46,27 @@ module RegFile (
     integer i;  // 复位循环变量
 
     // ===========================
-    // 双读口 (组合逻辑)
+    // 双读口 (组合逻辑, 非阻塞)
     // ===========================
+    // rs1_val: x0永远返回0, 其余寄存器直出
     assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 : regFile[rs1_addr];
+
+    // rs2_val: x0永远返回0, 其余寄存器直出
     assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 : regFile[rs2_addr];
 
+    // ===========================
     // Debug 读口 (组合逻辑)
+    // ===========================
+    // DebugController 随时可以读任意寄存器, 不影响CPU正常执行
     assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 : regFile[dbg_reg_addr];
 
     // ===========================
-    // 写口 (posedge clk, negedge rst_n 异步复位)
+    // 写口 (时序逻辑, posedge clk 写入, negedge rst_n 异步复位)
     // ===========================
+    // RISC-V规范: x0 硬连线为0, 写操作对x0无效
+    //   读口: rs1/rs2访问x0时返回0 (第51-54行)
+    //   写口: RegWrite=1且rd=x0时, 条件(rd_addr!=0)阻止写入, x0保持0
+    // 复位: for循环将32个寄存器全部清零 (综合为32个触发器复位)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 32; i = i + 1)

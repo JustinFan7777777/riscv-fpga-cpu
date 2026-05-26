@@ -5,15 +5,9 @@
 // 与单周期版 Ifetch.v 的区别:
 //   1. IMem 使用 BRAM (ram_style="block") + 寄存器读, 1 周期延迟由流水线吸收
 //   2. PC 更新逻辑考虑 EX 阶段的分支/跳转信号 (延迟到达)
-//   3. stall 冻结 PC (Load-Use hazard), flush_ifid 清零 inst 输出 (分支/跳转)
+//   3. stall 冻结 PC (Load-Use hazard), flush_ifid 由 HazardUnit ctrl_flush 控制
 //
 // PC 更新优先级: stall > branch/jump taken > PC+4
-//
-// BRAM 读延迟补偿:
-//   BRAM 寄存器读有 1 周期延迟, pc_reg 比 inst_reg 超前 1 条指令。
-//   pc_prev 保存 pc_reg 的前值, 使 pc 输出与 inst_reg 对齐。
-//   分支时 flush_ifid_delay (在CPUTopPipeline中) 将 flush 延长 1 拍,
-//   兜住 inst_reg 中已超前但尚未出现的错误指令。
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -28,9 +22,9 @@ module Ifetch_Pipe #(
     input         jalrsrc,       // 1=JALR跳转 (来自EX阶段)
     input  [31:0] branch_target, jump_target, jalr_target,
 
-    output [31:0] pc,             // 当前PC (与inst_reg对齐, 用于AUIPC和Debug)
+    output [31:0] pc,             // 当前PC (用于AUIPC和Debug)
     output [31:0] inst,           // 当前指令 (已注册, 延迟1周期)
-    output [31:0] pcplus4,        // PC+4 (JAL/JALR链接地址)
+    output [31:0] pcplus4,        // PC+4
 
     // Debug 接口
     input         inst_dbg_en, inst_wr_en,
@@ -43,7 +37,7 @@ module Ifetch_Pipe #(
     (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
     reg [31:0] imem [0:2047];
 
-    // Debug 跨时钟域同步
+    // Debug 同步
     reg        inst_dbg_en_sync, inst_wr_en_sync;
     reg [31:0] inst_dbg_addr_sync, inst_wr_data_sync;
 
@@ -62,17 +56,18 @@ module Ifetch_Pipe #(
     end
 
     // 地址映射: PC 0x4000–0x5FFF → 物理 0x0000–0x07FF
-    // pc_reg: 超前取指地址 (BRAM 读地址)
-    // pc_prev: 与 inst_reg 对齐的指令地址 (输出用)
+    // 使用 pc_reg 而非 pc: inst_reg 需提前读取下一条指令, 而 pc 输出的
+    // 是 pc_prev (与 inst_reg 对齐的 PC), 用于 IF/ID 阶段
     wire [13:0] imem_logical = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : pc_reg[15:2];
     wire [10:0] imem_phys    = imem_logical[10:0];
     wire        imem_wea     = inst_dbg_en_sync & inst_wr_en_sync;
 
-    // BRAM 寄存器读: inst_reg 延迟 pc_reg 1 周期
+    // BRAM 寄存器读 (与组合读不同: inst_reg 延迟1周期)
+    // 同步复位 inst_reg 消除仿真 X, 不影响 BRAM 推断 (imem 数组无复位)
     reg [31:0] inst_reg;
     always @(posedge clk) begin
         if (!rst_n) begin
-            inst_reg <= 32'd0;  // NOP after reset
+            inst_reg <= 32'd0;  // NOP
         end else begin
             if (imem_wea)
                 imem[imem_phys] <= inst_wr_data_sync;
@@ -80,17 +75,16 @@ module Ifetch_Pipe #(
         end
     end
 
-    // PC 双寄存器: pc_reg 超前取指, pc_prev 与 inst_reg 对齐
+    // PC 寄存器: pc_reg=超前取指地址, pc_prev=与 inst_reg 对齐的指令PC
     reg [31:0] pc_reg, pc_prev;
 
-    // Debug 读使用 inst_reg (同步寄存器读)
+    // Debug 读使用 inst_reg (同步寄存器读), 避免组合读破坏 BRAM 推断
     assign inst_rd_data = inst_reg;
-    // flush_ifid 时 inst 清零 → IF/ID 捕获 NOP
     assign inst         = flush_ifid ? 32'd0 : inst_reg;
+    // pcplus4: 当前指令的 PC+4, 用于 JAL/JALR 链接地址
     assign pcplus4      = pc_prev + 32'd4;
-
-    // $readmemh 初始化
     parameter PC_RESET = 32'h00004000;
+
     localparam HEX_LOAD_OFFSET = 0;
     initial begin
         if (INIT_FILE != "")
@@ -99,16 +93,16 @@ module Ifetch_Pipe #(
 
     wire [31:0] pc_plus_4 = pc_reg + 32'd4;
 
-    // Next-PC MUX: stall > 分支/跳转 > PC+4
+    // Next-PC MUX: stall > branch_target > JALR > JAL > branch > PC+4
     wire take_branch = branch_taken | jump | jalrsrc;
     wire [31:0] target = jalrsrc ? jalr_target :
                           jump   ? jump_target :
                                    branch_target;
 
     wire [31:0] next_pc;
-    assign next_pc = stall       ? pc_reg :
-                     take_branch ? target :
-                                   pc_plus_4;
+    assign next_pc = stall       ? pc_reg :        // 冻结
+                     take_branch ? target :        // 分支/跳转
+                                   pc_plus_4;      // 顺序执行
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -116,11 +110,11 @@ module Ifetch_Pipe #(
             pc_prev <= PC_RESET;
         end else begin
             pc_reg  <= next_pc;
-            pc_prev <= pc_reg;  // 保存当前 inst_reg 对应的 PC, 使输出对齐
+            pc_prev <= pc_reg;  // 保存当前 inst_reg 对应的 PC, 使 PC 与 inst 对齐
         end
     end
 
-    // 输出与 inst_reg 对齐的 PC
+    // 输出与 inst 对齐的 PC (pc_prev), 而非已超前的 pc_reg
     assign pc = pc_prev;
 
 endmodule
