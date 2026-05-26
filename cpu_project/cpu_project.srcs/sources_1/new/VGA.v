@@ -279,8 +279,10 @@ module VGA #(
     assign bg_color = char_data[15:12];
 
     // 当前像素在字符内的水平位置 (0=最左, 7=最右)
+    // 注: 数据路径 (fb_addr→BRAM→char_data→font_rom→font_data) 比计数器路径
+    // (h_cnt→h_d1→h_d2) 多 1 拍延迟, 需 +2 补偿像素对齐 (3-bit 自动 wrap)
     wire [2:0] pix_x;
-    assign pix_x = h_d2[2:0];
+    assign pix_x = h_d2[2:0] + 3'd2;
 
     // 从已注册的位图中取出对应 bit (bit7 对应 pix_x=0)
     wire pixel_on;
