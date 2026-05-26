@@ -195,7 +195,7 @@ module CPUTopPipeline (
     assign id_rs2_addr = id_inst[24:20];
     assign id_rd_addr  = id_inst[11:7];
 
-    RegFile uRegFile (
+    RegFile_Pipe uRegFile (
         .clk(clk), .rst_n(rst_n), .RegWrite(wb_regwrite),
         .rs1_addr(id_rs1_addr), .rs2_addr(id_rs2_addr),
         .rd_addr(wb_rd_addr), .WD3(wb_wd3),
@@ -263,7 +263,9 @@ module CPUTopPipeline (
         .idex_is_nop(!((ex_regwrite && ex_rd_addr != 5'd0) | ex_memwrite | ex_memtoreg | ex_branch | ex_jump_wire | ex_jalrsrc_wire)),
         .exmem_rd_addr(mem_rd_addr), .exmem_regwrite(mem_regwrite),
         .exmem_memread(mem_memtoreg),
+        .exmem_is_nop(!((mem_regwrite && mem_rd_addr != 5'd0) | mem_memwrite | mem_memtoreg)),
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
+        .memwb_memread(wb_memtoreg),
         .ctrl_flush(ctrl_flush),
         .forward_a(forward_a), .forward_b(forward_b),
         .stall(stall), .flush_ifid(flush_ifid), .flush_idex(flush_idex)

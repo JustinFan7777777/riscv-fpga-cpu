@@ -29,10 +29,12 @@ module HazardUnit (
     input  [4:0]  exmem_rd_addr,
     input         exmem_regwrite,
     input         exmem_memread,   // 1=EX/MEM中的指令是Load
+    input         exmem_is_nop,    // 1=EX/MEM中是NOP (无有用指令)
 
     // MEM/WB 阶段 (上上指令在 WB 阶段)
     input  [4:0]  memwb_rd_addr,
     input         memwb_regwrite,
+    input         memwb_memread,   // 1=MEM/WB中的指令是Load
 
     // 控制冒险 stall/flush (来自 CPUTopPipeline)
     input         ctrl_flush,     // 分支跳转时的 flush
@@ -95,8 +97,15 @@ module HazardUnit (
                     && ((exmem_rd_addr == id_rs1_addr) || (exmem_rd_addr == id_rs2_addr))
                     && (exmem_rd_addr != 5'd0);
 
-    assign stall = load_use_idex | load_use_exmem;
+    // Level 3: MEM/WB 阶段是 Load, 且其 rd 被 ID 阶段的指令使用,
+    // 且 ID/EX 和 EX/MEM 都是 NOP (两次 stall 后 Load 在 WB 但仍未写 RegFile,
+    // posedge 写 RegFile 需等下一拍 ID/EX 才能读到新值)。
+    wire load_use_memwb = memwb_memread && idex_is_nop && exmem_is_nop
+                    && ((memwb_rd_addr == id_rs1_addr) || (memwb_rd_addr == id_rs2_addr))
+                    && (memwb_rd_addr != 5'd0);
+
+    assign stall = load_use_idex | load_use_exmem | load_use_memwb;
     assign flush_ifid = ctrl_flush;
-    assign flush_idex = load_use_idex | load_use_exmem | ctrl_flush;
+    assign flush_idex = load_use_idex | load_use_exmem | load_use_memwb | ctrl_flush;
 
 endmodule
