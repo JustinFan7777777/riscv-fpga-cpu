@@ -1,12 +1,19 @@
 // =============================================================================
 // Module      : Ifetch_Pipe.v
-// Description : 流水线版取指模块 — PC + IMem (分布式RAM, 组合读, 零延迟)
+// Description : 流水线版取指模块 — PC + IMem (BRAM 寄存器读)
 // =============================================================================
-// 与 BRAM 寄存器读版本的关键区别:
-//   1. IMem 使用分布式 RAM (ram_style="distributed") + 组合读, 零周期延迟
-//   2. 单一 PC 寄存器, 无需 pc_reg/pc_prev 对齐机制
-//   3. 无需 flush_ifid 输入 — 流水线 flush 由 PipeRegs 层处理
-//   4. PC 更新优先级: stall > branch/jump taken > PC+4
+// 与单周期版 Ifetch.v 的区别:
+//   1. IMem 使用 BRAM (ram_style="block") + 寄存器读, 1 周期延迟由流水线吸收
+//   2. PC 更新逻辑考虑 EX 阶段的分支/跳转信号 (延迟到达)
+//   3. stall 冻结 PC (Load-Use hazard), flush_ifid 清零 inst 输出 (分支/跳转)
+//
+// PC 更新优先级: stall > branch/jump taken > PC+4
+//
+// BRAM 读延迟补偿:
+//   BRAM 寄存器读有 1 周期延迟, pc_reg 比 inst_reg 超前 1 条指令。
+//   pc_prev 保存 pc_reg 的前值, 使 pc 输出与 inst_reg 对齐。
+//   分支时 flush_ifid_delay (在CPUTopPipeline中) 将 flush 延长 1 拍,
+//   兜住 inst_reg 中已超前但尚未出现的错误指令。
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -14,15 +21,16 @@ module Ifetch_Pipe #(
     parameter INIT_FILE = "../../../../assembly/batch_test.hex"
 )(
     input         clk, rst_n,
-    input         stall,         // 1=冻结PC (Load-Use或halt)
+    input         stall,         // 1=冻结PC (Load-Use)
+    input         flush_ifid,    // 1=清零inst输出 (branch/jump taken → NOP)
     input         branch_taken,  // 1=分支成立 (来自EX阶段)
     input         jump,          // 1=JAL跳转 (来自EX阶段)
     input         jalrsrc,       // 1=JALR跳转 (来自EX阶段)
     input  [31:0] branch_target, jump_target, jalr_target,
 
-    output [31:0] pc,            // 当前PC (组合读, 与inst同步)
-    output [31:0] inst,          // 当前指令 (组合读, 零延迟)
-    output [31:0] pcplus4,       // PC+4 (JAL/JALR 链接地址)
+    output [31:0] pc,             // 当前PC (与inst_reg对齐, 用于AUIPC和Debug)
+    output [31:0] inst,           // 当前指令 (已注册, 延迟1周期)
+    output [31:0] pcplus4,        // PC+4 (JAL/JALR链接地址)
 
     // Debug 接口
     input         inst_dbg_en, inst_wr_en,
@@ -30,8 +38,9 @@ module Ifetch_Pipe #(
     output [31:0] inst_rd_data
 );
 
-    // IMem: 8KB 分布式 RAM (2048 × 32-bit), 组合读
-    (* ram_style = "distributed" *)
+    // IMem: 8KB BRAM (2048 × 32-bit), 寄存器读
+    // ram_style="block" + WRITE_MODE="READ_FIRST" 匹配 RTL 先读后写语义
+    (* ram_style = "block", WRITE_MODE = "READ_FIRST" *)
     reg [31:0] imem [0:2047];
 
     // Debug 跨时钟域同步
@@ -53,19 +62,32 @@ module Ifetch_Pipe #(
     end
 
     // 地址映射: PC 0x4000–0x5FFF → 物理 0x0000–0x07FF
+    // pc_reg: 超前取指地址 (BRAM 读地址)
+    // pc_prev: 与 inst_reg 对齐的指令地址 (输出用)
     wire [13:0] imem_logical = inst_dbg_en_sync ? inst_dbg_addr_sync[15:2] : pc_reg[15:2];
     wire [10:0] imem_phys    = imem_logical[10:0];
     wire        imem_wea     = inst_dbg_en_sync & inst_wr_en_sync;
 
-    // 同步写 (仅 Debug)
+    // BRAM 寄存器读: inst_reg 延迟 pc_reg 1 周期
+    reg [31:0] inst_reg;
     always @(posedge clk) begin
-        if (imem_wea)
-            imem[imem_phys] <= inst_wr_data_sync;
+        if (!rst_n) begin
+            inst_reg <= 32'd0;  // NOP after reset
+        end else begin
+            if (imem_wea)
+                imem[imem_phys] <= inst_wr_data_sync;
+            inst_reg <= imem[imem_phys];
+        end
     end
 
-    // 组合读 (零延迟)
-    assign inst_rd_data = imem[imem_phys];
-    assign inst         = imem[imem_phys];
+    // PC 双寄存器: pc_reg 超前取指, pc_prev 与 inst_reg 对齐
+    reg [31:0] pc_reg, pc_prev;
+
+    // Debug 读使用 inst_reg (同步寄存器读)
+    assign inst_rd_data = inst_reg;
+    // flush_ifid 时 inst 清零 → IF/ID 捕获 NOP
+    assign inst         = flush_ifid ? 32'd0 : inst_reg;
+    assign pcplus4      = pc_prev + 32'd4;
 
     // $readmemh 初始化
     parameter PC_RESET = 32'h00004000;
@@ -75,10 +97,6 @@ module Ifetch_Pipe #(
             $readmemh(INIT_FILE, imem, HEX_LOAD_OFFSET);
     end
 
-    // =========================================================================
-    // PC 寄存器 (单一寄存器, 与 inst 组合读天然同步)
-    // =========================================================================
-    reg [31:0] pc_reg;
     wire [31:0] pc_plus_4 = pc_reg + 32'd4;
 
     // Next-PC MUX: stall > 分支/跳转 > PC+4
@@ -93,13 +111,16 @@ module Ifetch_Pipe #(
                                    pc_plus_4;
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            pc_reg <= PC_RESET;
-        else
-            pc_reg <= next_pc;
+        if (!rst_n) begin
+            pc_reg  <= PC_RESET;
+            pc_prev <= PC_RESET;
+        end else begin
+            pc_reg  <= next_pc;
+            pc_prev <= pc_reg;  // 保存当前 inst_reg 对应的 PC, 使输出对齐
+        end
     end
 
-    assign pc      = pc_reg;
-    assign pcplus4 = pc_plus_4;
+    // 输出与 inst_reg 对齐的 PC
+    assign pc = pc_prev;
 
 endmodule

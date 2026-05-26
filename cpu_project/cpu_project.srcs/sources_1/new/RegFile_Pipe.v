@@ -1,12 +1,14 @@
 // =============================================================================
-// Module      : RegFile.v
-// Description : 32 x 32-bit Register File for RISC-V RV32I (单周期 CPU 用)
+// Module      : RegFile_Pipe.v
+// Description : 32 x 32-bit Register File for RISC-V RV32I (流水线 CPU 用)
 // =============================================================================
-// 写口: posedge clk, 无 bypass (单周期无流水线 RAW 竞争)
+// 与单周期版 RegFile.v 的区别:
+//   1. negedge 写: 在下一拍 posedge 之前完成, 消除流水线 RAW 的 NBA 竞争
+//   2. bypass 旁路: WB 阶段正在写入 rd 且 ID 读同一寄存器时, 直接用 WD3
 // =============================================================================
 `timescale 1ns / 1ps
 
-module RegFile (
+module RegFile_Pipe (
     input         clk,          // CPU 时钟 (12.5MHz)
     input         rst_n,        // 异步复位 (低有效)
     input         RegWrite,     // 写使能: 1=将WD3写入rd寄存器
@@ -27,18 +29,29 @@ module RegFile (
     integer i;  // 复位循环变量
 
     // ===========================
-    // 双读口 (组合逻辑)
+    // 双读口 (组合逻辑) + 写后读旁路
     // ===========================
-    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 : regFile[rs1_addr];
-    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 : regFile[rs2_addr];
+    // 旁路: WB 阶段正在写入 rd 且 ID 正好读同一寄存器时, 直接用 WD3,
+    // 消除流水线中 load→use 的 NBA 时序竞争 (RegFile 在 negedge 才更新)
+    wire rs1_bypass = RegWrite && (rd_addr == rs1_addr) && (rs1_addr != 5'd0);
+    wire rs2_bypass = RegWrite && (rd_addr == rs2_addr) && (rs2_addr != 5'd0);
 
-    // Debug 读口 (组合逻辑)
-    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 : regFile[dbg_reg_addr];
+    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 :
+                     rs1_bypass         ? WD3  : regFile[rs1_addr];
+
+    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 :
+                     rs2_bypass         ? WD3  : regFile[rs2_addr];
+
+    // Debug 读口 (同样加旁路)
+    wire dbg_bypass = RegWrite && (rd_addr == dbg_reg_addr) && (dbg_reg_addr != 5'd0);
+    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 :
+                          dbg_bypass              ? WD3  : regFile[dbg_reg_addr];
 
     // ===========================
-    // 写口 (posedge clk, negedge rst_n 异步复位)
+    // 写口 (negedge clk, negedge rst_n 异步复位)
     // ===========================
-    always @(posedge clk or negedge rst_n) begin
+    // negedge 写: 在 posedge (ID/EX 锁存) 之前完成, 使下一拍 ID 读到新值
+    always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 32; i = i + 1)
                 regFile[i] <= 32'd0;
