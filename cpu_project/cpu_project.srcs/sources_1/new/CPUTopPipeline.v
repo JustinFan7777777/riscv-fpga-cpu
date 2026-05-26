@@ -100,8 +100,8 @@ module CPUTopPipeline (
 
     wire cpu_halt_effective = cpu_halt & ~cpu_step;
 
-    // 复位预热: 复位后 inst_reg 需 1 拍从 BRAM 加载首条指令,
-    // 此期间冻结 IF/ID 防止捕获 NOP。仅影响 IF 取指, 不影响已流水化的 NOP。
+    // 复位预热: 复位后 inst_reg=0(NOP), 需 1 拍从 BRAM 加载首条指令,
+    // 此期间冻结 IF/ID 防止捕获 NOP。
     reg reset_stall;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -111,9 +111,10 @@ module CPUTopPipeline (
     end
 
     // BRAM 读延迟补偿: ctrl_flush 延长 1 拍兜住 inst_reg 中已超前的指令。
-    // BRAM 有 1 周期读延迟, inst_reg 比标准 IF 阶段多超前一条指令。
-    // 分支在 EX 时, flush_ifid 清除 IF/ID(PC+8), 但 PC+12 已在 inst_reg
-    // 中且 1 拍后才出现, 此时 ctrl_flush 已结束 → flush_ifid_delay 兜底。
+    // BRAM 有 1 周期读延迟, pc_reg 比 inst_reg 超前 1 条指令。
+    // 分支在 EX 时 flush_ifid 清除 IF/ID(含PC+8), 但 PC+12 指令已在
+    // inst_reg 中且 1 拍后才出现在 inst 输出, 此时 ctrl_flush 已结束。
+    // flush_ifid_delay 将 flush 延长 1 拍兜底清除。
     reg flush_ifid_delay;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -131,7 +132,7 @@ module CPUTopPipeline (
     wire        ex_branch_taken, ex_jump, ex_jalrsrc;
     wire [31:0] ex_branch_target, ex_jump_target, ex_jalr_target;
 
-    // 延长后的 IF 刷新: HazardUnit 原始输出 + 延迟 1 拍的 ctrl_flush
+    // 延长后的 IF 刷新: HazardUnit 输出 + 延迟 1 拍的 ctrl_flush
     wire flush_ifid_ext = flush_ifid | flush_ifid_delay;
 
     // ID
@@ -259,13 +260,9 @@ module CPUTopPipeline (
         .id_rs1_addr(id_rs1_addr), .id_rs2_addr(id_rs2_addr),
         .idex_rs1_addr(ex_rs1_addr), .idex_rs2_addr(ex_rs2_addr),
         .idex_rd_addr(ex_rd_addr), .idex_memread(ex_memtoreg),
-        // regwrite=1 但 rd=x0 (如 addi x0,x0,0) 是伪 NOP, 不应算作有用指令
-        .idex_is_nop(!((ex_regwrite && ex_rd_addr != 5'd0) | ex_memwrite | ex_memtoreg | ex_branch | ex_jump_wire | ex_jalrsrc_wire)),
         .exmem_rd_addr(mem_rd_addr), .exmem_regwrite(mem_regwrite),
         .exmem_memread(mem_memtoreg),
-        .exmem_is_nop(!((mem_regwrite && mem_rd_addr != 5'd0) | mem_memwrite | mem_memtoreg)),
         .memwb_rd_addr(wb_rd_addr), .memwb_regwrite(wb_regwrite),
-        .memwb_memread(wb_memtoreg),
         .ctrl_flush(ctrl_flush),
         .forward_a(forward_a), .forward_b(forward_b),
         .stall(stall), .flush_ifid(flush_ifid), .flush_idex(flush_idex)
