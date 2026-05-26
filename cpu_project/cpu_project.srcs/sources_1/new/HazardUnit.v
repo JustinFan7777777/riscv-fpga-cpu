@@ -23,6 +23,7 @@ module HazardUnit (
     // ID/EX 阶段 (当前在 EX 执行的指令)
     input  [4:0]  idex_rs1_addr, idex_rs2_addr, idex_rd_addr,
     input         idex_memread,   // 1=当前指令是 Load
+    input         idex_is_nop,    // 1=ID/EX中是NOP (无有用指令)
 
     // EX/MEM 阶段 (上一指令在 MEM 阶段)
     input  [4:0]  exmem_rd_addr,
@@ -80,15 +81,25 @@ module HazardUnit (
                        2'b00;
 
     // ========================================================================
-    // Load-Use 冒险检测
+    // Load-Use 冒险检测 (两级)
     // ========================================================================
-    // RegFile 的 negedge 写 + 旁路确保 Load 数据在 1 拍 stall 后立即可用
-    wire load_use = idex_memread
+    // Level 1: ID/EX 阶段是 Load, 且其 rd 被 IF/ID 阶段的指令使用
+    wire load_use_idex = idex_memread
                     && ((idex_rd_addr == id_rs1_addr) || (idex_rd_addr == id_rs2_addr))
                     && (idex_rd_addr != 5'd0);
 
-    assign stall = load_use;
+    // Level 2: EX/MEM 阶段是 Load, 且其 rd 被 ID 阶段的指令使用,
+    // 且 ID/EX 是 NOP (Load 和 use 之间无有用指令, use 即将进入 EX)。
+    // 若 ID/EX 有指令, 它会自然延迟 use 1 拍, Load 到时数据已可用。
+    // 注: 虽然 RegFile negedge 写 + 旁路理论上 1 stall 够用, 但 MEM/WB
+    // 转发在 stall 解除当拍可能存在竞态, 多 stall 1 拍让 Load 写回 RegFile
+    // 后再让 use 指令读寄存器, 无需转发, 更可靠。
+    wire load_use_exmem = exmem_memread && idex_is_nop
+                    && ((exmem_rd_addr == id_rs1_addr) || (exmem_rd_addr == id_rs2_addr))
+                    && (exmem_rd_addr != 5'd0);
+
+    assign stall = load_use_idex | load_use_exmem;
     assign flush_ifid = ctrl_flush;
-    assign flush_idex = load_use | ctrl_flush;
+    assign flush_idex = load_use_idex | load_use_exmem | ctrl_flush;
 
 endmodule
