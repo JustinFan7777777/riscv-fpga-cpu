@@ -12,7 +12,7 @@
 `timescale 1ns / 1ps
 
 module Ifetch_Pipe #(
-    parameter INIT_FILE = "../../../../assembly/batch_test.hex"
+    parameter INIT_FILE = "../../../../assembly/batch_test_pipeline.hex"
 )(
     input         clk, rst_n,
     input         stall,         // 1=冻结PC (Load-Use)

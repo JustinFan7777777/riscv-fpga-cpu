@@ -7,7 +7,7 @@
 #        cd <path-to>/CO Project/
 #   3. 执行: source create_project.tcl
 #   4. 脚本自动创建 cpu_project 工程、添加全部源文件、加载 XDC 约束
-#   5. 确认 assembly/batch_test.hex 已存在后, 点 Generate Bitstream
+#   5. 确认 assembly/batch_test_single.hex / batch_test_pipeline.hex 已存在后, 点 Generate Bitstream
 # ==============================================================================
 
 # ---- 1. 创建工程 ----
@@ -35,15 +35,23 @@ if {[file exists $xdc_file]} {
     puts "Please ensure the XDC file exists before generating bitstream."
 }
 
-# ---- 5. 确认 batch_test.hex 路径 ----
-# Ifetch.v 中 INIT_FILE 参数默认指向 "../assembly/batch_test.hex"
-# 即 cpu_project/ 的同级目录 assembly/ 下
-set hex_file "[file dirname [info script]]/assembly/batch_test.hex"
-if {[file exists $hex_file]} {
-    puts "batch_test.hex found: $hex_file"
+# ---- 5. 确认 hex 文件路径 ----
+# Ifetch.v 默认使用 batch_test_single.hex, Ifetch_Pipe.v 默认使用 batch_test_pipeline.hex
+set asm_dir "[file dirname [info script]]/assembly"
+set hex_single "${asm_dir}/batch_test_single.hex"
+set hex_pipe   "${asm_dir}/batch_test_pipeline.hex"
+if {[file exists $hex_single]} {
+    puts "batch_test_single.hex found: $hex_single"
 } else {
-    puts "NOTE: batch_test.hex not yet created."
-    puts "  The assembly teammate should compile batch_test.asm and place it in assembly/"
+    puts "NOTE: batch_test_single.hex not found."
+}
+if {[file exists $hex_pipe]} {
+    puts "batch_test_pipeline.hex found: $hex_pipe"
+} else {
+    puts "NOTE: batch_test_pipeline.hex not found."
+}
+if {![file exists $hex_single] && ![file exists $hex_pipe]} {
+    puts "  Compile the .asm files in assembly/ and re-run."
     puts "  For now, you can still generate bitstream (IMem will be all zeros)."
 }
 
@@ -57,7 +65,7 @@ puts "Source files: [llength [glob $src_dir/*.v]] Verilog files"
 puts "=================================="
 puts ""
 puts "Next steps:"
-puts "  1. Confirm assembly/batch_test.hex exists"
+puts "  1. Confirm assembly/batch_test_single.hex or batch_test_pipeline.hex exists"
 puts "  2. Run Synthesis  -> Run Implementation -> Generate Bitstream"
 puts "  3. Program EGO1 board with TopDebug.bit"
 puts "=================================="

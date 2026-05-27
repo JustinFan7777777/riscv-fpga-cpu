@@ -200,7 +200,7 @@ case5_func:
     jr   ra                   # JALR x0, ra, 0 → 返回
 
 # ==============================================================================
-# Case 6: Fibonacci — 斐波那契数列第n项
+# Case 6: Fibonacci — 斐波那契数列第n项 (保守NOP版: 每2条指令间2个NOP)
 #   输入: OperandA = n (n >= 1, 8-bit)
 #   输出: fib(n) (32-bit)
 #   算法: 迭代法, fib(1)=fib(2)=1, fib(n)=fib(n-1)+fib(n-2)
@@ -208,33 +208,56 @@ case5_func:
 # ==============================================================================
 case6_fibonacci:
     lw   t1, 4(s0)           # t1 = n (OperandA)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (1/3)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (2/3)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (3/3)
 
     # 若 n <= 2: 直接返回 1
-    addi t2, x0, 2
+    addi t2, x0, 2           # t2 = 2
+    addi x0, x0, 0
+    addi x0, x0, 0
     ble  t1, t2, fib_return_one   # n <= 2 时结果为1
 
     # 初始化: a = 1 (fib(1)), b = 1 (fib(2)), counter = n - 2
-    addi a0, x0, 1           # a0 = a = fib(1) = 1
-    addi a1, x0, 1           # a1 = b = fib(2) = 1
-    addi t2, t1, -2          # t2 = counter = n - 2 (还需迭代次数)
+    addi a0, x0, 1           # a0 = 1
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi a1, x0, 1           # a1 = 1
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi t2, t1, -2          # t2 = n - 2
+    addi x0, x0, 0
+    addi x0, x0, 0
 
 fib_loop:
-    # c = a + b; a = b; b = c
-    add  a2, a0, a1          # a2 = a + b (c = fib(i-1) + fib(i-2))
-    addi a0, a1, 0           # a0 = b (旧b变新a)
-    addi a1, a2, 0           # a1 = c (新b)
+    add  a2, a0, a1          # a2 = a + b
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi a0, a1, 0           # a0 = b
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi a1, a2, 0           # a1 = c
+    addi x0, x0, 0
+    addi x0, x0, 0
     addi t2, t2, -1          # counter--
+    addi x0, x0, 0
+    addi x0, x0, 0
     bgtz t2, fib_loop         # counter > 0 时继续循环
 
-    # 结果在 a1 (= b = fib(n))
-    addi t3, a1, 0
+    addi t3, a1, 0           # result = a1 (= fib(n))
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    fib_done
 
 fib_return_one:
     addi t3, x0, 1           # fib(1) = fib(2) = 1
+    addi x0, x0, 0
+    addi x0, x0, 0
 
 fib_done:
     sw   t3, 12(s0)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    dispatcher_loop
 
 # ==============================================================================
@@ -250,25 +273,58 @@ fib_done:
 # ==============================================================================
 case7_popcount:
     lw   t1, 4(s0)           # t1 = data (OperandA, 低8bit有效)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (1/3)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (2/3)
+    addi x0, x0, 0           # NOP: 防流水线 load-use (3/3)
     andi t1, t1, 0xFF         # 取低8bit
 
-    # 分治 popcount
-    andi t2, t1, 0x55         # t2 = x & 0x55     (0101_0101)
+    # 分治 popcount — Step 1: 2-bit groups
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t2, t1, 0x55         # t2 = x & 0x55
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t3, t1, 1
+    addi x0, x0, 0
+    addi x0, x0, 0
     andi t3, t3, 0x55         # t3 = (x>>1) & 0x55
+    addi x0, x0, 0
+    addi x0, x0, 0
     add  t1, t2, t3           # x = popcount_2bit
 
-    andi t2, t1, 0x33         # t2 = x & 0x33     (0011_0011)
+    # Step 2: 4-bit groups
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t2, t1, 0x33         # t2 = x & 0x33
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t3, t1, 2
+    addi x0, x0, 0
+    addi x0, x0, 0
     andi t3, t3, 0x33         # t3 = (x>>2) & 0x33
+    addi x0, x0, 0
+    addi x0, x0, 0
     add  t1, t2, t3           # x = popcount_4bit
 
+    # Step 3: 8-bit groups
+    addi x0, x0, 0
+    addi x0, x0, 0
     andi t2, t1, 0x0F         # t2 = x & 0x0F
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t3, t1, 4
+    addi x0, x0, 0
+    addi x0, x0, 0
     andi t3, t3, 0x0F         # t3 = (x>>4) & 0x0F
+    addi x0, x0, 0
+    addi x0, x0, 0
     add  t3, t2, t3           # t3 = popcount_8bit (结果)
 
+    addi x0, x0, 0
+    addi x0, x0, 0
     sw   t3, 12(s0)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    dispatcher_loop
 
 # ==============================================================================
@@ -286,47 +342,81 @@ case7_popcount:
 # ==============================================================================
 case8_float_type:
     lw   t1, 4(s0)           # t1 = 16-bit float (OperandA)
+    addi x0, x0, 0           # NOP: load-use (1/3)
+    addi x0, x0, 0           # NOP: load-use (2/3)
+    addi x0, x0, 0           # NOP: load-use (3/3)
 
     # 提取字段 (仅低16bit有效)
-    slli t1, t1, 16          # 清除高16bit (符号扩展的情况下)
+    slli t1, t1, 16          # 清除高16bit
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t1, t1, 16          # t1 = 16-bit 无符号浮点数
 
-    srli t2, t1, 10          # t2 = exp (高位移到低位)
-    andi t2, t2, 0x1F        # t2 = 5-bit 指数 [14:10]
+    addi x0, x0, 0
+    addi x0, x0, 0
+    srli t2, t1, 10          # t2 = exp
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t2, t2, 0x1F        # t2 = 5-bit 指数
 
-    andi t3, t1, 0x3FF       # t3 = 10-bit 尾数 [9:0] (mantissa)
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t3, t1, 0x3FF       # t3 = 10-bit 尾数
 
     # ---- 判断 exp == 0 ----
-    bnez t2, case8_check_inf  # exp != 0, 跳到无穷/NaN/规约判断
+    addi x0, x0, 0
+    addi x0, x0, 0
+    bnez t2, case8_check_inf  # exp != 0 → 跳到无穷/NaN/规约判断
 
     # exp == 0:
+    addi x0, x0, 0
+    addi x0, x0, 0
     bnez t3, case8_denorm     # mantissa != 0 → 非规约化数 (type=4)
+    addi x0, x0, 0
+    addi x0, x0, 0
     addi t3, x0, 0            # mantissa == 0 → 零 (type=0)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    case8_done
 
 case8_denorm:
     addi t3, x0, 4            # type = 4 (非规约化数)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    case8_done
 
 case8_check_inf:
-    # ---- 判断 exp == 31 (0x1F) ----
-    addi t0, x0, 0x1F
+    addi t0, x0, 0x1F         # t0 = 31
+    addi x0, x0, 0
+    addi x0, x0, 0
     bne  t2, t0, case8_normal # exp != 31 → 规约化数 (type=3)
 
     # exp == 31:
+    addi x0, x0, 0
+    addi x0, x0, 0
     bnez t3, case8_nan        # mantissa != 0 → NaN (type=2)
+    addi x0, x0, 0
+    addi x0, x0, 0
     addi t3, x0, 1            # mantissa == 0 → 无穷大 (type=1)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    case8_done
 
 case8_nan:
     addi t3, x0, 2            # type = 2 (NaN)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    case8_done
 
 case8_normal:
-    addi t3, x0, 3            # type = 3 (规约化数, exp 在 1~30)
+    addi t3, x0, 3            # type = 3 (规约化数)
+    addi x0, x0, 0
+    addi x0, x0, 0
 
 case8_done:
     sw   t3, 12(s0)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    dispatcher_loop
 
 # ==============================================================================
@@ -353,47 +443,78 @@ case8_done:
 # ==============================================================================
 case9_float_q34:
     lw   t1, 4(s0)           # t1 = 16-bit float (OperandA)
+    addi x0, x0, 0           # NOP: load-use (1/3)
+    addi x0, x0, 0           # NOP: load-use (2/3)
+    addi x0, x0, 0           # NOP: load-use (3/3)
 
     # ---- 步骤1: 提取符号位 ----
     srli t2, t1, 15          # t2 = sign (0或1)
+    addi x0, x0, 0
+    addi x0, x0, 0
 
     # 清零高16bit, 保留16bit浮点数
     slli t1, t1, 16
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t1, t1, 16
 
     # ---- 步骤2: 提取指数 (bits [14:10]) ----
+    addi x0, x0, 0
+    addi x0, x0, 0
     srli t3, t1, 10
-    andi t3, t3, 0x1F        # t3 = exponent (5-bit, 规约化数范围 1~30)
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t3, t3, 0x1F        # t3 = exponent
 
     # ---- 步骤3: 提取尾数 (bits [9:0]), 添加隐含leading 1 ----
-    andi t4, t1, 0x3FF       # t4 = mantissa (10-bit)
-    addi t4, t4, 1024         # t4 = M = 1024 + mantissa (范围 1024~2047, 11-bit)
+    addi x0, x0, 0
+    addi x0, x0, 0
+    andi t4, t1, 0x3FF       # t4 = mantissa
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi t4, t4, 1024         # t4 = M = 1024 + mantissa
 
     # ---- 步骤4: 计算 M × 2^(exp-21) ----
-    addi t5, t3, -21          # t5 = exp - 21 (可能为负!)
+    addi x0, x0, 0
+    addi x0, x0, 0
+    addi t5, t3, -21          # t5 = exp - 21
 
-    # 如果 exp >= 21, 左移; 否则右移
-    bge  t5, x0, case9_shift_left  # t5 >= 0 → 左移 (或 exp=21 不移)
+    addi x0, x0, 0
+    addi x0, x0, 0
+    bge  t5, x0, case9_shift_left  # exp >= 21 → 左移
 
     # exp < 21: 右移
-    sub  t5, x0, t5          # t5 = 21 - exp (正数)
-    srl  a0, t4, t5          # a0 = M >> (21-exp)  (整数截断=向零舍入)
+    sub  t5, x0, t5          # t5 = 21 - exp
+    addi x0, x0, 0
+    addi x0, x0, 0
+    srl  a0, t4, t5          # a0 = M >> (21-exp)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    case9_sign_handle
 
 case9_shift_left:
     sll  a0, t4, t5          # a0 = M << (exp-21)
+    addi x0, x0, 0
+    addi x0, x0, 0
 
     # ---- 步骤5: 处理符号 ----
 case9_sign_handle:
-    beqz t2, case9_positive   # sign == 0 → 正数, 直接输出
+    addi x0, x0, 0
+    addi x0, x0, 0
+    beqz t2, case9_positive   # sign == 0 → 正数
 
-    # 负数: 取32-bit two's complement 的低8bit (即 Q3.4 补码)
-    sub  a0, x0, a0          # a0 = -a0 (32-bit 补码 = ~a0 + 1)
+    # 负数: 取32-bit two's complement
+    sub  a0, x0, a0          # a0 = -a0
+    addi x0, x0, 0
+    addi x0, x0, 0
 
 case9_positive:
     andi t3, a0, 0xFF         # 截断到 8-bit (Q3.4 范围)
-
+    addi x0, x0, 0
+    addi x0, x0, 0
     sw   t3, 12(s0)
+    addi x0, x0, 0
+    addi x0, x0, 0
     j    dispatcher_loop
 
 # ==============================================================================
