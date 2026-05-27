@@ -216,6 +216,7 @@ case6_fibonacci:
     addi t2, x0, 2           # t2 = 2
     addi x0, x0, 0
     addi x0, x0, 0
+    addi x0, x0, 0
     ble  t1, t2, fib_return_one   # n <= 2 时结果为1
 
     # 初始化: a = 1 (fib(1)), b = 1 (fib(2)), counter = n - 2
@@ -240,6 +241,7 @@ fib_loop:
     addi x0, x0, 0
     addi x0, x0, 0
     addi t2, t2, -1          # counter--
+    addi x0, x0, 0
     addi x0, x0, 0
     addi x0, x0, 0
     bgtz t2, fib_loop         # counter > 0 时继续循环
@@ -366,9 +368,11 @@ case8_float_type:
     # ---- 判断 exp == 0 ----
     addi x0, x0, 0
     addi x0, x0, 0
+    addi x0, x0, 0
     bnez t2, case8_check_inf  # exp != 0 → 跳到无穷/NaN/规约判断
 
     # exp == 0:
+    addi x0, x0, 0
     addi x0, x0, 0
     addi x0, x0, 0
     bnez t3, case8_denorm     # mantissa != 0 → 非规约化数 (type=4)
@@ -389,9 +393,11 @@ case8_check_inf:
     addi t0, x0, 0x1F         # t0 = 31
     addi x0, x0, 0
     addi x0, x0, 0
+    addi x0, x0, 0
     bne  t2, t0, case8_normal # exp != 31 → 规约化数 (type=3)
 
     # exp == 31:
+    addi x0, x0, 0
     addi x0, x0, 0
     addi x0, x0, 0
     bnez t3, case8_nan        # mantissa != 0 → NaN (type=2)
@@ -481,6 +487,7 @@ case9_float_q34:
 
     addi x0, x0, 0
     addi x0, x0, 0
+    addi x0, x0, 0
     bge  t5, x0, case9_shift_left  # exp >= 21 → 左移
 
     # exp < 21: 右移
@@ -499,6 +506,7 @@ case9_shift_left:
 
     # ---- 步骤5: 处理符号 ----
 case9_sign_handle:
+    addi x0, x0, 0
     addi x0, x0, 0
     addi x0, x0, 0
     beqz t2, case9_positive   # sign == 0 → 正数
