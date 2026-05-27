@@ -29,13 +29,21 @@ module RegFile_Pipe (
     integer i;  // 复位循环变量
 
     // ===========================
-    // 双读口 (组合逻辑, 无 bypass — 依赖 HazardUnit forwarding)
+    // 双读口 (组合逻辑) + 写后读旁路
     // ===========================
-    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 : regFile[rs1_addr];
-    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 : regFile[rs2_addr];
+    wire rs1_bypass = RegWrite && (rd_addr == rs1_addr) && (rs1_addr != 5'd0);
+    wire rs2_bypass = RegWrite && (rd_addr == rs2_addr) && (rs2_addr != 5'd0);
 
-    // Debug 读口
-    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 : regFile[dbg_reg_addr];
+    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 :
+                     rs1_bypass         ? WD3  : regFile[rs1_addr];
+
+    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 :
+                     rs2_bypass         ? WD3  : regFile[rs2_addr];
+
+    // Debug 读口 (同样加旁路)
+    wire dbg_bypass = RegWrite && (rd_addr == dbg_reg_addr) && (dbg_reg_addr != 5'd0);
+    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 :
+                          dbg_bypass              ? WD3  : regFile[dbg_reg_addr];
 
     // ===========================
     // 写口 (negedge clk, negedge rst_n 异步复位)
