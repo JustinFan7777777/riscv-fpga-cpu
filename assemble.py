@@ -111,14 +111,9 @@ def assemble_line(line, labels, pc):
         off = imm(a[2]) if len(a) > 2 else 0
         return ((off & 0xFFF) << 20) | (reg(a[1]) << 15) | (0 << 12) | (reg(a[0]) << 7) | 0x67
 
-    # funct3 交换补偿: 硬件可能交换了 BEQ↔BNE, BLT↔BGE, BLTU↔BGEU
-    # 生成"错误"编码以在硬件上得到正确行为
-    F3_SWAP = {0:1, 1:0, 4:5, 5:4, 6:7, 7:6}
-
     # Branches
     if op in ('beq','bne','blt','bge','bltu','bgeu'):
-        f3_orig = {'beq':0,'bne':1,'blt':4,'bge':5,'bltu':6,'bgeu':7}[op]
-        f3 = F3_SWAP[f3_orig]
+        f3 = {'beq':0,'bne':1,'blt':4,'bge':5,'bltu':6,'bgeu':7}[op]
         if a[2] in labels:
             return ('B', reg(a[0]), reg(a[1]), f3, a[2])
         return encode_b(imm(a[2])) | (reg(a[1]) << 20) | (reg(a[0]) << 15) | (f3 << 12) | 0x63
@@ -136,17 +131,17 @@ def assemble_line(line, labels, pc):
     if op == 'li':
         return (imm12(a[1]) << 20) | (reg(a[0]) << 7) | 0x13
     if op == 'ble':
-        if a[2] in labels: return ('B', reg(a[1]), reg(a[0]), F3_SWAP[5], a[2])
-        return encode_b(imm(a[2])) | (reg(a[0]) << 20) | (reg(a[1]) << 15) | (F3_SWAP[5] << 12) | 0x63
+        if a[2] in labels: return ('B', reg(a[1]), reg(a[0]), 5, a[2])
+        return encode_b(imm(a[2])) | (reg(a[0]) << 20) | (reg(a[1]) << 15) | (5 << 12) | 0x63
     if op == 'bgtz':
-        if a[1] in labels: return ('B', 0, reg(a[0]), F3_SWAP[4], a[1])
-        return encode_b(imm(a[1])) | (reg(a[0]) << 20) | (0 << 15) | (F3_SWAP[4] << 12) | 0x63
+        if a[1] in labels: return ('B', 0, reg(a[0]), 4, a[1])
+        return encode_b(imm(a[1])) | (reg(a[0]) << 20) | (0 << 15) | (4 << 12) | 0x63
     if op == 'beqz':
-        if a[1] in labels: return ('B', reg(a[0]), 0, F3_SWAP[0], a[1])
-        return encode_b(imm(a[1])) | (0 << 20) | (reg(a[0]) << 15) | (F3_SWAP[0] << 12) | 0x63
+        if a[1] in labels: return ('B', reg(a[0]), 0, 0, a[1])
+        return encode_b(imm(a[1])) | (0 << 20) | (reg(a[0]) << 15) | (0 << 12) | 0x63
     if op == 'bnez':
-        if a[1] in labels: return ('B', reg(a[0]), 0, F3_SWAP[1], a[1])
-        return encode_b(imm(a[1])) | (0 << 20) | (reg(a[0]) << 15) | (F3_SWAP[1] << 12) | 0x63
+        if a[1] in labels: return ('B', reg(a[0]), 0, 1, a[1])
+        return encode_b(imm(a[1])) | (0 << 20) | (reg(a[0]) << 15) | (1 << 12) | 0x63
 
     # Handle _start: label with nothing after
     raise ValueError(f"Unknown: {op} {a} at pc=0x{pc:08X}")
