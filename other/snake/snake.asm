@@ -146,14 +146,25 @@ game_over_screen:
     li a2, 0xC52
     jal  ra, write_char
 
-# ---- 等待 btn[4] 按下以重新开始 ----
+# ---- 等待 btn[4] 按下以重新开始 (含消抖) ----
 game_over_loop:
     lw   t0, 0(s1)               # 读按键
     xori t0, t0, 0x1F            # 取反低5位 (EGO1按键按下=0)
     andi t0, t0, 0x10            # 检查 btn[4]
     beqz t0, game_over_loop      # 未按下 → 继续等待
 
-    # 重新开始
+    # 消抖: 延迟 ~10ms 后重新确认 (0xFFFF * 2 cycle ≈ 10.5ms @ 12.5MHz)
+    li t6, 0xFFFF
+debounce_delay:
+    addi t6, t6, -1
+    bnez t6, debounce_delay
+
+    lw   t0, 0(s1)               # 重新读取按键
+    xori t0, t0, 0x1F
+    andi t0, t0, 0x10
+    beqz t0, game_over_loop      # 抖动 → 回到等待
+
+    # 确认按下 → 重新开始
     jal  ra, clear_screen
     jal  ra, draw_border
     jal  ra, init_game
@@ -164,9 +175,20 @@ game_over_loop:
 # ==============================================================================
 # 将蛇放在中央，方向向右，放置第一个食物
 init_game:
-    # ---- LFSR 种子 ----
+    # ---- LFSR 种子 (利用按键状态引入熵, 消除可预测性) ----
     li t0, 0x3A5C
     sw   t0, 0x1C(s4)
+    lw   t0, 0(s1)               # 读按键状态
+    andi t0, t0, 0x1F            # 低5位 (0~31)
+    addi t0, t0, 10              # 至少迭代 10 次
+seed_loop:
+    addi sp, sp, -4
+    sw   ra, 0(sp)
+    jal  ra, lfsr_rand           # 迭代 LFSR 一次
+    lw   ra, 0(sp)
+    addi sp, sp, 4
+    addi t0, t0, -1
+    bnez t0, seed_loop
 
     # ---- 缓冲区索引: HEAD=0, LEN=3 ----
     # 蛇身在环形缓冲区中从 HEAD 向后排列:
@@ -604,59 +626,55 @@ cs_loop:
 # draw_border — 绘制游戏边界
 # ==============================================================================
 draw_border:
-    addi sp, sp, -12
+    addi sp, sp, -4
     sw   ra, 0(sp)
-    sw   s5, 4(sp)
-    sw   s6, 8(sp)
 
     # ---- 上边界 (row=0, col=0~79) ----
-    li s5, 0               # col 计数器
+    li t0, 0
 db_top:
     li a0, 0
-    add  a1, s5, x0
+    add  a1, t0, x0
     li a2, 0x823
     jal  ra, write_char
-    addi s5, s5, 1
+    addi t0, t0, 1
     li t1, 80
-    blt  s5, t1, db_top
+    blt  t0, t1, db_top
 
     # ---- 下边界 (row=29, col=0~79) ----
-    li s5, 0
+    li t0, 0
 db_bottom:
     li a0, 29
-    add  a1, s5, x0
+    add  a1, t0, x0
     li a2, 0x823
     jal  ra, write_char
-    addi s5, s5, 1
+    addi t0, t0, 1
     li t1, 80
-    blt  s5, t1, db_bottom
+    blt  t0, t1, db_bottom
 
     # ---- 左边界 (row=1~28, col=0) ----
-    li s5, 1
+    li t0, 1
 db_left:
-    add  a0, s5, x0
+    add  a0, t0, x0
     li a1, 0
     li a2, 0x823
     jal  ra, write_char
-    addi s5, s5, 1
+    addi t0, t0, 1
     li t1, 29
-    blt  s5, t1, db_left
+    blt  t0, t1, db_left
 
     # ---- 右边界 (row=1~28, col=79) ----
-    li s5, 1
+    li t0, 1
 db_right:
-    add  a0, s5, x0
+    add  a0, t0, x0
     li a1, 79
     li a2, 0x823
     jal  ra, write_char
-    addi s5, s5, 1
+    addi t0, t0, 1
     li t1, 29
-    blt  s5, t1, db_right
+    blt  t0, t1, db_right
 
-    lw   s6, 8(sp)
-    lw   s5, 4(sp)
     lw   ra, 0(sp)
-    addi sp, sp, 12
+    addi sp, sp, 4
     jalr x0, ra, 0
 
 # ==============================================================================

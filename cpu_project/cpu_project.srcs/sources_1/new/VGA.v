@@ -35,11 +35,11 @@
 //   注意: 标准 VGA 640×480@60Hz 需要 25.175MHz 像素时钟。
 //         本项目使用 25MHz (100MHz/4), 误差仅 0.7%, 兼容绝大多数显示器。
 //
-// 【像素输出流水线 (2 级流水, 合计 1 周期延迟)】
-//   第 0 级 (组合逻辑): h_cnt/v_cnt → fb_addr (提前 2 像素预取)
-//   第 1 级 (寄存器):    fb_data 锁存 → 字模 ROM 组合读出 → 取像素 bit → 着色
+// 【像素输出流水线 (2 级流水, 合计 2 周期延迟)】
+//   第 1 级: fb_addr 预取 (提前 3 像素) → BRAM 读出 → fb_data → char_data 锁存
+//   第 2 级: 字模 ROM (BRAM) 读出 → font_data 锁存 → 取像素 bit → 着色
 //
-//   fb_addr 在每字符倒数第 2 个像素 (h_cnt[2:0]==6) 时切换到下一个字符,
+//   fb_addr 在每字符倒数第 3 个像素 (h_cnt[2:0]==CHAR_SWITCH_PIX, 即5) 时切换到下一个字符,
 //   保证 BRAM 读出数据在第 0 号像素到达。每行首个字符在水平消隐期预取。
 //
 // 【字模 ROM (font_rom)】
@@ -88,11 +88,8 @@ module VGA #(
     parameter COLS     = 7'd80,     // 列数
     parameter ROWS     = 5'd30,     // 行数
 
-    // 字模 ROM 初始化文件路径
-    // 路径相对于本 Verilog 源文件所在目录: ../../../../other/vga/font_rom.hex
-    //   ../ = sources_1/  →  ../../ = cpu_project.srcs/  →  ../../../ = cpu_project/
-    //   ../../../../ = 仓库根目录  →  other/vga/font_rom.hex
-    parameter FONT_FILE = "../../../../other/vga/font_rom.hex"
+    // 字模 ROM 初始化文件路径 (相对于本 Verilog 源文件所在目录)
+    parameter FONT_FILE = "font_rom.hex"
 )(
     // ===== 时钟和复位 =====
     input         clk_pix,         // 25MHz 像素时钟 (来自 TopDebug 的 clk_div[1] + BUFG)
@@ -118,6 +115,21 @@ module VGA #(
     localparam CHAR_LAST_PIX   = CHAR_W - 1;   // 7   — 字符内最后像素
 
     // ==========================================================================
+    // 复位同步器 — 异步生效, 同步释放 (避免 recovery/removal 时序违例)
+    // ==========================================================================
+    reg rst_sync1, rst_sync2;
+    always @(posedge clk_pix or negedge rst_n) begin
+        if (!rst_n) begin
+            rst_sync1 <= 1'b0;
+            rst_sync2 <= 1'b0;
+        end else begin
+            rst_sync1 <= 1'b1;
+            rst_sync2 <= rst_sync1;
+        end
+    end
+    wire rst_n_synced = rst_sync2;
+
+    // ==========================================================================
     // 第 1 部分 — 水平/垂直像素计数器
     // ==========================================================================
     // h_cnt: 0 → H_TOTAL-1 (800), 循环计数
@@ -126,8 +138,8 @@ module VGA #(
     reg [9:0] h_cnt;
     reg [9:0] v_cnt;
 
-    always @(posedge clk_pix or negedge rst_n) begin
-        if (!rst_n) begin
+    always @(posedge clk_pix or negedge rst_n_synced) begin
+        if (!rst_n_synced) begin
             h_cnt <= 10'd0;
             v_cnt <= 10'd0;
         end else begin
@@ -145,12 +157,23 @@ module VGA #(
     end
 
     // ==========================================================================
-    // 第 2 部分 — VGA 同步信号 (组合逻辑)
+    // 第 2 部分 — VGA 同步信号 (寄存器输出, 消除组合逻辑毛刺)
     // ==========================================================================
     // hsync: 水平同步脉冲, h_cnt 在 [H_ACTIVE+H_FRONT, H_ACTIVE+H_FRONT+H_SYNC) 区间为低
     // vsync: 垂直同步脉冲, v_cnt 在 [V_ACTIVE+V_FRONT, V_ACTIVE+V_FRONT+V_SYNC) 区间为低
-    assign vga_hs = (h_cnt >= (H_ACTIVE + H_FRONT) && h_cnt < (H_ACTIVE + H_FRONT + H_SYNC)) ? 1'b0 : 1'b1;
-    assign vga_vs = (v_cnt >= (V_ACTIVE + V_FRONT) && v_cnt < (V_ACTIVE + V_FRONT + V_SYNC)) ? 1'b0 : 1'b1;
+    // 注: 寄存器输出延迟 1 拍 (40ns), 在 VESA 容差范围内 (±2 像素), 不影响显示器同步
+    reg vga_hs_reg, vga_vs_reg;
+    always @(posedge clk_pix or negedge rst_n_synced) begin
+        if (!rst_n_synced) begin
+            vga_hs_reg <= 1'b1;
+            vga_vs_reg <= 1'b1;
+        end else begin
+            vga_hs_reg <= (h_cnt >= (H_ACTIVE + H_FRONT) && h_cnt < (H_ACTIVE + H_FRONT + H_SYNC)) ? 1'b0 : 1'b1;
+            vga_vs_reg <= (v_cnt >= (V_ACTIVE + V_FRONT) && v_cnt < (V_ACTIVE + V_FRONT + V_SYNC)) ? 1'b0 : 1'b1;
+        end
+    end
+    assign vga_hs = vga_hs_reg;
+    assign vga_vs = vga_vs_reg;
 
     // 有效显示区域标志
     wire in_display;
@@ -173,7 +196,7 @@ module VGA #(
     end
 
     // ==========================================================================
-    // 第 4 部分 — 帧缓冲预取流水线 (3 级流水)
+    // 第 4 部分 — 帧缓冲预取流水线 (2 级流水)
     // ==========================================================================
     // 设计思路:
     //   DataMemory 帧缓冲 BRAM 读延迟 = 1 周期 (寄存器输出),
@@ -181,7 +204,7 @@ module VGA #(
     //   总流水延迟 = 2 周期。
     //
     //   为了在每个字符的第 0 个像素就有正确的像素数据:
-    //     - 在当前字符的第 5 个像素 (h_cnt[2:0]==5) 时,
+    //     - 在当前字符的第 5 个像素 (h_cnt[2:0]==CHAR_SWITCH_PIX) 时,
     //       将 fb_addr 切换到下一个字符的地址
     //     - 1 周期后 fb_data 到达 → 字模 ROM 地址设置
     //     - 再 1 周期后 font_data 到达 → 像素输出
@@ -203,8 +226,8 @@ module VGA #(
 
     assign fb_addr = fb_addr_reg;
 
-    always @(posedge clk_pix or negedge rst_n) begin
-        if (!rst_n) begin
+    always @(posedge clk_pix or negedge rst_n_synced) begin
+        if (!rst_n_synced) begin
             fb_addr_reg <= 12'd0;
             char_data    <= 16'd0;
             font_data    <= 8'd0;
@@ -226,7 +249,7 @@ module VGA #(
             v_d2 <= v_d1;
 
             // ---- fb_addr 预取控制 ----
-            // 情况 1: 水平消隐末期 (h_cnt==798), 预取当前行首字符
+            // 情况 1: 水平消隐末期 (h_cnt==H_PREFETCH), 预取当前行首字符
             //         (h_cnt==799→0 时 v_cnt 递增, 所以需要提前指向新行)
             if (h_cnt == H_PREFETCH) begin
                 if (v_cnt < (V_ACTIVE - 1)) begin
@@ -243,7 +266,7 @@ module VGA #(
                     fb_addr_reg <= 12'd0;
                 end
             end
-            // 情况 2: 当前字符的倒数第 2 个像素 (h_cnt[2:0]==6),
+            // 情况 2: 当前字符的倒数第 3 个像素 (h_cnt[2:0]==CHAR_SWITCH_PIX),
             //         切换到下一个字符的帧缓冲地址
             //         限制: 仅在有效显示区域 (h<640, v<480) 内更新
             else if (h_cnt[2:0] == CHAR_SWITCH_PIX && h_cnt < H_ACTIVE && v_cnt < V_ACTIVE) begin

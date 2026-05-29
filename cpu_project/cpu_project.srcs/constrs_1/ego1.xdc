@@ -127,6 +127,15 @@ set_property -dict {PACKAGE_PIN E6 IOSTANDARD LVCMOS33} [get_ports {vga_b[1]}]
 set_property -dict {PACKAGE_PIN E5 IOSTANDARD LVCMOS33} [get_ports {vga_b[2]}]
 set_property -dict {PACKAGE_PIN E7 IOSTANDARD LVCMOS33} [get_ports {vga_b[3]}]
 
+# ============================ 生成时钟约束 ======================================
+# VGA 像素时钟: 100MHz / 4 = 25MHz (clk_div[1] → BUFG_vga_clk → vga_clk)
+create_generated_clock -name vga_clk -source [get_ports clk] \
+    -divide_by 4 [get_pins BUFG_vga_clk/O]
+
+# CPU 时钟: 100MHz / 8 = 12.5MHz (clk_div[2] → BUFG_cpu_clk → cpu_clk)
+create_generated_clock -name cpu_clk -source [get_ports clk] \
+    -divide_by 8 [get_pins BUFG_cpu_clk/O]
+
 # ============================ 未使用外设: 全部不约束 =============================
 # DAC, PS2, SDRAM, 蓝牙, 音频, IIC, XADC, PMOD — 本项目不使用.
 # Vivado 会自动将未约束的输出引脚置为悬空, 输入引脚拉低.
