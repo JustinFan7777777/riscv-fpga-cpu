@@ -172,6 +172,7 @@ game_over_screen:
 # ---- 等待 btn[4] 按下以重新开始 ----
 game_over_loop:
     lw   t0, 0(s1)               # 读按键
+    xori t0, t0, 0x1F            # 取反低5位 (EGO1按键按下=0)
     andi t0, t0, 0x10            # 检查 btn[4]
     beqz t0, game_over_loop      # 未按下 → 继续等待
 
@@ -255,6 +256,7 @@ init_game:
 # 防止反向 (不能从 Up 直接变 Down，Left 不能变 Right)
 read_input:
     lw   t0, 0(s1)               # t0 = ButtonIn
+    xori t0, t0, 0x1F            # 取反低5位 (EGO1按键按下=0, 松开=1)
 
     # 检查 btn[4] (复位) → 跳到游戏结束循环
     andi t1, t0, 0x10
@@ -504,22 +506,20 @@ place_food:
     sw   ra, 0(sp)
 
 pf_try:
-    # ---- 生成 X (1~78) ----
+    # ---- 生成 X (1~78), 拒绝采样保证均匀分布 ----
+pf_x_gen:
     jal  ra, lfsr_rand
     andi t0, t0, 0x7F            # [0,127]
     li t1, 78
-    blt  t0, t1, pf_x_ok
-    sub  t0, t0, t1              # [0,49]
-pf_x_ok:
+    bge  t0, t1, pf_x_gen        # >=78 → 重试
     addi t4, t0, 1               # t4 = food_x (1~78)
 
-    # ---- 生成 Y (1~28) ----
+    # ---- 生成 Y (1~28), 拒绝采样保证均匀分布 ----
+pf_y_gen:
     jal  ra, lfsr_rand
     andi t0, t0, 0x1F            # [0,31]
     li t1, 28
-    blt  t0, t1, pf_y_ok
-    sub  t0, t0, t1              # [0,3]
-pf_y_ok:
+    bge  t0, t1, pf_y_gen        # >=28 → 重试
     addi t5, t0, 1               # t5 = food_y (1~28)
 
     # ---- 检查是否在蛇身上 ----

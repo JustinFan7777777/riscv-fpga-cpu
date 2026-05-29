@@ -148,7 +148,7 @@ def assemble_line(line, labels, pc):
 
 def collect_labels_and_count(filepath):
     """Pass 1: scan lines, register labels, compute PC for each line."""
-    with open(filepath) as f:
+    with open(filepath, encoding='utf-8') as f:
         lines = f.readlines()
 
     labels = {}
@@ -178,7 +178,7 @@ def collect_labels_and_count(filepath):
     return labels
 
 def assemble(filepath):
-    with open(filepath) as f:
+    with open(filepath, encoding='utf-8') as f:
         lines = f.readlines()
 
     # Pass 1: collect all labels (forward references now OK)
