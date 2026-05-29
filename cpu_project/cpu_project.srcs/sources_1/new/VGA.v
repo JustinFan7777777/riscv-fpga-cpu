@@ -5,7 +5,7 @@
 //
 // ================================ 中文说明 ================================
 // 【功能】VGA 文本模式显示控制器，输出 640×480@60Hz 模拟 VGA 信号。
-//         内嵌 128 字符 × 8×16 像素的字模 ROM（分布式 RAM，组合逻辑读出），
+//         内嵌 128 字符 × 8×16 像素的字模 ROM（BRAM, 1 周期读延迟），
 //         通过外部帧缓冲 BRAM（位于 DataMemory.v 中，双端口）读取待显示字符
 //         的 ASCII 码和颜色属性。
 //
@@ -226,8 +226,7 @@ module VGA #(
             v_d2 <= v_d1;
 
             // ---- fb_addr 预取控制 ----
-            // 情况 1: 水平消隐末期 (h_cnt==798), 预取当前行首字符
-            //         (h_cnt==799→0 时 v_cnt 递增, 所以需要提前指向新行)
+            // 情况 1: 水平消隐末期 (h_cnt==H_PREFETCH=797), 预取当前行首字符
             if (h_cnt == H_PREFETCH) begin
                 if (v_cnt < (V_ACTIVE - 1)) begin
                     // 不是最后一行: 指向下一行的第 0 列
@@ -243,8 +242,7 @@ module VGA #(
                     fb_addr_reg <= 12'd0;
                 end
             end
-            // 情况 2: 当前字符的倒数第 2 个像素 (h_cnt[2:0]==6),
-            //         切换到下一个字符的帧缓冲地址
+            // 情况 2: 当前字符第 CHAR_SWITCH_PIX=5 个像素, 切换到下一个字符
             //         限制: 仅在有效显示区域 (h<640, v<480) 内更新
             else if (h_cnt[2:0] == CHAR_SWITCH_PIX && h_cnt < H_ACTIVE && v_cnt < V_ACTIVE) begin
                 if (h_cnt[9:3] == (COLS - 1)) begin
@@ -278,10 +276,6 @@ module VGA #(
     assign fg_color = char_data[11:8];
     assign bg_color = char_data[15:12];
 
-    // 空白帧缓冲单元默认显示为黑色背景（之前为白色）
-    wire screen_default_white;
-    assign screen_default_white = 1'b0;
-
     // 当前像素在字符内的水平位置 (0=最左, 7=最右)
     // 注: 数据路径 (fb_addr→BRAM→char_data→font_rom→font_data) 比计数器路径
     // (h_cnt→h_d1→h_d2) 多 1 拍延迟, 需 +2 补偿像素对齐 (3-bit 自动 wrap)
@@ -300,15 +294,15 @@ module VGA #(
 
     // 预计算前景/背景各通道的 4-bit 值 (消除三通道间复制粘贴)
     wire [3:0] fg_r, fg_g, fg_b, bg_r, bg_g, bg_b;
-    assign fg_r = {fg_color[2], fg_color[2], fg_color[2], fg_color[3]};
-    assign fg_g = {fg_color[1], fg_color[1], fg_color[1], fg_color[3]};
-    assign fg_b = {fg_color[0], fg_color[0], fg_color[0], fg_color[3]};
-    assign bg_r = {bg_color[2], bg_color[2], bg_color[2], bg_color[3]};
-    assign bg_g = {bg_color[1], bg_color[1], bg_color[1], bg_color[3]};
-    assign bg_b = {bg_color[0], bg_color[0], bg_color[0], bg_color[3]};
+    assign fg_r = {3{fg_color[2]}, fg_color[3]};
+    assign fg_g = {3{fg_color[1]}, fg_color[3]};
+    assign fg_b = {3{fg_color[0]}, fg_color[3]};
+    assign bg_r = {3{bg_color[2]}, bg_color[3]};
+    assign bg_g = {3{bg_color[1]}, bg_color[3]};
+    assign bg_b = {3{bg_color[0]}, bg_color[3]};
 
-    assign vga_r = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_r : bg_r)) : 4'd0;
-    assign vga_g = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_g : bg_g)) : 4'd0;
-    assign vga_b = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_b : bg_b)) : 4'd0;
+    assign vga_r = in_active ? (pixel_on ? fg_r : bg_r) : 4'd0;
+    assign vga_g = in_active ? (pixel_on ? fg_g : bg_g) : 4'd0;
+    assign vga_b = in_active ? (pixel_on ? fg_b : bg_b) : 4'd0;
 
 endmodule

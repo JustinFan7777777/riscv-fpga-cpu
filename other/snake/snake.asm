@@ -56,29 +56,6 @@
 .globl _start
 
 # ==============================================================================
-# 常量定义
-# ==============================================================================
-# MMIO 基址
-
-# 游戏参数
-
-# 方向常量
-
-# 游戏状态常量
-
-# 游戏状态偏移 (相对于 s4 = 0x0000_2000)
-
-# VGA 字符字: (bg[15:12] | fg[11:8] | ascii[7:0])
-# 颜色: 0x0=黑 0x2=暗绿 0x4=暗红 0x8=暗灰 0xA=亮绿 0xC=亮红 0xF=白
-# 以下均为预计算的值 (RARS 不支持 .equ 中的 | 运算符)
-
-# 游戏字符 (颜色 + ASCII) — 已预计算
-
-# 延迟参数 (~0.15秒 @12.5MHz)
-
-# "GAME OVER" 各字符值 (亮红字+黑底, 空格为白字)
-
-# ==============================================================================
 # 程序入口 — 初始化所有基址寄存器
 # ==============================================================================
 _start:
@@ -627,74 +604,59 @@ cs_loop:
 # draw_border — 绘制游戏边界
 # ==============================================================================
 draw_border:
+    addi sp, sp, -12
+    sw   ra, 0(sp)
+    sw   s5, 4(sp)
+    sw   s6, 8(sp)
+
     # ---- 上边界 (row=0, col=0~79) ----
-    li t0, 0               # col 计数器
+    li s5, 0               # col 计数器
 db_top:
-    add  a0, x0, x0              # row = 0
-    add  a1, t0, x0
+    li a0, 0
+    add  a1, s5, x0
     li a2, 0x823
-    addi sp, sp, -8
-    sw   t0, 0(sp)
-    sw   ra, 4(sp)
     jal  ra, write_char
-    lw   ra, 4(sp)
-    lw   t0, 0(sp)
-    addi sp, sp, 8
-    addi t0, t0, 1
+    addi s5, s5, 1
     li t1, 80
-    blt  t0, t1, db_top
+    blt  s5, t1, db_top
 
     # ---- 下边界 (row=29, col=0~79) ----
-    li t0, 0
+    li s5, 0
 db_bottom:
     li a0, 29
-    add  a1, t0, x0
+    add  a1, s5, x0
     li a2, 0x823
-    addi sp, sp, -8
-    sw   t0, 0(sp)
-    sw   ra, 4(sp)
     jal  ra, write_char
-    lw   ra, 4(sp)
-    lw   t0, 0(sp)
-    addi sp, sp, 8
-    addi t0, t0, 1
+    addi s5, s5, 1
     li t1, 80
-    blt  t0, t1, db_bottom
+    blt  s5, t1, db_bottom
 
     # ---- 左边界 (row=1~28, col=0) ----
-    li t0, 1
+    li s5, 1
 db_left:
-    add  a0, t0, x0
-    add  a1, x0, x0
+    add  a0, s5, x0
+    li a1, 0
     li a2, 0x823
-    addi sp, sp, -8
-    sw   t0, 0(sp)
-    sw   ra, 4(sp)
     jal  ra, write_char
-    lw   ra, 4(sp)
-    lw   t0, 0(sp)
-    addi sp, sp, 8
-    addi t0, t0, 1
+    addi s5, s5, 1
     li t1, 29
-    blt  t0, t1, db_left
+    blt  s5, t1, db_left
 
     # ---- 右边界 (row=1~28, col=79) ----
-    li t0, 1
+    li s5, 1
 db_right:
-    add  a0, t0, x0
+    add  a0, s5, x0
     li a1, 79
     li a2, 0x823
-    addi sp, sp, -8
-    sw   t0, 0(sp)
-    sw   ra, 4(sp)
     jal  ra, write_char
-    lw   ra, 4(sp)
-    lw   t0, 0(sp)
-    addi sp, sp, 8
-    addi t0, t0, 1
+    addi s5, s5, 1
     li t1, 29
-    blt  t0, t1, db_right
+    blt  s5, t1, db_right
 
+    lw   s6, 8(sp)
+    lw   s5, 4(sp)
+    lw   ra, 0(sp)
+    addi sp, sp, 12
     jalr x0, ra, 0
 
 # ==============================================================================
