@@ -66,14 +66,13 @@ module RegFile (
                           dbg_bypass              ? WD3  : regFile[dbg_reg_addr];
 
     // ===========================
-    // 写口 (时序逻辑, negedge clk 写入, negedge rst_n 异步复位)
+    // 写口 (时序逻辑, posedge clk 写入, negedge rst_n 异步复位)
     // ===========================
-    // 使用 negedge: 写入在 posedge (ID/EX锁存) 之前完成,
-    // 避免流水线中 load→use 场景下 WB 写入和 ID 读取的 NBA 竞争。
-    //   例: lw t1; add t3, t1, t2 → add 在 EX 时能从 RegFile 读到 lw 结果
+    // 写后读旁路 (rs1_bypass / rs2_bypass) 已处理 load→use 的 NBA 竞争,
+    // 因此写口保持 posedge 即可, 避免 negedge clk 导致 Vivado 综合失败。
     // RISC-V规范: x0 硬连线为0, 写操作对x0无效
     // 复位: for循环将32个寄存器全部清零 (综合为32个触发器复位)
-    always @(negedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 32; i = i + 1)
                 regFile[i] <= 32'd0;
