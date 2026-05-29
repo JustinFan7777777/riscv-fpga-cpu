@@ -278,6 +278,10 @@ module VGA #(
     assign fg_color = char_data[11:8];
     assign bg_color = char_data[15:12];
 
+    // 空白帧缓冲单元默认显示为黑色背景（之前为白色）
+    wire screen_default_white;
+    assign screen_default_white = 1'b0;
+
     // 当前像素在字符内的水平位置 (0=最左, 7=最右)
     // 注: 数据路径 (fb_addr→BRAM→char_data→font_rom→font_data) 比计数器路径
     // (h_cnt→h_d1→h_d2) 多 1 拍延迟, 需 +2 补偿像素对齐 (3-bit 自动 wrap)
@@ -303,8 +307,8 @@ module VGA #(
     assign bg_g = {bg_color[1], bg_color[1], bg_color[1], bg_color[3]};
     assign bg_b = {bg_color[0], bg_color[0], bg_color[0], bg_color[3]};
 
-    assign vga_r = in_active ? (pixel_on ? fg_r : bg_r) : 4'd0;
-    assign vga_g = in_active ? (pixel_on ? fg_g : bg_g) : 4'd0;
-    assign vga_b = in_active ? (pixel_on ? fg_b : bg_b) : 4'd0;
+    assign vga_r = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_r : bg_r)) : 4'd0;
+    assign vga_g = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_g : bg_g)) : 4'd0;
+    assign vga_b = in_active ? (screen_default_white ? 4'hF : (pixel_on ? fg_b : bg_b)) : 4'd0;
 
 endmodule

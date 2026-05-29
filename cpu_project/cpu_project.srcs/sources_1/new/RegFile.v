@@ -46,31 +46,26 @@ module RegFile (
     integer i;  // 复位循环变量
 
     // ===========================
-    // 双读口 (组合逻辑, 非阻塞) + 写后读旁路
+    // 双读口 (组合逻辑, 非阻塞)
     // ===========================
-    // 旁路: WB 阶段 RegWrite=1 且 rd==rs 时, 直接用 WD3, 不等 negedge 写入
-    // 解决流水线中 load→use 的 NBA 时序竞争:
-    //   posedge: ID/EX 锁存时 regFile 还未更新, 旁路直接给 WD3
-    wire rs1_bypass = RegWrite && (rd_addr == rs1_addr) && (rs1_addr != 5'd0);
-    wire rs2_bypass = RegWrite && (rd_addr == rs2_addr) && (rs2_addr != 5'd0);
+    // rs1_val: x0永远返回0, 其余寄存器直出
+    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 : regFile[rs1_addr];
 
-    assign rs1_val = (rs1_addr == 5'd0) ? 32'b0 :
-                     rs1_bypass         ? WD3  : regFile[rs1_addr];
+    // rs2_val: x0永远返回0, 其余寄存器直出
+    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 : regFile[rs2_addr];
 
-    assign rs2_val = (rs2_addr == 5'd0) ? 32'b0 :
-                     rs2_bypass         ? WD3  : regFile[rs2_addr];
-
-    // Debug 读口 (组合逻辑, 同样加旁路)
-    wire dbg_bypass = RegWrite && (rd_addr == dbg_reg_addr) && (dbg_reg_addr != 5'd0);
-    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 :
-                          dbg_bypass              ? WD3  : regFile[dbg_reg_addr];
+    // ===========================
+    // Debug 读口 (组合逻辑)
+    // ===========================
+    // DebugController 随时可以读任意寄存器, 不影响CPU正常执行
+    assign dbg_reg_data = (dbg_reg_addr == 5'd0) ? 32'b0 : regFile[dbg_reg_addr];
 
     // ===========================
     // 写口 (时序逻辑, posedge clk 写入, negedge rst_n 异步复位)
     // ===========================
-    // 写后读旁路 (rs1_bypass / rs2_bypass) 已处理 load→use 的 NBA 竞争,
-    // 因此写口保持 posedge 即可, 避免 negedge clk 导致 Vivado 综合失败。
     // RISC-V规范: x0 硬连线为0, 写操作对x0无效
+    //   读口: rs1/rs2访问x0时返回0 (第51-54行)
+    //   写口: RegWrite=1且rd=x0时, 条件(rd_addr!=0)阻止写入, x0保持0
     // 复位: for循环将32个寄存器全部清零 (综合为32个触发器复位)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
