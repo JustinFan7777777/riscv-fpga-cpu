@@ -1,8 +1,13 @@
-# ISA 指令扩展 — POPCNT / CLZ / CTZ
+# ISA 硬件加速指令 — Bonus 演示指南
 
-## 概述
+> ISA 指令扩展 | 分值: 4 | 状态: 完成
+> 文件: ALU.v (3 个组合逻辑 function), Decoder.v (custom_op 译码), other/isa/isa_test.asm
 
-在 RISC-V RV32I 基础上新增 3 条硬件加速指令，纯组合逻辑实现，单周期完成。
+---
+
+## 一、功能介绍
+
+在 RISC-V RV32I 基础上新增 3 条硬件加速指令，纯组合逻辑，单周期完成：
 
 | 指令 | 编码 (funct7/funct3) | 功能 | 周期 |
 |------|---------------------|------|------|
@@ -10,83 +15,82 @@
 | CLZ rd, rs1 | 0000001 / 010 | 统计 rs1 前导零个数 | 1 |
 | CTZ rd, rs1 | 0000001 / 011 | 统计 rs1 尾部零个数 | 1 |
 
-## 创新点
+---
 
-1. **无冲突编码** — `custom_op = inst[25]` (funct7[0]) 区分自定义指令。RV32I 全部 R-type 的 funct7=0000000 或 0100000，bit[0] 均为 0。自定义设 bit[0]=1 实现零开销区分。
+## 二、关键技术 (指代码讲)
 
-2. **POPCNT 分治法** — 5 级加法树: 2-bit→4-bit→8-bit→16-bit→32-bit，纯组合逻辑 O(logN)，比软件逐位统计快 ~32 倍。
+### 2.1 无冲突编码 — Decoder.v
 
-3. **CLZ 二分查找** — 优先编码器，含 clz(0)=32 零值保护。从高 16 位逐级缩小搜索范围。
-
-4. **CTZ 位反转** — `ctz(x) = clz(reverse_bits(x))`，复用 CLZ 逻辑，零额外组合电路。
-
-5. **完全向后兼容** — 所有 RV32I 标准指令不受影响。新指令由 Decoder 自动译码，ALU 自动执行。
-
-## 实现流程
-
-```
-Decoder.v:  inst[25]=1 → custom_op=1
-  → R-type ALU 译码: funct3=001 → ALUControl=1010 (POPCNT)
-                     funct3=010 → ALUControl=1011 (CLZ)
-                     funct3=011 → ALUControl=1100 (CTZ)
-
-ALU.v:  ALUControl=1010 → ALUResult = popcount(A)   [5级加法树]
-        ALUControl=1011 → ALUResult = clz(A)         [二分查找]
-        ALUControl=1100 → ALUResult = ctz(A)         [位反转+CLZ]
+```verilog
+wire custom_op = inst[25];  // funct7 第 0 位
+// RV32I 全部标准 R-type: funct7=0000000 或 0100000, bit[0] 均为 0
+// 自定义指令: funct7=0000001, bit[0]=1 → 零开销区分
 ```
 
-## 测试用例
-
-`other/isa/isa_test.hex` — 63 条指令, 18 组边界值:
-
-| 类别 | 测试数据 | 预期值 |
-|------|---------|--------|
-| POPCNT | 0x00000000, 0xFFFFFFFF, 0x00000001, 0x80000000, 0x33333333, 0x00FF00FF | 0, 32, 1, 1, 16, 16 |
-| CLZ | 0x00000000, 0xFFFFFFFF, 0x80000000, 0x00000001, 0x0000FFFF, 0x00FF0000 | 32, 0, 0, 31, 16, 8 |
-| CTZ | 0x00000000, 0xFFFFFFFF, 0x00000001, 0x80000000, 0x0000FF00, 0x00000010 | 32, 0, 0, 31, 8, 4 |
-
-## 上板操作指南
-
-### 步骤 1: 加载测试程序
-```python
-import serial, struct
-ser = serial.Serial('COM3', 115200, timeout=0.5)
-
-# 暂停CPU → 加载 isa_test.hex 到 IMem
-ser.write(b'\x03'); ser.read(1)
-
-with open('other/isa/isa_test.hex') as f:
-    for i, line in enumerate(f):
-        instr = int(line.strip(), 16)
-        addr = i * 4
-        ser.write(b'\x40' + struct.pack('>I', addr) + struct.pack('>I', instr))
-        ser.read(1)
-
-# 复位CPU (PC=0) → 单步执行全部63条指令 → 读DMem验证
-ser.write(b'\x01'); ser.read(1)  # RESET
+**ALU 译码 (Decoder.v):**
+```verilog
+3'b001: alucontrol_r = custom_op ? 4'b1010 : 4'b0101;  // POPCNT : SLL
+3'b010: alucontrol_r = custom_op ? 4'b1011 : 4'b1000;  // CLZ    : SLT
+3'b011: alucontrol_r = custom_op ? 4'b1100 : 4'b1001;  // CTZ    : SLTU
 ```
 
-### 步骤 2: 验证结果 (读 DMem 0x0000-0x0043)
-```python
-expected = [0,32,1,1,16,16, 32,0,0,31,16,8, 32,0,0,31,8,4]
-for i, exp in enumerate(expected):
-    addr = i * 4
-    ser.write(b'\x24' + struct.pack('>I', addr))
-    resp = ser.read(5)
-    actual = int.from_bytes(resp[1:5], 'big')
-    status = "PASS" if actual == exp else f"FAIL (got {actual})"
-    print(f"Test {i+1:2d}: expected {exp:2d}, {status}")
+### 2.2 POPCNT — 分治法 5 级加法树 (ALU.v)
+
+```
+Step 1: 每 2-bit 一组 popcount → t = (x&0x55555555) + ((x>>1)&0x55555555)
+Step 2: 每 4-bit 一组 → t = (t&0x33333333) + ((t>>2)&0x33333333)
+Step 3: 每 8-bit 一组 → t = (t&0x0F0F0F0F) + ((t>>4)&0x0F0F0F0F)
+Step 4: 每 16-bit 一组 → t = (t&0x00FF00FF) + ((t>>8)&0x00FF00FF)
+Step 5: 32-bit 最终结果 → t = (t&0x0000FFFF) + ((t>>16)&0x0000FFFF)
 ```
 
-### 步骤 3: 验证清单
-- [ ] 18 组测试全部 PASS
-- [ ] CLZ(0) = 32 (零值保护正确)
-- [ ] CTZ(0) = 32 (位反转+X)
+5 级纯组合逻辑，O(log₂32)=5，无时钟延迟。
 
-### 软件 vs 硬件对比 (视频素材)
+### 2.3 CLZ — 二分查找优先编码器 (ALU.v)
+
 ```
-同是统计 0xFFFFFFFF 中 '1' 的个数 (32个):
-  软件: li t0, 32; loop: andi+slli+srli+addi+bnez (约100条指令, ~100周期)
-  硬件: POPCNT t0, t0 (1条指令, 1周期)
-  加速比: ~100x
+if (x == 0) return 32;     // 零值特殊处理
+n = 0;
+if (x[31:16] == 0) { n+=16; x<<=16; }  // 高 16 位全零 → 前导至少 16 个零
+if (x[31:24] == 0) { n+=8;  x<<=8;  }  // 高 8 位全零
+if (x[31:28] == 0) { n+=4;  x<<=4;  }  // 高 4 位全零
+if (x[31:30] == 0) { n+=2;  x<<=2;  }  // 高 2 位全零
+if (x[31]    == 0) { n+=1;           }  // 最高位为零
+return n;
 ```
+
+### 2.4 CTZ — 位反转 + CLZ (ALU.v)
+
+```verilog
+ctz(x) = clz(reverse_bits(x))  // 复用 CLZ 逻辑, 零额外电路
+```
+
+---
+
+## 三、视频演示流程
+
+**1. 代码走读:**
+- ALU.v: popcount/clz/ctz 三个 function 的实现
+- Decoder.v: custom_op 区分机制 + ALU 译码表修改
+
+**2. 测试结果展示:**
+- 加载 other/isa/isa_test.asm (63 条指令, 18 组边界值)
+- 通过 UART Debug 读取 DMem 验证结果
+- 18 组全部 PASS: 全零、全一、单比特、随机值
+
+**3. 软件 vs 硬件对比 (关键画面):**
+
+| 统计 0xFFFFFFFF 中 '1' 的个数 (=32) |
+|---|
+| 软件: ~100 条指令 (循环 32 次, 逐位检查+累加), ~100 周期 |
+| 硬件: 1 条指令 `POPCNT t0, t0`, 1 周期 |
+| **加速比: ~100x** |
+
+---
+
+## 四、创新点
+
+1. **funct7[0] 零开销区分** — 所有标准 RV32I R-type 的 funct7[0]=0, 自定义=1
+2. **POPCNT 分治法** — 5 级加法树, O(logN) 组合逻辑, 比软件快 ~100 倍
+3. **CTZ 复用 CLZ** — `ctz(x) = clz(reverse_bits(x))`, 零额外电路
+4. **完全向后兼容** — 所有 RV32I 标准指令不受影响
