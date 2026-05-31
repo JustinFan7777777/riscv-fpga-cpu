@@ -31,10 +31,10 @@
 # ==== 编译 (使用课程提供的 RISC-V toolchain) ====
 #   riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 batch_test.asm -o batch_test.o
 #   riscv64-unknown-elf-ld -Ttext 0x00000000 batch_test.o -o batch_test.elf
-#   riscv64-unknown-elf-objcopy -O verilog batch_test.elf batch_test.hex
+#   riscv64-unknown-elf-objcopy -O verilog batch_test.elf batch_test.txt
 #
 # 或使用 RARS:
-#   java -jar rars.jar a dump .text HexText batch_test.hex batch_test.asm
+#   java -jar rars.jar a dump .text HexText batch_test.txt batch_test.asm
 # ==============================================================================
 
 .text

@@ -49,7 +49,7 @@
 # ==== 编译命令 ====
 #   riscv64-unknown-elf-as -march=rv32i -mabi=ilp32 snake.asm -o snake.o
 #   riscv64-unknown-elf-ld -Ttext 0x00000000 snake.o -o snake.elf
-#   riscv64-unknown-elf-objcopy -O verilog snake.elf snake.hex
+#   riscv64-unknown-elf-objcopy -O verilog snake.elf snake.txt
 # ==============================================================================
 
 .text

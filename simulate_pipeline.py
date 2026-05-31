@@ -2,10 +2,10 @@
 """
 RISC-V RV32I 五级流水线周期精确模拟器
 =========================================
-用于验证 batch_test_pipeline.hex 的正确性，无需 Vivado。
+用于验证 batch_test_pipeline.txt 的正确性，无需 Vivado。
 
 用法:
-    python3 simulate_pipeline.py [--nofwd] [--hex assembly/batch_test_pipeline.hex]
+    python3 simulate_pipeline.py [--nofwd] [--hex assembly/batch_test_pipeline.txt]
 
     --nofwd  : 关闭 forwarding，模拟纯 NOP 方案
     默认     : 开启 forwarding + load-use stall（模拟当前硬件）
@@ -573,12 +573,12 @@ if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('--nofwd', action='store_true', help='Disable forwarding (pure NOP mode)')
-    ap.add_argument('--hex', default='assembly/batch_test_pipeline.hex')
+    ap.add_argument('--hex', default='assembly/batch_test_pipeline.txt')
     ap.add_argument('--single', action='store_true', help='Use single-cycle hex')
     args = ap.parse_args()
 
     if args.single:
-        args.hex = 'assembly/batch_test_single.hex'
+        args.hex = 'assembly/batch_test.txt'
 
     fwd = not args.nofwd
     mode = "NOP-only (no forwarding)" if args.nofwd else "forwarding + load-use stall"

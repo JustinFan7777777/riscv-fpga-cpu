@@ -147,9 +147,8 @@ module CPUTop (
     // ===========================
 
     // --- Ifetch: 取指 (PC + 指令内存) ---
-    Ifetch #(
-        .INIT_FILE("../../../../assembly/batch_test_single.hex")
-    ) uIfetch (
+    // INIT_FILE 使用 Ifetch.v 默认值 "batch_test.txt" (与verilog同目录)
+    Ifetch uIfetch (
         .clk          (clk),
         .rst_n        (rst_n),
         .cpu_halt     (cpu_halt_effective),

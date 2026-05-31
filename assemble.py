@@ -221,8 +221,8 @@ def write_hex(resolved, outpath, max_pc=None):
             f.write(f"{resolved.get(i*4, 0):08X}\n")
 
 if __name__ == '__main__':
-    asm_path = sys.argv[1] if len(sys.argv) > 1 else 'assembly/batch_test_pipeline.asm'
-    hex_path = sys.argv[2] if len(sys.argv) > 2 else 'assembly/batch_test_pipeline.hex'
+    asm_path = sys.argv[1] if len(sys.argv) > 1 else 'assembly/batch_test.asm'
+    hex_path = sys.argv[2] if len(sys.argv) > 2 else 'assembly/batch_test.txt'
 
     resolved, labels = assemble(asm_path)
     print(f"Instructions: {len(resolved)}, Labels: {len(labels)}")

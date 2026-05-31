@@ -47,7 +47,7 @@
 //     地址 = {ascii[6:0], row_in_char[3:0]}
 //     ascii  = 7-bit 字符编码 (0~127)
 //     row_in_char = 当前扫描行在字符内的行号 (0~15)
-//   数据由 $readmemh 从 font_rom.hex 加载, 每字符 16 行, 共 128 字符。
+//   数据由 $readmemh 从 font_rom.txt 加载, 每字符 16 行, 共 128 字符。
 //
 // 【颜色属性编码】
 //   前景色 char_data[11:8]:  [11]=亮度I  [10]=R  [9]=G  [8]=B
@@ -89,7 +89,7 @@ module VGA #(
     parameter ROWS     = 5'd30,     // 行数
 
     // 字模 ROM 初始化文件路径 (相对于本 Verilog 源文件所在目录)
-    parameter FONT_FILE = "font_rom.hex"
+    parameter FONT_FILE = "../../../../other/vga/font_rom.txt"
 )(
     // ===== 时钟和复位 =====
     input         clk_pix,         // 25MHz 像素时钟 (来自 TopDebug 的 clk_div[1] + BUFG)

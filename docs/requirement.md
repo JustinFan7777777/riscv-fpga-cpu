@@ -91,7 +91,7 @@
 | ISA 指令扩展 | 4 | ecall(2)/浮点指令(3)/硬件加速(4)；`*`,`/`直接实现不额外加分；需自行提供测试用例 |
 | 架构优化 (Pipeline) | 6 | 需同时实现单周期，整合到一个 top 模块并支持切换模式；能正确运行含 control/data hazard 的代码；需通过 debug 模式暂停观察寄存器 |
 | 软硬件协同应用 | 5 | 自定义应用：游戏、图像、声音等 |
-| 教学实验效率工具 | 2 | 辅助工具 |
+| 教学实验效率工具 | 4 | 辅助工具 |
 | 其他创意 | — | 未列出的创意 |
 
 ---
@@ -131,7 +131,7 @@
 
 **硬性限制：**
 - ❌ 禁止使用任何 Vivado 自带或第三方 IP 核
-- ✅ IMem 必须用 `$readmemh` 初始化 `batch_test.hex`
+- ✅ IMem 必须用 `$readmemh` 初始化 `batch_test.txt`
 - ✅ 双击 `.xpr` 即可在其他电脑打开工程并编译生成 bitstream
 
 ```
@@ -146,7 +146,7 @@ c_小组编号_rv_姓名1_姓名2_姓名3/
 │       └── TopDebug_routed.dcp
 ├── assembly/
 │   ├── batch_test.asm              ← 所有基础场景汇编
-│   ├── batch_test.hex              ← 对应 hex 机器码
+│   ├── batch_test.txt              ← 对应 hex 机器码
 │   └── (其他 .asm/.txt)
 ├── other/                          ← Bonus 相关代码/工具
 └── gitlog.txt                      ← git log 导出

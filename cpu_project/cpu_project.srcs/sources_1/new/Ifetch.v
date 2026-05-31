@@ -40,7 +40,7 @@
 //   CPU跑12.5MHz, DebugController跑100MHz. 所有 debug 输入信号在CPU时钟
 //   域内打一拍 (_sync后缀) 后再使用, 避免亚稳态。
 //
-// 【IMem 包含的 .hex 文件地址映射】
+// 【IMem 包含的 .txt 文件地址映射】
 //   $readmemh 读取 hex 文件, 文件中每行 8 位十六进制数(32bit).
 //   文件第1行写入 mem[0], 第2行写入 mem[1], 依次类推.
 //   所以汇编器应该把代码从地址 0x0000 开始排放 (或按需调整).
@@ -48,8 +48,8 @@
 `timescale 1ns / 1ps
 
 module Ifetch #(
-    // ===== INCLASS_HEX: 现场设计 — 如需临时换hex，改此路径 (或直接改batch_test_single.hex内容) =====
-    parameter INIT_FILE = "../../../../assembly/batch_test_single.hex"  // hex 初始化文件路径
+    // ===== INCLASS_HEX: 现场设计 — 如需临时换hex，改此路径 (或直接改batch_test.txt内容) =====
+    parameter INIT_FILE = "batch_test.txt"  // hex 初始化文件路径 (与verilog同目录)
 )(
     input         clk,              // CPU 时钟 (12.5MHz)
     input         rst_n,            // 异步复位 (低有效)

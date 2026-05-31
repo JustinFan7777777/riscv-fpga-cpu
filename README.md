@@ -67,7 +67,7 @@ python difftest.py  # 预期 33/33 PASS
 │   └── cpu_project.srcs/
 ├── assembly/                 # 汇编测试
 │   ├── batch_test.asm
-│   └── batch_test.hex
+│   └── batch_test.txt
 ├── other/                    # Bonus 代码
 │   ├── vga/                  # 字模 ROM + 生成脚本
 │   ├── snake/                # 贪吃蛇汇编

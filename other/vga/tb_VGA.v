@@ -62,7 +62,7 @@ module tb_VGA;
     // VGA 实例化
     // ===========================
     VGA #(
-        .FONT_FILE("other/vga/font_rom.hex")   // 相对于工作目录 (仓库根目录)
+        .FONT_FILE("other/vga/font_rom.txt")   // 相对于工作目录 (仓库根目录)
     ) uVGA (
         .clk_pix (clk_pix),
         .rst_n   (rst_n),

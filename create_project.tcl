@@ -7,7 +7,7 @@
 #        cd <path-to>/CO Project/
 #   3. 执行: source create_project.tcl
 #   4. 脚本自动创建 cpu_project 工程、添加全部源文件、加载 XDC 约束
-#   5. 确认 assembly/batch_test_single.hex / batch_test_pipeline.hex 已存在后, 点 Generate Bitstream
+#   5. 确认 assembly/batch_test_single.txt / batch_test_pipeline.txt 已存在后, 点 Generate Bitstream
 # ==============================================================================
 
 # ---- 1. 创建工程 ----
@@ -36,19 +36,19 @@ if {[file exists $xdc_file]} {
 }
 
 # ---- 5. 确认 hex 文件路径 ----
-# Ifetch.v 默认使用 batch_test_single.hex, Ifetch_Pipe.v 默认使用 batch_test_pipeline.hex
+# Ifetch.v 默认使用 batch_test_single.txt, Ifetch_Pipe.v 默认使用 batch_test_pipeline.txt
 set asm_dir "[file dirname [info script]]/assembly"
-set hex_single "${asm_dir}/batch_test_single.hex"
-set hex_pipe   "${asm_dir}/batch_test_pipeline.hex"
+set hex_single "${asm_dir}/batch_test_single.txt"
+set hex_pipe   "${asm_dir}/batch_test_pipeline.txt"
 if {[file exists $hex_single]} {
-    puts "batch_test_single.hex found: $hex_single"
+    puts "batch_test_single.txt found: $hex_single"
 } else {
-    puts "NOTE: batch_test_single.hex not found."
+    puts "NOTE: batch_test_single.txt not found."
 }
 if {[file exists $hex_pipe]} {
-    puts "batch_test_pipeline.hex found: $hex_pipe"
+    puts "batch_test_pipeline.txt found: $hex_pipe"
 } else {
-    puts "NOTE: batch_test_pipeline.hex not found."
+    puts "NOTE: batch_test_pipeline.txt not found."
 }
 if {![file exists $hex_single] && ![file exists $hex_pipe]} {
     puts "  Compile the .asm files in assembly/ and re-run."
@@ -65,7 +65,7 @@ puts "Source files: [llength [glob $src_dir/*.v]] Verilog files"
 puts "=================================="
 puts ""
 puts "Next steps:"
-puts "  1. Confirm assembly/batch_test_single.hex or batch_test_pipeline.hex exists"
+puts "  1. Confirm assembly/batch_test_single.txt or batch_test_pipeline.txt exists"
 puts "  2. Run Synthesis  -> Run Implementation -> Generate Bitstream"
 puts "  3. Program EGO1 board with TopDebug.bit"
 puts "=================================="

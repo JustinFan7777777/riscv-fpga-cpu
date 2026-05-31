@@ -5,61 +5,1060 @@
 # ChenJunxi         = 陈俊希 (12411025) — Vivado 综合、上板测试、Difftest 验证
 # 刘一骏               (12411922) — 汇编编码、RARS 模拟验证 (通过 RARS + 微信协作, 未通过 git 提交代码)
 # ==============================================================================
+#
+commit c4572f5a779c595146fea05a62437faa27bf313e
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 19:31:38 2026 +0800
 
-a8df056 | JustinFan7777777 | 2026-05-22 | fix: stale negedge comment + implicit wire in TopDebug.v
-1e62bdc | JustinFan7777777 | 2026-05-22 | docs: complete project_log overhaul for final submission
-4fee088 | JustinFan7777777 | 2026-05-22 | structure: move soft_mul into other/mul/ subdirectory
-cfe2890 | JustinFan7777777 | 2026-05-22 | bonus: add software multiply subroutine (shift-and-add)
-caa12ad | JustinFan7777777 | 2026-05-22 | docs: enhance Chinese annotations for pipeline modules
-6eeba75 | JustinFan7777777 | 2026-05-22 | Optimize project structure for submission
-7ef7d4a | JustinFan7777777 | 2026-05-22 | Pipeline: add debug MUX for register observation requirement
-101544d | JustinFan7777777 | 2026-05-22 | Pipeline integration: fix declaration order, CPUTopPipeline wiring
-4e296f2 | JustinFan7777777 | 2026-05-22 | ISA extension: add POPCNT/CLZ/CTZ hardware-accelerated instructions
-2c12783 | JustinFan7777777 | 2026-05-22 | fix LUT issue
-7fbaa9f | JustinFan7777777 | 2026-05-22 | update vga file, and create video guidance
-65b2fe7 | JustinFan7777777 | 2026-05-20 | make 9 revisions, all are proven to be valid. Now we finish VGA + Snake
-20ebe5a | JustinFan7777777 | 2026-05-20 | VGA + Snake implementation
-f3577f1 | JustinFan7777777 | 2026-05-20 | Merge branch 'main' into bonus
-25efbe2 | JustinFan7777777 | 2026-05-20 | convert English comments to Chinese version, then add a README for future documentation and video recording
-b1504b7 | JustinFan7777777 | 2026-05-20 | finish visualizer design
-c70dcd0 | JustinFan7777777 | 2026-05-20 | initial visualizer, invented by Gemini
-7e93fe5 | JustinFan7777777 | 2026-05-20 | feat: rebuild CPU visualizer — larger components, clean routing, sequential animation
-c7089a3 | JustinFan7777777 | 2026-05-19 | feat: rebuild CPU visualizer — stage-aligned layout, straight paths, flow animation
-0a4a1fe | JustinFan7777777 | 2026-05-19 | feat: add RISC-V single-cycle CPU datapath visualizer
-927431f | JustinFan7777777 | 2026-05-19 | first bonus to implement: A Visualizer of CPU, to help users better understand how CPU works and its architecture
-a0da4a2 | JustinFan7777777 | 2026-05-19 | fix: sync hex path in CPUTop.v to match Ifetch.v
-f969f44 | JustinFan7777777 | 2026-05-19 | fix: sync hex path in CPUTop.v to match Ifetch.v
-a0f658b | JustinFan7777777 | 2026-05-19 | fix: correct $readmemh relative path in Ifetch.v
-b9f326b | JustinFan7777777 | 2026-05-19 | docs: restructure project_log, add bonus master plan
-e9cd2e7 | JustinFan7777777 | 2026-05-19 | docs: add in-class design prep guide and code markers
-5f85e20 | JustinFan7777777 | 2026-05-19 | docs: update requirement to v1.4, add in-class design rules
-128d2be | JustinFan7777777 | 2026-05-18 | docs: remove debug/verification tutorials and test case spec
-f48a1ab | JustinFan7777777 | 2026-05-18 | update a trivial subtle nuance
-bdb01f9 | JustinFan7777777 | 2026-05-18 | update all project files for clear stucture and better submission of documentation
-14b6650 | JustinFan7777777 | 2026-05-18 | docs: update project_log with difftest 33/33 PASS results
-f214b29 | JustinFan7777777 | 2026-05-18 | clk: 25MHz -> 12.5MHz
-6eed19e | ChenJunxi | 2026-05-18 | debug, pass diff test
-4baa4f3 | JustinFan7777777 | 2026-05-17 | delete .claude file, no impact, no worry
-294d153 | JustinFan7777777 | 2026-05-17 | try two new plugins: simplify and review. They all work well, code is still valid
-b8cf3c2 | JustinFan7777777 | 2026-05-17 | write a summary, also a checkpoint markdown for tomorrow's usage
-540c7e1 | JustinFan7777777 | 2026-05-17 | we've done with all the cases in RARS, then clear up the sturcture, reorganize all markdown files in project_log, also provides a clear vision of what we should do next, finally add some necessary comments or annotations around all code files to attain optimal understanding. Eventually, this marks the end of the basic part of CO Project, congratulations!
-8e8fa5e | JustinFan7777777 | 2026-05-17 | fix the 4000 & 1000 issue
-5f82676 | JustinFan7777777 | 2026-05-17 | update all markdown files to summarize in phases
-0829937 | JustinFan7777777 | 2026-05-17 | add group information and our URL
-c95e30d | JustinFan7777777 | 2026-05-17 | delete space of hex file
-faf2108 | JustinFan7777777 | 2026-05-17 | fix an issue: start at 0x4000, but not 0x0000
-34000ba | JustinFan7777777 | 2026-05-17 | clear the whole file structure, make it clean
-b9de3b0 | JustinFan7777777 | 2026-05-17 | done with batch test hex
-d99a315 | JustinFan7777777 | 2026-05-17 | convert original requirement into a well-structured one, which is easier for us to understand
-dc5d85f | JustinFan7777777 | 2026-05-17 | debug four mistakes, now all codes are available
-32971f6 | JustinFan7777777 | 2026-05-17 | create a folder to record our progress, for project document, verification guidance and final submission
-dd859cd | JustinFan7777777 | 2026-05-17 | write all assembly in advance, for my teammate to check
-20cd110 | JustinFan7777777 | 2026-05-17 | fix problem with ego1
-8c7e255 | JustinFan7777777 | 2026-05-17 | upload ego1 files, and create skeleton for teammates
-e9a78d0 | JustinFan7777777 | 2026-05-17 | fix three bugs: 1. JAL/JALR write back mistake, 2. JALRTarget syntax error, 3. memory too small
-cf7e72e | JustinFan7777777 | 2026-05-17 | verilog code
-83c9149 | JustinFan7777777 | 2026-05-16 | organize file structure to meet with the requirement in project document
-de59b5e | JustinFan7777777 | 2026-05-13 | Add Comprehensive and plain Chinese annotations in three files of debug_code, to help you better understand at first sight
-c14e135 | JustinFan7777777 | 2026-05-13 | Create requirement
-3bef085 | JustinFan7777777 | 2026-05-13 | commit additional files
-a6475fa | JustinFan7777777 | 2026-05-11 | documents from BB
+    fix: add x^0 term to LFSR feedback polynomial for max period
+    
+    The Fibonacci LFSR polynomial is x^16 + x^15 + x^14 + x^13 + x^4 + 1.
+    The constant term (+1) requires including bit[0] of the shift register
+    in the feedback XOR, not XORing a constant 1. This ensures the full
+    65535-cycle period.
+
+commit 58039bcdda30f657175c1a445e4a9b227bfcf869
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 19:18:22 2026 +0800
+
+    fix(snake1): spawn_food 保存 t2(food_x) 防止被 lfsr 冲掉
+    
+    lfsr 内部用 t2 做临时寄存器, spawn_food 中用 t2 存 food_x。
+    第二次调 lfsr(算Y)时会冲掉 t2, 导致:
+    - 食物 X 坐标变垃圾值 → 出现在屏幕边缘
+    - 蛇身碰撞检测用错坐标
+    
+    修复: 在 gen_y 调用 lfsr 前将 t2 压栈保存, 调用后恢复。
+
+commit 41cfb916772d8a16e741277c9b5cf78521c9624f
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 19:15:39 2026 +0800
+
+    fix(snake1): 将所有 add rd,rs,x0 改为 addi rd,rs,0
+    
+    如果 CPU 的 x0 寄存器未硬连线到零, add rd,rs,x0 会得到
+    rd = rs + garbage, 导致:
+    - 食物坐标偏移 → 出现在屏幕边缘
+    - 蛇身绘制位置偏移
+    - 边框绘制位置偏移
+    
+    改用 addi rd,rs,0 (立即数 0) 不依赖 x0 寄存器。
+
+commit 3b15ded58c0c9147f381d1e7861f2b59644342e4
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 19:10:53 2026 +0800
+
+    fix(snake1): spawn_food 改用 blt 替代 bge 做范围检查
+    
+    bge(有符号>=)改为 blt(有符号<)+j 重试, 语义等价但:
+    - 逻辑更直观: t0 < limit → 接受, 否则重试
+    - 避免 bge 在某些 CPU 实现中的边界行为
+
+commit 9dc097a563879a8148fd6dcf02d04485ccb68044
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 19:06:25 2026 +0800
+
+    fix(snake1): LFSR 加入常数项 xori 1, 修复随机数偏向小值
+    
+    多项式 x^16+x^15+x^14+x^13+x^4+1 缺少常数项 +1 的异或,
+    导致 feedback 几乎恒为 0, 寄存器持续右移填零,
+    所有随机值单调递减→小值→食物总在屏幕左边。
+    
+    修复: 在 tap 位异或后加入 xori t1,t1,1
+
+commit 767cf42d61451de12d5e3ec6b3c81d632efb9f05
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 18:55:56 2026 +0800
+
+    fix(snake1): 去掉按键取反, EGO1 按键实际为高有效(按下=1)
+    
+    此前假设按键低有效(按下=0)加入了 xori 0x1F 取反,
+    导致不按 U4 时 btn[4] 误判为 1 → 直接 GAME OVER。
+    实测需按住 U4 才能玩, 说明按键是按下=1。
+    
+    修复: 移除 read_buttons 和 wait_restart 中的 xori
+
+commit beb853e7a85864f6260b654e70c55c3d92514d46
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 18:48:22 2026 +0800
+
+    style(snake1): 移除所有分号连接的多行代码
+    
+    将 79 行 ';' 连接的多指令行展开为独立行
+    491 行 → 586 行, 每行一条指令
+
+commit 5aaa250ffee09d9b71a1f2bcbb84fb247195222a
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 18:46:37 2026 +0800
+
+    fix(snake1): 自身碰撞/食物生成改用 tail→head 遍历
+    
+    将 move_snake 的自身碰撞和 spawn_food 的蛇身检测
+    从 (head-len+1)&MASK 公式改为 tail→head 直接遍历。
+    
+    优点:
+    - 不依赖环形缓冲区布局, 更健壮
+    - 逻辑直观: 从 tail 逐个检查到 head
+    - 自身碰撞跳过 tail (将被擦除), spawn_food 全检
+
+commit aa70998d0cd1c5f1d8ccc2da246ef094f8f75089
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 18:44:13 2026 +0800
+
+    fix: VGA robustness + snake gameplay improvements
+    
+    VGA.v:
+    - Add reset synchronizer (async assert, sync de-assert)
+    - Register vga_hs/vga_vs outputs to eliminate combinational glitches
+    - Simplify font_rom.hex path to local relative path
+    - Copy font_rom.hex to sources directory for reliable synthesis
+    - Fix outdated comments to match current pipeline implementation
+    
+    ego1.xdc:
+    - Add generated clock constraints for vga_clk (25MHz) and cpu_clk (12.5MHz)
+    
+    snake.asm:
+    - Add LFSR seed entropy via button state to make food placement unpredictable
+    - Add button debounce in game_over_loop to prevent restart loops
+    - Optimize draw_border to use temp registers instead of saved registers
+
+commit 3c913733f0df028bd39122c8f04209ff82a3751b
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 18:38:08 2026 +0800
+
+    fix(snake1): 重写 move_snake 对齐原始版逻辑
+    
+    主要修复:
+    1. no_food 擦尾时用 12B 栈帧保存 t4/t5/ra (对齐原版)
+    2. 吃到食物时也保存 ra 再调 spawn_food
+    3. 绘制蛇头/蛇身时均保存 ra 再调 putchar
+    4. 寄存器命名对齐原版: t4=new_x, t5=new_y
+
+commit 92bb4c0e2606224fee1639ea78d3c4f9ee2db34c
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 17:59:46 2026 +0800
+
+    feat(snake): 新增重写版 snake1.asm
+    
+    相比 snake.asm 的改进:
+    - 环形缓冲区从 512 缩减到 256 (节省 DMem, 够用)
+    - 修复: init_game 用栈帧保护 ra (不再死循环)
+    - 修复: 按键极性取反 xori 0x1F
+    - 修复: spawn_food 拒绝采样保证均匀分布
+    - draw_border 改为函数级保存 ra (不再每字符压栈)
+    - 代码结构更清晰: 每个函数独立栈帧
+    - 491 行, 13 个叶子返回
+
+commit ab3276d8844ff14d349d587303b763500045e30d
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 17:56:07 2026 +0800
+
+    fix: revert VGA.v to synthesizable version (undo cleanup)
+    
+    The color expansion replication operator {3{...}} caused Vivado
+    synthesis failure. Reverted to explicit bit concatenation.
+
+commit 0c9b4587040ebc4a32f6dc8eb334d34c2be34bf7
+Merge: 49b5ca7 ddcb58d
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 17:52:56 2026 +0800
+
+    Merge branch 'main' into lyj
+
+commit ddcb58ddcb2e68815e4aa2f1721e3bee9d0506ef
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 17:52:21 2026 +0800
+
+    fix(snake): init_game 保存 ra 防止死循环
+    
+    init_game 末尾 jal ra,place_food 会覆盖 ra 中指向 game_loop 的
+    返回地址, 导致 jalr x0,ra,0 跳回自身形成死循环, CPU 永远进不了
+    game_loop, 画面静止不动。
+    
+    修复: init_game 开头压栈保存 ra, 末尾恢复后再返回。
+
+commit dd788f2e7f90fe9b960e6e712982ff25574c7eee
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 17:50:56 2026 +0800
+
+    cleanup: optimize VGA.v and snake.asm
+    
+    - VGA.v: remove screen_default_white dead code, fix misleading comments,
+      simplify color expansion with replication operator
+    - snake.asm: remove empty constant section, optimize draw_border by
+      hoisting stack save/restore out of loop (~1700 instructions saved)
+
+commit 336d56417103556fff07abd159999c65426da484
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 17:42:20 2026 +0800
+
+    fix: revert RegFile and VGA to cjx's synthesizable version
+    
+    RegFile bypass logic and VGA screen_default_white removal caused
+    Vivado synthesis failure. Reverted both to commit 4418b9d state
+    which is verified to generate bitstream successfully.
+
+commit 9f87e2eccf6b6aa6bd8de20164a5fc776ea408cc
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 17:32:58 2026 +0800
+
+    fix(RegFile): revert to posedge clk to fix Vivado bitstream synthesis
+    
+    negedge clk is not synthesizable on XC7A35T FPGA; bypass logic already
+    handles load-use hazard combinationally, so posedge write is sufficient.
+
+commit 48890e004b12940174a8a56be03ebb4c41d4394b
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 29 17:13:12 2026 +0800
+
+    merge: integrate fixes from lyj and cjx branches
+    
+    - fix(assemble.py): add encoding='utf-8' for cross-platform compatibility
+    - fix(RegFile): negedge write + write-after-read bypass to resolve load-use NBA races
+    - fix(snake): invert btn polarity for EGO1 active-low keys, use rejection sampling for food distribution
+    - feat(mul): add software multiply subroutine with signed/unsigned support
+    - feat(vga): add UART-based VGA test utility
+
+commit 49b5ca71e8a81eb027c3d97b299d50e587b66e33
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 13:42:30 2026 +0800
+
+    fix(snake): 修复按键极性 — EGO1 按键按下=0，需取反
+    
+    EGO1 开发板按键为低电平有效(按下=0, 松开=1)，但 snake.asm 原有代码
+    按高电平有效(按下=1)检测按键。
+    
+    症状: 不按键时 btn[4] 误判为按下 → 立即 GAME OVER；
+          按其他方向键无效, btn[0] 始终被误判为按下。
+    
+    修复: read_input 和 game_over_loop 中 lw 读取 ButtonIn 后
+          加入 xori t0, t0, 0x1F 将低5位取反。
+
+commit 08dfe03bcb690f93f4d39e584218d69c01bf6b29
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Fri May 29 13:27:26 2026 +0800
+
+    fix(snake): place_food 随机坐标改用拒绝采样，修复分布不均 bug
+    
+    原代码用 sub 做取模归约，当随机值超出目标范围时仅减一次，
+    导致 X 坐标约 39% 概率被限制在 [1,50] 而非 [1,78]，
+    Y 坐标约 12.5% 概率被限制在 [1,4] 而非 [1,28]。
+    
+    改为拒绝采样 (bge + 重试)，保证 [1,78] 和 [1,28] 范围内均匀分布。
+
+commit 1d715ce14c55f6dcc828e2afc676ec8581281b13
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Thu May 28 08:16:38 2026 +0800
+
+    backward
+
+commit f30786f0f209ddab2f5f4c44f0187f241c7d5df3
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Thu May 28 00:27:28 2026 +0800
+
+    another diagnose edition
+
+commit 54486b6e11f629931b0a9f445f46ea5196cb1cb2
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Thu May 28 00:08:58 2026 +0800
+
+    seventh attempt
+
+commit 3d4e33089b8efde692b57721c93a64f5fb7dc609
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 27 22:25:11 2026 +0800
+
+    sixth attempt
+
+commit 600010c0020e581353e0c014ce8028487872ee36
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Wed May 27 13:43:26 2026 +0800
+
+    fix: VGA font ROM init & pixel alignment
+    
+    - font_rom: switch from BRAM to distributed RAM to fix
+      $readmemh initialization in Vivado synthesis (BRAM
+      $readmemh was unreliable, causing all glyphs to be
+      empty → black screen)
+    - CHAR_SWITCH_PIX: 5→4, H_PREFETCH: 797→796 to
+      compensate for frame buffer Port B registered read
+      latency (1 extra cycle in data path vs counter path)
+    
+    Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+
+commit f9f5f92a873be6884d56fd0d198cbaf1e50ac7da
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 27 10:14:55 2026 +0800
+
+    fifth attempt
+
+commit 2b38a9af6ec98d3906fc30a6fb4480f53ecc0283
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 20:42:11 2026 +0800
+
+    diagnosis
+
+commit e299ff1fdd929c44e84a5426ebdd9f11b539e4cc
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 20:39:49 2026 +0800
+
+    dignosis
+
+commit 8e2b282ff150d95f1567b3c6a3819be963347261
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 20:30:07 2026 +0800
+
+    vga revision
+
+commit 455c6ab875dffba587e25530c6ddfc0aff0f8a09
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 20:20:23 2026 +0800
+
+    fourth attempt
+
+commit 10e8e4c7d6b2099ce9c77277c4ee42285e082064
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 20:02:01 2026 +0800
+
+    third attempt
+
+commit 3cc7d8939e58464ee6ff029befc054bdf160afbc
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 19:33:34 2026 +0800
+
+    second attempt
+
+commit f0d295a1c15ed46cf5267ec962e8227c196eff00
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 18:31:30 2026 +0800
+
+    attempt, regfile_pipe -> regfile
+
+commit cce373212cf26c390d1923b29e916c96ee0f39e0
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 15:56:18 2026 +0800
+
+    fix 11/33 issue
+
+commit 521323703bd54208c50a7b73b2700ac1e322d1ba
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 26 12:22:58 2026 +0800
+
+    rollback
+
+commit 16d7f84eaf39891b0eb6c497d7633e8f7dffabd9
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 23:08:54 2026 +0800
+
+    overview reconstruct
+
+commit a03aa28c63f94a88cf8fce49c24decd526262eb9
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 22:13:13 2026 +0800
+
+    merge: adopt lyj's RegFile bypass + negedge write, simplify HazardUnit
+    
+    Combines the best of both approaches:
+    - lyj's RegFile: negedge write + combinational bypass eliminates the
+      NBA timing race at the source, reducing load-use penalty to 1 stall
+    - our !exmem_memread: prevents forwarding load addresses from EX/MEM
+    
+    Removes load_use_exmem and idex_is_nop (no longer needed since
+    RegFile bypass provides data availability with just 1 stall).
+    
+    Net: simpler HazardUnit, more robust RegFile, better CPI.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 7ecd8681df1205363ad7b109e0b59500489b144e
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 21:46:37 2026 +0800
+
+    revert: remove diagnostic NOPs from batch_test cases 0/1/2
+    
+    The NOPs were added to diagnose the load-use forwarding issue.
+    Root cause fixed in b0c8af1 (idex_is_nop excludes rd=x0), so
+    the original test program should now pass without workarounds.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit b0c8af12b1285d151b2bce9330177fd45419848e
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 21:41:02 2026 +0800
+
+    fix: exclude rd=x0 from idex_is_nop to catch pseudo-NOPs
+    
+    Instructions like addi x0,x0,0 have regwrite=1 but rd=x0, making
+    them effectively NOPs. The old idex_is_nop treated them as useful
+    instructions, preventing load_use_exmem from triggering the extra
+    stall needed for correct load forwarding.
+    
+    Also explains why flush_idex-produced NOPs (regwrite=1, rd=0) failed
+    to trigger load_use_exmem — same root cause.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 33cfe28018586a84f51c20c03118e782c914acff
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 21:31:46 2026 +0800
+
+    revise asm file
+
+commit 13ecc57acf30a31e231f9c5c1bf8d349eeecce1d
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Mon May 25 21:28:22 2026 +0800
+
+    fix: RegFile 加写后读旁路, 彻底解决 load-use NBA 竞争
+    
+    negedge 写解决了部分时序窗口, 但流水线中 WB 写入和 ID 读取
+    仍可能在同一个 posedge 竞争 (ID/EX 锁存时 regFile NBA 未完成)。
+    
+    新增旁路: 当 RegWrite=1 且 rd==rs 时, 读口直接返回 WD3,
+    不等 negedge 写入完成。完全消除 NBA 延迟窗口。
+    
+      读口 = (rs==0) ? 0 : (RegWrite && rd==rs) ? WD3 : regFile[rs]
+    
+    Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+
+commit e6d85ebd3a188d831ca0493e02afc6d1f926b0d8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 21:12:40 2026 +0800
+
+    fix: block EX/MEM load forwarding + add 2-level load-use detection
+    
+    Two bugs in HazardUnit:
+    1. Forwarding from EX/MEM for loads forwarded the memory ADDRESS
+       (exmem_aluresult) instead of the loaded DATA. Added !exmem_memread
+       to block forwarding from MEM-stage loads.
+    2. Load in MEM stage followed by dependent ALU with no intervening
+       instruction: load_use_idex only catches loads in EX, missing the
+       case where load is in MEM and use is in ID about to enter EX.
+    
+    Add load_use_exmem that triggers only when ID/EX is NOP (no useful
+    instruction between load and use), stalling 1 extra cycle to let the
+    load reach WB where its data can be correctly forwarded or read from
+    the register file.
+    
+    Also add idex_is_nop input to prevent false triggers when an
+    intervening instruction (LUI, branch, store) already provides the
+    natural 1-cycle delay.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 7f4b30d1caccf24c0880186ffe4172482683fcb2
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 20:53:50 2026 +0800
+
+    fix the load-use issue
+
+commit c816af0358288c69d255810f1eb3c1dc4e274aae
+Author: 刘一骏 <lyj@liuyijundeMacBook-Pro.local>
+Date:   Mon May 25 20:37:09 2026 +0800
+
+    fix: RegFile 写改为 negedge, 修复 load-use 数据竞争
+    
+    流水线中 load 指令写回(WB)和依赖指令进入 EX 发生在同一 posedge:
+      posedge: RegFile[t1] <= load_data  (NBA, 延迟生效)
+      posedge: ID/EX 锁存 rs1_val = RegFile[t1]  (读到旧值 0)
+    
+    改为 negedge 写 RegFile:
+      negedge: RegFile[t1] <= load_data  (先写入)
+      posedge: ID/EX 锁存 rs1_val = RegFile[t1]  (读到新值 ✓)
+    
+    修复所有 load 后紧跟 use 的指令序列:
+      case 0 (AND), case 1 (SLL), case 2 (SRA),
+      case 6 (Fibonacci), case 7 (Popcount),
+      case 8 (浮点分类), case 9 (浮点量化)
+    
+    Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+
+commit 83f24dbc17b4972e3838f60dec3a879f2493644e
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 20:08:51 2026 +0800
+
+    simplify: naming convention fix + dedup adder + add IMem WRITE_MODE
+    
+    - Rename id_isLUI/id_isAUIPC → id_lui/id_auipc (snake_case convention)
+    - Replace duplicate ex_jump_target adder with alias of ex_branch_target
+    - Add WRITE_MODE="READ_FIRST" to IMem BRAM for Vivado inference safety
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 9e7d97bb458e0f049c72b843086620f6686f9d26
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 19:07:17 2026 +0800
+
+    fix: change semicolons to commas in PipeRegs port list
+    
+    Lines 49-50 used semicolons (;) instead of commas (,) inside the
+    ANSI port list, which could cause some Verilog tools to terminate
+    the port list prematurely and treat ex_o_lui/ex_o_auipc as internal
+    signals rather than module ports.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 3a411a0096b85f6c1b34b72c5318de7af6e05c8f
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 18:06:30 2026 +0800
+
+    fix: extend ctrl_flush by 1 cycle to cover BRAM read delay
+    
+    BRAM register read has 1-cycle latency, causing inst_reg to be one
+    instruction ahead of the standard IF stage. When a branch is in EX,
+    ctrl_flush clears IF/ID (PC+8) but the instruction at PC+12 is already
+    in inst_reg and appears 1 cycle later, after ctrl_flush has ended.
+    
+    Add flush_ifid_delay that delays ctrl_flush by 1 cycle, OR'd with
+    the original flush_ifid to form flush_ifid_ext, covering the extra
+    delayed instruction.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 3cb0d92e9cc20f9b142ad99b5acec9096270437d
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 25 00:05:36 2026 +0800
+
+    fix: add reset_stall to prevent first instruction loss in pipeline
+    
+    After reset, inst_reg needs 1 cycle to load from BRAM, but IF/ID
+    captured the stale NOP value in that same cycle. This caused the
+    first instruction of batch_test (lui s0,0x4) to be skipped, leaving
+    s0=0 instead of 0x4000 and breaking all subsequent memory accesses.
+    
+    Add a 1-cycle reset_stall that freezes IF/ID after reset release,
+    allowing inst_reg to preload before IF/ID captures.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 0270fdac20180e83a09f0cd575550af536b1d71c
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 24 23:46:31 2026 +0800
+
+    solve soft mul problem
+
+commit 0eaa6d6488662fd1a82815e866dddb934c37a3f3
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 24 23:11:59 2026 +0800
+
+    trivial revision
+
+commit 6cc333a4d5f80fe62be0511d47bdbbd5ef232343
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 24 23:04:16 2026 +0800
+
+    fix: memory issue & pipeline issue
+
+commit 110c33046b35aab4a37b6ab906a07d999e9f8e0f
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sat May 23 11:35:23 2026 +0800
+
+    final file changes. Now I have done with the software stuff, it's really the time to go boarding.
+
+commit 9593dc69d8a4ec000aab59c987fd731ba2c17f23
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sat May 23 11:20:26 2026 +0800
+
+    review + simplify + review
+
+commit f9e3932b45205e0390b66d580833aa575b0b5144
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sat May 23 11:10:32 2026 +0800
+
+    final revision before boarding
+
+commit 5da6e37bed3eb0363eabc6a73bcc5914952a2e8a
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sat May 23 10:40:43 2026 +0800
+
+    update to synchronize gitlog file, to meet with requirement
+
+commit a8df056069c0306d0812a6fe85f66c685d4eae49
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:51:30 2026 +0800
+
+    fix: stale negedge comment + implicit wire in TopDebug.v
+    
+    - DataMemory.v: update Port A comment from negedge→posedge
+    - TopDebug.v: move vga_fb_* wire declarations before CPU instances
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 1e62bdca3ea06998ff29693b45b2fca137150994
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:46:05 2026 +0800
+
+    docs: complete project_log overhaul for final submission
+    
+    - 0_video.md: full 8-scene script covering all basics + 5 bonuses
+    - 1_report.md: add ISA/Pipeline/soft_mul to Bonus section
+    - 2_inclass.md: add INCLASS marker map, file blacklist, ISA tips
+    - 3_bonus.md: update all status to completed
+    - 4_visualizer.md: (unchanged)
+    - 5_vga.md: add innovation points + step-by-step operation guide
+    - 6_snake.md: add innovation points + operation guide
+    - 7_isa.md: NEW — ISA extension doc with test guide
+    - 8_pipeline.md: NEW — pipeline doc with mode switch guide
+    - 9_mul.md: NEW — soft multiply doc with test guide
+    - visualizer.html: add POPCNT demo instruction
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 4fee088f2ebf9c25d69a042014ac3e55879048b2
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:25:15 2026 +0800
+
+    structure: move soft_mul into other/mul/ subdirectory
+    
+    Consistent with other/{snake,isa,vga,cpu_viz}/ pattern.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit cfe289098b06bab4ed4e5736e9a2271d27862fde
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:23:47 2026 +0800
+
+    bonus: add software multiply subroutine (shift-and-add)
+    
+    Standalone demo of soft/hardware co-design: 32-bit signed/unsigned
+    multiplication using only RV32I shift+add instructions. No hardware
+    changes needed. 62 instructions, 8 self-test cases.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit caa12addc129d00635ccd7f4d13e8ed4398a06c8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:17:26 2026 +0800
+
+    docs: enhance Chinese annotations for pipeline modules
+    
+    - CPUTopPipeline.v: add full pipeline flow diagram (5-stage timing,
+      data hazard/forwarding, load-use stall, control hazard explanation)
+    - TopDebug.v: dual-CPU architecture diagram, MUX signal routing,
+      SwitchIn[15] mode switch mechanism with detailed comments
+    
+    All 16 .v files compile clean with iverilog.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 6eeba75dabc07c39a1858978b5830663dba2c068
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:08:30 2026 +0800
+
+    Optimize project structure for submission
+    
+    - Add *.vvp and .claude/ to .gitignore (generated/user-local files)
+    - Remove tb_VGA.vvp from tracking (compiled simulation binary)
+    - Move isa_test.* into other/isa/ (consistent with snake/, vga/ pattern)
+    - Add contributor name mapping header to gitlog.txt
+    - Remove .claude/ from tracking (per-user settings)
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 7ef7d4a466112a4aa5f4959a7e4f176f697c3ca4
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 21:05:12 2026 +0800
+
+    Pipeline: add debug MUX for register observation requirement
+    
+    Split debug read signals into single_*/pipe_* pairs, MUXed by
+    cpu_mode (SwitchIn[15]). Debug writes broadcast to both CPUs
+    so IMem/DMem stay synchronized across mode switches.
+    
+    Meets bonus requirement: "需通过 debug 模式暂停观察寄存器"
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 101544def51840b839db6223d6c33e15bd7eb9a7
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 20:24:31 2026 +0800
+
+    Pipeline integration: fix declaration order, CPUTopPipeline wiring
+    
+    - CPUTopPipeline.v: all wires declared before module instances,
+      funct3 passthrough wired, PipeRegs connections verified
+    - Ifetch_Pipe.v: pc_reg declared before use
+    - DataMemory.v: dmem_dbg_sync regs declared before use
+    - TopDebug.v: duplicate CPUTopPipeline instance removed,
+      SwitchIn[15] mode switch, output MUX for dual CPU
+    - Full project compiles clean with iverilog (BUFG warnings only)
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 4e296f24bc7c4be87e77d06c523716ee825ca9ba
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 20:09:30 2026 +0800
+
+    ISA extension: add POPCNT/CLZ/CTZ hardware-accelerated instructions
+    
+    - ALU.v: popcount (5-stage adder tree), clz (binary search + zero guard),
+      ctz (bit-reverse + clz). New ALUControl codes 1010/1011/1100.
+    - Decoder.v: custom_op = inst[25] distinguishes custom R-type
+      (funct7=0000001) from standard RV32I (funct7[0]=0).
+    - PipeRegs/HazardUnit/Ifetch_Pipe/CPUTopPipeline: pipeline skeleton
+      (5-stage, forwarding, load-use stall, branch flush, mode switch).
+    - TopDebug.v: SwitchIn[15] mode switch, dual CPU instantiation.
+    - isa_test.hex: 63 instructions, 18 boundary cases.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 2c1278303c39b6540cf21159c4e4a4f1eb81cbcc
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 19:21:27 2026 +0800
+
+    fix LUT issue
+
+commit 7fbaa9f41d8ecc8474d5d735d0df534d06282000
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Fri May 22 17:54:47 2026 +0800
+
+    update vga file, and create video guidance
+
+commit 65b2fe712f7a2a5a340578cfa32db76aeee0b577
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 21:29:40 2026 +0800
+
+    make 9 revisions, all are proven to be valid. Now we finish VGA + Snake
+
+commit 20ebe5ad61a5f503cf1f3b3f39d2b221626958b8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 20:49:52 2026 +0800
+
+    VGA + Snake implementation
+
+commit f3577f17921504acdd270e09bbf483969f659b06
+Merge: 25efbe2 a0da4a2
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 16:51:59 2026 +0800
+
+    Merge branch 'main' into bonus
+
+commit 25efbe2d89b27a0eeb165c326e47257da36a4b5a
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 16:47:31 2026 +0800
+
+    convert English comments to Chinese version, then add a README for future documentation and video recording
+
+commit b1504b74c540394ca9fad882f892ef8beec7a2e4
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 14:26:49 2026 +0800
+
+    finish visualizer design
+
+commit c70dcd07e9bf4438ef4e7ad5a5a5096422df86c5
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 10:06:43 2026 +0800
+
+    initial visualizer, invented by Gemini
+
+commit 7e93fe52f380499ea1e70a80816d12d9f40736d3
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 20 09:17:46 2026 +0800
+
+    feat: rebuild CPU visualizer — larger components, clean routing, sequential animation
+    
+    - Enlarged all major components (IMem 160×70, RegFile 190×80, ALU 140×65, DMem 180×85)
+      with full submodule labels matching Verilog source
+    - All paths routed through dedicated bus channels outside component boxes;
+      no arrow crosses any component label area
+    - Uniform arrow size (7×6 marker-end) on all paths
+    - Sequential stage animation: IF→ID→EX→MEM→WB light up one by one
+      (600ms per stage), then loop continuously with 800ms pause
+    - viewBox expanded to 1200×660 for clearer layout
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit c7089a3a6a1366bf495b3bfa8e2cce73a96bebfa
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 19:55:03 2026 +0800
+
+    feat: rebuild CPU visualizer — stage-aligned layout, straight paths, flow animation
+    
+    - Each component strictly placed under its pipeline stage column (IF/ID/EX/MEM/WB)
+    - All data paths drawn as orthogonal straight lines with uniform arrows
+    - Animated dashed-flow effect on active paths cycling continuously
+    - Clean dark theme with per-stage color coding and glow filters
+    - 12 representative RV32I instructions with full signal tables
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 0a4a1fef5f1e8ac6a8a15fc66a0912cffc605f74
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 14:48:28 2026 +0800
+
+    feat: add RISC-V single-cycle CPU datapath visualizer
+    
+    Interactive HTML/SVG tool showing data flow for 12 representative
+    RV32I instructions. Select an instruction and watch the datapath
+    light up by pipeline stage (IF/ID/EX/MEM/WB) with color-coded
+    paths, component highlighting, control signal display, and
+    flow descriptions.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 927431f44912885a6ac37e7994f33832db1b08c6
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 14:37:30 2026 +0800
+
+    first bonus to implement: A Visualizer of CPU, to help users better understand how CPU works and its architecture
+
+commit a0da4a2dad6b28d34e88fbf8569e26b16bb9adfe
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 12:52:25 2026 +0800
+
+    fix: sync hex path in CPUTop.v to match Ifetch.v
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit f969f442dd9e9256fbc5ada30382fd77be0d0f2d
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 12:52:25 2026 +0800
+
+    fix: sync hex path in CPUTop.v to match Ifetch.v
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit a0f658b9c5d941ed0ca023ec17468ed111235070
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 12:50:13 2026 +0800
+
+    fix: correct $readmemh relative path in Ifetch.v
+    
+    Vivado resolves paths relative to source file location, not project dir.
+    From sources_1/new/, need 4 levels up to reach project root/assembly.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit b9f326bcbfb6477cd719b7975057d07e4e631451
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 12:21:06 2026 +0800
+
+    docs: restructure project_log, add bonus master plan
+    
+    - 1_report.md: merge code conventions (appendix C), test data addresses,
+      simulation rationale from deleted 2_progress.md
+    - 2_inclass.md: renamed from 3_prepare_inclass.md
+    - 3_bonus.md: comprehensive 5-track bonus plan
+      (VGA + Snake + ISA extension + RISC-V educational game + Pipeline)
+    - Delete 2_progress.md (already submitted, key info merged)
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit e9cd2e7f6fec1465a069c4ce6c05f1a53360eab6
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 11:55:05 2026 +0800
+
+    docs: add in-class design prep guide and code markers
+    
+    - New: project_log/3_prepare_inclass.md — full preparation guide with
+      templates, lookup tables, Vivado steps, and common error fixes
+    - Add INCLASS comment markers in ALU, Decoder, CPUTop, Ifetch
+      (searchable via Ctrl+F, show exact edit points for new instructions)
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 5f85e20aa045a92d3c4bd52a6b3601a209a030f3
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Tue May 19 10:57:14 2026 +0800
+
+    docs: update requirement to v1.4, add in-class design rules
+    
+    - Rewrite requirement.md per latest BB version (v1.4)
+    - Add Section 7: 现场设计 (5 pts, offline, student PC)
+    - Update scoring formula: 进度确认(1)+提交格式(2)+现场设计(5)
+    - Update submission: document via questionnaire, video via cloud drive
+    - Update folder naming: c_小组编号_rv_...
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit 128d2be761742c5b9c96fd040d3d523611adfac6
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 18 23:05:42 2026 +0800
+
+    docs: remove debug/verification tutorials and test case spec
+    
+    These were reference materials for the basic (80pt) phase, now complete.
+    Not needed for bonus (VGA + Snake game) phase.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit f48a1ab2d9f16db2e3a3c7ee0daa217add651669
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 18 22:56:23 2026 +0800
+
+    update a trivial subtle nuance
+
+commit bdb01f988622e7a6fc219cee3981e72616b22081
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 18 22:53:45 2026 +0800
+
+    update all project files for clear stucture and better submission of documentation
+
+commit 14b66509b03018d5d305e369bdbe54e980544563
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 18 22:17:07 2026 +0800
+
+    docs: update project_log with difftest 33/33 PASS results
+    
+    - SUMMARY.md: clock 12.5MHz, difftest passed, bug 9/10, status updates
+    - 0_todo.md: phase 1 complete, skip phase 2, move to docs & video
+    - 1_report.md: add bugs 9 (IMem combinational read) and 10 (clock 12.5MHz)
+    - 2_progress.md: all test results PASS, update risks and progress
+    - 3_test_results.md: full difftest output, 33/33 PASS
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+commit f214b293d43fe16c060a08550084b99284842a27
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 18 21:53:07 2026 +0800
+
+    clk: 25MHz -> 12.5MHz
+
+commit 6eed19e0817062f79ae12a6d3d3b6983dd04e20e
+Author: ChenJunxi <12411025@mail.sustech.edu.cn>
+Date:   Mon May 18 19:57:20 2026 +0800
+
+    debug, pass diff test
+
+commit 4baa4f375fc0aef06c162473c6b84e3dbd0b6e51
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 22:49:28 2026 +0800
+
+    delete .claude file, no impact, no worry
+
+commit 294d15397b3bc96bc1d7b4c68330c247875eaa91
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 22:42:16 2026 +0800
+
+    try two new plugins: simplify and review. They all work well, code is still valid
+
+commit b8cf3c21a0ab1a774276aec3c109166448bb73b6
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 20:11:49 2026 +0800
+
+    write a summary, also a checkpoint markdown for tomorrow's usage
+
+commit 540c7e198018ba28da90244e8923cf0bd6ae18e7
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 20:06:02 2026 +0800
+
+    we've done with all the cases in RARS, then clear up the sturcture, reorganize all markdown files in project_log, also provides a clear vision of what we should do next, finally add some necessary comments or annotations around all code files to attain optimal understanding. Eventually, this marks the end of the basic part of CO Project, congratulations!
+
+commit 8e8fa5e0e5ed7ea15ae0c1861a431b62bf3b4364
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 18:14:20 2026 +0800
+
+    fix the 4000 & 1000 issue
+
+commit 5f826768b901f585ec9538bb6caaae5dd6e88671
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 15:57:36 2026 +0800
+
+    update all markdown files to summarize in phases
+
+commit 0829937c0c10dd9b34069b36974411ca54ad7891
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 14:35:57 2026 +0800
+
+    add group information and our URL
+
+commit c95e30d47dbd25b0e4ba5091b46216f7fed93c97
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 14:24:03 2026 +0800
+
+    delete space of hex file
+
+commit faf21087c49f36fcab4eab95b0ac66e219b8aa27
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 14:11:57 2026 +0800
+
+    fix an issue: start at 0x4000, but not 0x0000
+
+commit 34000ba0177340bdfaac16a88c0d71f0cb56f2f8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 14:06:33 2026 +0800
+
+    clear the whole file structure, make it clean
+
+commit b9de3b08d53c63825165aa343efc3b68c403108b
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 12:35:25 2026 +0800
+
+    done with batch test hex
+
+commit d99a3157edac9e9f85dff526ddc5dd9d29d464de
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 12:12:40 2026 +0800
+
+    convert original requirement into a well-structured one, which is easier for us to understand
+
+commit dc5d85f653d3cdcf3d305fe32b305b6e7cddb1ec
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 10:47:50 2026 +0800
+
+    debug four mistakes, now all codes are available
+
+commit 32971f675f7ccbab6beaf82b1466e76658f3c3a1
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 10:30:05 2026 +0800
+
+    create a folder to record our progress, for project document, verification guidance and final submission
+
+commit dd859cdc0f842dc28bdae399a3219a198e390e85
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 09:45:27 2026 +0800
+
+    write all assembly in advance, for my teammate to check
+
+commit 20cd110302c2474fcc258e3a8b6208cfd710d6f8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 09:34:28 2026 +0800
+
+    fix problem with ego1
+
+commit 8c7e2559013e65ee500fc3961290ae7c5f760776
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 09:25:03 2026 +0800
+
+    upload ego1 files, and create skeleton for teammates
+
+commit e9a78d08fc65c9b68243cb163fbc716a7ee1a243
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 09:00:15 2026 +0800
+
+    fix three bugs: 1. JAL/JALR write back mistake, 2. JALRTarget syntax error, 3. memory too small
+
+commit cf7e72ed424647c8c06ab3f7ed2da8d1a3b2f9d3
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 17 08:49:31 2026 +0800
+
+    verilog code
+
+commit 83c91492a2b5111ed9451ee8344d44ccd50d358e
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sat May 16 12:24:48 2026 +0800
+
+    organize file structure to meet with the requirement in project document
+
+commit de59b5e1bc62a65db06f158d0d71b4d794491222
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 13 23:56:10 2026 +0800
+
+    Add Comprehensive and plain Chinese annotations in three files of debug_code, to help you better understand at first sight
+
+commit c14e1350e609018dbed52fe283c31347557402d8
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 13 18:13:14 2026 +0800
+
+    Create requirement
+
+commit 3bef0856d7794b955e3a2dc7c6781c317ee515ac
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Wed May 13 16:45:21 2026 +0800
+
+    commit additional files
+
+commit a6475fa9d06ebdc7c8ee720fbfd3e56388f577b7
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Mon May 11 23:56:19 2026 +0800
+
+    documents from BB
