@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2017 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="35" Path="C:/Users/16771/AppData/Roaming/Xilinx/Vivado/cpu_project/cpu_project.xpr">
+<Project Version="7" Minor="35">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="ec4c5417399c46c0b01dffb01d3383d9"/>
@@ -55,119 +55,119 @@
   <FileSets Version="1" Minor="31">
     <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1">
       <Filter Type="Srcs"/>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/ALU.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/ALU.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/CPUTop.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/CPUTop.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/CPUTopPipeline.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/CPUTopPipeline.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/DataMemory.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/DataMemory.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/DebugController.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/DebugController.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/Decoder.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/Decoder.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/HazardUnit.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/HazardUnit.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/Ifetch.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/Ifetch.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/Ifetch_Pipe.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/Ifetch_Pipe.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/ImmGen.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/ImmGen.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/PipeRegs.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/PipeRegs.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/RegFile.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/RegFile.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/RegFile_Pipe.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/RegFile_Pipe.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/UartRx.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/UartRx.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/UartTx.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/UartTx.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/VGA.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/VGA.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/sources_1/new/TopDebug.v">
+      <File Path="$PPRDIR/cpu_project.srcs/sources_1/new/TopDebug.v">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -181,14 +181,14 @@
     </FileSet>
     <FileSet Name="constrs_1" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1">
       <Filter Type="Constrs"/>
-      <File Path="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/constrs_1/ego1.xdc">
+      <File Path="$PPRDIR/cpu_project.srcs/constrs_1/ego1.xdc">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
         </FileInfo>
       </File>
       <Config>
-        <Option Name="TargetConstrsFile" Val="$PPRDIR/../../../../../Desktop/computer_organization/Project/cpu-project-12412307-12411025-12411922/cpu_project/cpu_project.srcs/constrs_1/ego1.xdc"/>
+        <Option Name="TargetConstrsFile" Val="$PPRDIR/cpu_project.srcs/constrs_1/ego1.xdc"/>
         <Option Name="ConstrsType" Val="XDC"/>
       </Config>
     </FileSet>
