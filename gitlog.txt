@@ -3,9 +3,57 @@
 # ==============================================================================
 # JustinFan7777777 = 范晓乐 (12412307) — Verilog 设计、VGA 控制器、Pipeline、工具
 # ChenJunxi         = 陈俊希 (12411025) — Vivado 综合、上板测试、Difftest 验证
-# 刘一骏               (12411922) — 汇编编码、RARS 模拟验证 (通过 RARS + 微信协作, 未通过 git 提交代码)
+# 刘一骏               (12411922) — 汇编编码、RARS 模拟验证 (通过 RARS + 微信协作)
 # ==============================================================================
 #
+commit 22a57f08fa67a92134df28582b949104f1475016
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 31 12:04:29 2026 +0800
+
+    manual test
+
+commit 1eddeef00bb6ff809dc8be8ca310a2dd4c7851e5
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 31 11:37:12 2026 +0800
+
+    fix: relocate Vivado project files to correct directory structure
+    
+    - Move .xpr from cpu_project1/ to cpu_project/ (required project name)
+    - Rewrite .xpr with relative $PPRDIR paths for cross-machine portability
+    - Move runs/impl_1/* (bit + 3 dcp) and synth_1/* to correct location
+    - Remove obsolete cpu_project1/ directory
+
+commit f84eab437f5684e8ba4d30e97bf2766b7a67dca5
+Merge: a9f56a1 68ddd39
+Author: ChenJunxi <12411025@mail.sustech.edu.cn>
+Date:   Sun May 31 11:29:12 2026 +0800
+
+    Merge branch 'main' of https://github.com/CS202ComputerOrganization/cpu-project-12412307-12411025-12411922
+
+commit 68ddd390a3b9093b15210e0d958eb83dd8f7289b
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 31 11:28:46 2026 +0800
+
+    documentation revision
+
+commit a9f56a162cbe38e6437c764d5d30abda482699cb
+Author: ChenJunxi <12411025@mail.sustech.edu.cn>
+Date:   Sun May 31 11:28:14 2026 +0800
+
+    xpr/bit/dcp
+
+commit f8d54281b8adffd5dd4a7c90791ffe99bd6bbf85
+Author: JustinFan7777777 <justinfan7777777@gmail.com>
+Date:   Sun May 31 10:59:07 2026 +0800
+
+    chore: align project structure with official submission requirements
+    
+    - Rename all .hex → .txt per official naming convention
+    - Copy batch_test.txt and batch_test_pipeline.txt to Verilog source dir
+    - Remove redundant INIT_FILE override in CPUTop.v
+    - Update gitlog.txt with full commit history + member mapping
+    - Clean up __pycache__, .DS_Store, duplicate hex files
+
 commit c4572f5a779c595146fea05a62437faa27bf313e
 Author: JustinFan7777777 <justinfan7777777@gmail.com>
 Date:   Fri May 29 19:31:38 2026 +0800
