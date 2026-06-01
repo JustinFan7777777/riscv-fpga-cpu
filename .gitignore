@@ -35,3 +35,6 @@ __pycache__/
 *.runs/impl_1/*
 !*.runs/impl_1/*.bit
 !*.runs/impl_1/*.dcp
+
+# Video files (too large for git)
+*.mp4
