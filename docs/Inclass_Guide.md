@@ -25,10 +25,10 @@ mkdir exam_cpu
 cd exam_cpu
 
 # 4. 从 GitHub 克隆项目 (换成你们组的仓库地址!)
-git clone https://github.com/CS202ComputerOrganization/cpu-project-12412307-12411025-12411922.git
+git clone https://github.com/FanXiaole/riscv-fpga-cpu.git
 
 # 5. 进入项目目录
-cd cpu-project-12412307-12411025-12411922
+cd riscv-fpga-cpu
 
 # 6. 确认分支和最新提交
 git branch
