@@ -8,29 +8,80 @@
 
 ## 🚨 考前准备 (断网前必须完成!!!)
 
-## 资料下载到 D 盘
+### 第 1 步: 从 GitHub 拉取项目代码到 D 盘
 
 **所有资料和工具务必保存在 D 盘！** C 盘可能被系统异常重启清空。
 
-通过 BB / 邮箱 / FTP / GitHub 下载以下内容到 D 盘:
+打开终端 (cmd 或 PowerShell)，逐条执行:
 
-| 必须下载 | 说明 |
-|----------|------|
-| ✅ 项目代码 | GitHub 上的 cpu-project 仓库 |
-| ✅ Rars / Lars | RISC-V 汇编器，用于生成机器码 |
-| ✅ difftest 工具 | 串口比对测试工具 |
-| ✅ 电子资料 | 课件、笔记、开发板说明书、本指南 |
-| ✅ 你们的 batch_test.txt | 确保是最新版本 |
+```bash
+# 1. 切换到 D 盘
+D:
 
-## 工具链验证 (建议断网前完成)
+# 2. 创建考试专用文件夹
+mkdir exam_cpu
 
-1. 打开 Vivado → 打开你们的 cpu_project.xpr
-2. Run Synthesis → Run Implementation → Generate Bitstream (确保能通过)
-3. Hardware Manager → Program Device → 上板
-4. 打开 difftest 工具 → 跑一次完整测试 → **确认串口连接正常、比对通过**
-5. 确认 Rars/Lars 能正常打开并汇编 `.asm` 文件
+# 3. 进入文件夹
+cd exam_cpu
 
-> **⚠️ 如果工具链不通，立刻趁有网查资料解决！断网后就来不及了。**
+# 4. 从 GitHub 克隆项目 (换成你们组的仓库地址!)
+git clone https://github.com/CS202ComputerOrganization/cpu-project-12412307-12411025-12411922.git
+
+# 5. 进入项目目录
+cd cpu-project-12412307-12411025-12411922
+
+# 6. 确认分支和最新提交
+git branch
+git log --oneline -3
+```
+
+> **💡 如果电脑上已经 clone 过:** 直接 `cd` 到项目目录，执行 `git pull origin main` 拉取最新版本即可。
+
+### 第 2 步: 下载其他必要资料到 D 盘
+
+| 必须下载 | 获取方式 | 说明 |
+|----------|---------|------|
+| ✅ 项目代码 | `git clone` (上一步) | 你们的 CPU 项目仓库 |
+| ✅ Rars / Lars | BB / 邮箱 / 官网 | RISC-V 汇编器，生成机器码 |
+| ✅ difftest 工具 | BB / 邮箱 | 串口比对测试工具 |
+| ✅ Inclass_Guide.md | 项目里自带 | 就是本指南，断网后离线看 |
+| ✅ 电子资料 | 提前存到 D 盘 | 课件、笔记、开发板说明书 |
+
+### 第 3 步: 工具链验证 (务必在断网前完成!)
+
+```text
+1. 双击 Vivado 2017.4 → 打开 D:\exam_cpu\... 下的 cpu_project.xpr
+2. Run Synthesis → Run Implementation → Generate Bitstream
+   → 确认能通过，无 Error!
+3. Hardware Manager → Open Target → Auto Connect
+4. Program Device → 选 TopDebug.bit → DONE 灯亮
+5. 打开 difftest 工具 → 跑一次完整测试
+   → 确认串口连接正常、比对结果 PASS
+6. 打开 Rars/Lars → 打开任意 .asm 文件 → Assemble
+   → 确认能正常生成机器码
+```
+
+> **⚠️ 工具链不通 = 考试白给。趁有网赶紧排查！Vivado 打不开通常是路径含中文。**
+
+### 第 4 步: 确认文件结构 (对着这张表检查)
+
+```text
+D:\exam_cpu\cpu-project-...\
+├── cpu_project.xpr              ← Vivado 工程文件
+├── cpu_project.srcs/
+│   └── sources_1/
+│       └── new/
+│           ├── Decoder.v         ← 要改! INCLASS_MAIN
+│           ├── ALU.v             ← 要改! INCLASS_ALU
+│           ├── CPUTop.v          ← 按需改 INCLASS_MUX_A/WD3
+│           ├── Ifetch.v          ← 按需改 INCLASS_HEX
+│           ├── batch_test.txt    ← 写测试机器码
+│           └── ... (其他文件不要动)
+├── assembly/
+│   ├── batch_test.asm            ← 汇编源文件参考
+│   └── batch_test.txt            ← 汇编生成的 txt 参考
+└── Inclass_Guide.md              ← 本指南 (离线看)
+```
 
 ## 考场纪律速览
 
@@ -436,20 +487,114 @@ XXXXXXXX    ← sw s0, 0x400C(x0) 的机器码
 
 ---
 
-## 📝 手写练习 (考前必做!)
+## 📝 完整案例参考 (考试对照着做!)
 
-用这 4 个场景练习完整的"汇编占位符 + Verilog 修改 + 机器码替换"流程:
+> **题型: R-type 新运算，和已有指令共用 opcode+funct3，靠 funct7 区分**
+> 这是最常见也最简单的题型，只改 **2 行代码**。
 
-**练习 1 — R-type：** `AVG rd, rs1, rs2`（求平均值 (A+B)/2）
+### 案例题目
 
-- 编码：opcode=0110011, funct3=000, funct7=0000001
+**新指令 `NAND rd, rs1, rs2`** — 按位与非
 
-**练习 2 — I-type：** `NEGI rd, rs1, imm`（立即数取负 `rd = -imm`）
+- 功能: `rd = ~(rs1 & rs2)`
+- 格式: R-type
+- opcode: `7'b0110011` (R-type 通用 opcode，不改)
+- funct3: `3'b111` (和 AND 共用)
+- funct7: `7'b0100000` (用 funct7[5]=1 区分 AND 的 funct7=0000000)
+- 测试用例: `0, [0xFF, 0x0F], expect=0xFFFFFFF0`
 
-- 编码：opcode=0010011, funct3=001
+### ① 填表
 
-**练习 3 — U-type 新操作码：** `LUI` 功能但 opcode 改成 `7'b1110111`
+| 参数 | 值 |
+|------|-----|
+| 指令名 | NAND |
+| 功能 | rd = ~(rs1 & rs2) |
+| 指令格式 | R-type |
+| opcode[6:0] | `7'b0110011` |
+| funct3[2:0] | `3'b111` |
+| funct7[6:0] | `7'b0100000` |
+| 测试机器码 (NAND x3,x1,x2) | `0x4020F1B3` |
+| 测试用例 | 0, [0xFF, 0x0F], expect=0xFFFFFFF0 |
 
-- 需要改 CPUTop.v 的 ALU_A mux
+### ② 汇编占位符
 
-**练习 4 — 完整流程计时：** 选练习 1，用手机计时，5 分钟内完成 Verilog 修改 + 汇编撰写 + 机器码替换。
+```asm
+    lw  t0, 0x4000(x0)   # 用例编号
+    lw  t1, 0x4004(x0)   # 源操作数1
+    lw  t2, 0x4008(x0)   # 源操作数2
+    add s0, t1, t2       # ← 占位符! R-type用add代替
+    sw  s0, 0x400C(x0)   # 存结果
+```
+
+Rars 汇编 → 生成 txt → 把 `add s0, t1, t2` 那行的 hex 替换成 `4020F1B3`。
+
+### ③ Decoder.v — 主译码器 (INCLASS_MAIN)
+
+**不需要改！** 因为 opcode 还是 `7'b0110011`（R-type），现有分支已经覆盖。控制信号自动正确: RegWrite=1, ALUSrc=0, ALUOp=`10`。
+
+> **什么时候主译码器要改？** 当教师给了一个全新的 opcode（不是 0110011/0010011/0000011 等现有 9 个），才需要在 INCLASS_MAIN 加分支。
+
+### ④ Decoder.v — ALU 译码表 (搜 INCLASS_ALU_R, ~287 行)
+
+原代码:
+
+```verilog
+                    3'b111: alucontrol_r = 4'b0010; // AND
+```
+
+改成:
+
+```verilog
+                    3'b111: alucontrol_r = funct7_5 ? 4'b1101 : 4'b0010; // NAND : AND
+```
+
+> **原理:** funct7[5]=0 → 走 AND(`0010`). funct7[5]=1 → 走 NAND(`1101`). 和 ADD/SUB 共用 funct3=000 的模式一模一样。
+
+### ⑤ ALU.v (搜 INCLASS_ALU, ~117 行)
+
+在 `4'b1100` 和 `default` 之间插入:
+
+```verilog
+            4'b1101: ALUResult = ~(A & B);  // NAND
+```
+
+### ⑥ batch_test.txt (前 5 行)
+
+```text
+XXXXXXXX    ← lw t0, 0x4000(x0)   Rars生成
+XXXXXXXX    ← lw t1, 0x4004(x0)   Rars生成
+XXXXXXXX    ← lw t2, 0x4008(x0)   Rars生成
+4020F1B3    ← ★ NAND x3,x1,x2    (替换占位符)
+XXXXXXXX    ← sw s0, 0x400C(x0)   Rars生成
+```
+
+### ⑦ 手算机器码 (R-type)
+
+```text
+funct7 | rs2 | rs1 | funct3 | rd | opcode
+0100000 00010 00001   111   00011 0110011
+
+0100 0000 0010 0000 1111 0001 1011 0011
+ 4    0    2    0    F    1    B    3
+→ 0x4020F1B3
+```
+
+> 验证: 0xFF & 0x0F = 0x0F → ~0x0F = 0xFFFFFFF0 ✅
+
+### ⑧ 改动总结
+
+| 文件 | 改什么 | 几行 |
+|------|--------|------|
+| Decoder.v 主译码器 | ❌ 不改 | 0 |
+| Decoder.v ALU 表 | funct3=111 加 funct7_5 判断 | 1 |
+| ALU.v | 加 4'b1101 case | 1 |
+| CPUTop.v | ❌ 不改 | 0 |
+| batch_test.txt | 写测试代码 | 5 |
+
+---
+
+## 🏋️ 更多练习 (考前自测)
+
+- **练习 A:** `AVG rd, rs1, rs2` — 求平均 (A+B)/2, R-type, opcode=0110011, funct3=000, funct7=0000001
+- **练习 B:** `NEGI rd, rs1, imm` — 立即数取负, I-type, opcode=0010011, funct3=001
+- **练习 C:** LUI 功能但 opcode 改成 `7'b1110111` — 需要改 CPUTop.v 的 ALU_A mux!
