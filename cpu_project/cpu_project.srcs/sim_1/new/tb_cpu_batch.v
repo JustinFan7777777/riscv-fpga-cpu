@@ -42,12 +42,13 @@ module tb_cpu_batch;
         .dbg_pc(single_pc),
         .SwitchIn(16'd0),
         .ButtonIn(5'd0),
+        .SeedIn(1'b0),
         .LEDOut(single_led),
         .seg_cs(single_seg_cs),
         .seg_data_0(single_seg0),
         .seg_data_1(single_seg1),
         .clk_vga(clk_vga),
-        .vga_fb_addr(12'd0),
+        .vga_fb_addr(13'd0),
         .vga_fb_data(single_vga_fb)
     );
 
@@ -72,12 +73,13 @@ module tb_cpu_batch;
         .dbg_pc(pipe_pc),
         .SwitchIn(16'd0),
         .ButtonIn(5'd0),
+        .SeedIn(1'b0),
         .LEDOut(pipe_led),
         .seg_cs(pipe_seg_cs),
         .seg_data_0(pipe_seg0),
         .seg_data_1(pipe_seg1),
         .clk_vga(clk_vga),
-        .vga_fb_addr(12'd0),
+        .vga_fb_addr(13'd0),
         .vga_fb_data(pipe_vga_fb)
     );
 

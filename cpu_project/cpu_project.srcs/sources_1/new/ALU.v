@@ -18,6 +18,7 @@
 //   0001: SUB  减       0100: XOR  位异或    0111: SRA  算术右移
 //   0010: AND  位与     0101: SLL  逻辑左移  1000: SLT  有符号比较
 //                                            1001: SLTU 无符号比较
+//                                            1010: MUL  乘法低32位
 //
 // 【操作数说明】
 //   - 移位指令(SLL/SRL/SRA)只使用 B[4:0] 低5位作为移位量 (RISC-V 规范)
@@ -43,57 +44,6 @@ module ALU (
     //     保留Zero作为备用的零检测输出, 供未来可能的优化或调试使用
     assign Zero = (ALUResult == 32'd0);
 
-    // ===========================
-    // ISA 扩展: 组合逻辑函数 (POPCNT / CLZ / CTZ)
-    // ===========================
-
-    // popcount: 32-bit 分治法, 5 级加法树, 纯组合逻辑
-    function [31:0] popcount;
-        input [31:0] x;
-        reg [31:0] t;
-        begin
-            t = (x & 32'h55555555) + ((x >> 1) & 32'h55555555);
-            t = (t & 32'h33333333) + ((t >> 2) & 32'h33333333);
-            t = (t & 32'h0F0F0F0F) + ((t >> 4) & 32'h0F0F0F0F);
-            t = (t & 32'h00FF00FF) + ((t >> 8) & 32'h00FF00FF);
-            t = (t & 32'h0000FFFF) + ((t >> 16) & 32'h0000FFFF);
-            popcount = t;
-        end
-    endfunction
-
-    // clz: Count Leading Zeros — 二分查找最高位的1
-    // clz(0)=32 (全零输入特殊处理)
-    function [31:0] clz;
-        input [31:0] x;
-        reg [31:0] n;
-        begin
-            if (x == 32'd0) begin
-                clz = 32'd32;
-            end else begin
-                n = 32'd0;
-                if (x[31:16] == 16'd0) begin n = n + 16; x = x << 16; end
-                if (x[31:24] == 8'd0)  begin n = n + 8;  x = x << 8;  end
-                if (x[31:28] == 4'd0)  begin n = n + 4;  x = x << 4;  end
-                if (x[31:30] == 2'd0)  begin n = n + 2;  x = x << 2;  end
-                if (x[31] == 1'b0)     begin n = n + 1;                 end
-                clz = n;
-            end
-        end
-    endfunction
-
-    // ctz: Count Trailing Zeros — 位反转 + CLZ
-    function [31:0] ctz;
-        input [31:0] x;
-        reg [31:0] rev;
-        integer i;
-        begin
-            rev = 32'd0;
-            for (i = 0; i < 32; i = i + 1)
-                rev = {rev[30:0], x[i]};
-            ctz = clz(rev);
-        end
-    endfunction
-
     // ALU 主运算逻辑
     always @(*) begin
         case (ALUControl)
@@ -107,15 +57,9 @@ module ALU (
             4'b0111: ALUResult = $signed(A) >>> B[4:0];   // SRA  / SRAI (算术右移)
             4'b1000: ALUResult = ($signed(A) < $signed(B)) ? 32'd1 : 32'd0;  // SLT / SLTI
             4'b1001: ALUResult = (A < B) ? 32'd1 : 32'd0;                   // SLTU / SLTIU
+            4'b1010: ALUResult = A * B;                   // MUL (RV32M低32位)
             // ===== INCLASS_ALU: 现场设计 — 新ALU运算插在此注释下方 =====
-            // ===== ISA 扩展: 硬件加速指令 (funct7=0000001) =====
-            // POPCNT — 统计A中1的个数 (分治法, 5级组合逻辑)
-            4'b1010: ALUResult = popcount(A);
-            // CLZ — 统计前导零个数 (优先编码器)
-            4'b1011: ALUResult = clz(A);
-            // CTZ — 统计尾部零个数 (位反转 + CLZ)
-            4'b1100: ALUResult = ctz(A);
-            // 可用编码: 4'b1101 ~ 4'b1111
+            // 可用编码: 4'b1011 ~ 4'b1111
             default: ALUResult = 32'd0;  // 未定义操作，输出0 (安全默认值)
         endcase
     end

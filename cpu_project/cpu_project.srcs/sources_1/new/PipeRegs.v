@@ -31,6 +31,7 @@ module PipeRegs (
     // EX 阶段输出 → EX/MEM 输入
     input  [31:0] ex_aluresult, ex_writedata,
     input  [4:0]  ex_rd_addr,
+    input  [2:0]  ex_funct3,
     input         ex_regwrite, ex_memtoreg, ex_memwrite,
 
     // MEM 阶段输出 → MEM/WB 输入
@@ -53,6 +54,7 @@ module PipeRegs (
     // ==== EX/MEM 输出 (MEM 阶段用) ====
     output [31:0] mem_o_aluresult, mem_o_writedata,
     output [4:0]  mem_o_rd_addr,
+    output [2:0]  mem_o_funct3,
     output        mem_o_regwrite, mem_o_memtoreg, mem_o_memwrite,
 
     // ==== MEM/WB 输出 (WB 阶段用) ====
@@ -169,6 +171,7 @@ module PipeRegs (
     // ========================================================================
     reg [31:0] exmem_aluresult, exmem_writedata;
     reg [4:0]  exmem_rd_addr;
+    reg [2:0]  exmem_funct3;
     reg        exmem_regwrite, exmem_memtoreg, exmem_memwrite;
 
     always @(posedge clk or negedge rst_n) begin
@@ -176,6 +179,7 @@ module PipeRegs (
             exmem_aluresult <= 32'd0;
             exmem_writedata <= 32'd0;
             exmem_rd_addr   <= 5'd0;
+            exmem_funct3    <= 3'd0;
             exmem_regwrite  <= 1'b0;
             exmem_memtoreg  <= 1'b0;
             exmem_memwrite  <= 1'b0;
@@ -183,6 +187,7 @@ module PipeRegs (
             exmem_aluresult <= ex_aluresult;
             exmem_writedata <= ex_writedata;
             exmem_rd_addr   <= ex_rd_addr;
+            exmem_funct3    <= ex_funct3;
             exmem_regwrite  <= ex_regwrite;
             exmem_memtoreg  <= ex_memtoreg;
             exmem_memwrite  <= ex_memwrite;
@@ -192,6 +197,7 @@ module PipeRegs (
     assign mem_o_aluresult = exmem_aluresult;
     assign mem_o_writedata = exmem_writedata;
     assign mem_o_rd_addr   = exmem_rd_addr;
+    assign mem_o_funct3    = exmem_funct3;
     assign mem_o_regwrite  = exmem_regwrite;
     assign mem_o_memtoreg  = exmem_memtoreg;
     assign mem_o_memwrite  = exmem_memwrite;

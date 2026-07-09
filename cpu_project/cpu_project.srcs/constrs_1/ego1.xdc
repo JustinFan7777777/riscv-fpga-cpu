@@ -127,6 +127,10 @@ set_property -dict {PACKAGE_PIN E6 IOSTANDARD LVCMOS33} [get_ports {vga_b[1]}]
 set_property -dict {PACKAGE_PIN E5 IOSTANDARD LVCMOS33} [get_ports {vga_b[2]}]
 set_property -dict {PACKAGE_PIN E7 IOSTANDARD LVCMOS33} [get_ports {vga_b[3]}]
 
+# ============================ 随机种子输入 (J5 通用扩展 IO) ======================
+# J5-1: AD2P_15 / FPGA B16. 作为数字输入采样, MMIO 0xFFFF0018 bit0.
+set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports seed_pin1]
+
 # ============================ 生成时钟约束 ======================================
 # VGA 像素时钟: 100MHz / 4 = 25MHz (clk_div[1] → BUFG_vga_clk → vga_clk)
 create_generated_clock -name vga_clk -source [get_ports clk] \

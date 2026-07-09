@@ -276,9 +276,9 @@ D:\exam_cpu\cpu-project-...\
                 3'bXXX: alucontrol_r = 4'bYYYY;  // 新运算编码
 ```
 
-**可选 ALUControl 编码 (选一个没用过的):** 已占用 `0000`~`1100`, 可用: **`1101`, `1110`, `1111`**
+**可选 ALUControl 编码 (选一个没用过的):** 已占用 `0000`~`1010`, 可用: **`1011`~`1111`**
 
-**💡 提示:** 如果你只加了一条新指令且它需要新运算，建议用 `1101` (最容易记)。
+**💡 提示:** 如果你只加了一条新指令且它需要新运算，建议用 `1011`。
 
 ## 步骤 5: 改 ALU.v — 新运算实现 (如需)
 
@@ -289,16 +289,13 @@ D:\exam_cpu\cpu-project-...\
 **你在代码中会看到:**
 ```verilog
             // ===== INCLASS_ALU: 现场设计 — 新ALU运算插在此注释下方 =====
-            // ===== ISA 扩展: 硬件加速指令 (funct7=0000001) =====
-            4'b1010: ALUResult = popcount(A);   // ← 这就是现有自定义运算的写法
-            4'b1011: ALUResult = clz(A);
-            4'b1100: ALUResult = ctz(A);
+            // 可用编码: 4'b1011 ~ 4'b1111
             default: ALUResult = 32'd0;
 ```
 
-**在 INCLASS_ALU 注释下方插入 (推荐插在 4'b1100 之后, default 之前):**
+**在 INCLASS_ALU 注释下方插入 (default 之前):**
 ```verilog
-            4'b1101: ALUResult = /* 你的运算表达式 */;
+            4'b1011: ALUResult = /* 你的运算表达式 */;
 ```
 
 **常用 Verilog 运算表达式 (直接抄):**
@@ -595,6 +592,6 @@ funct7 | rs2 | rs1 | funct3 | rd | opcode
 
 ## 🏋️ 更多练习 (考前自测)
 
-- **练习 A:** `AVG rd, rs1, rs2` — 求平均 (A+B)/2, R-type, opcode=0110011, funct3=000, funct7=0000001
+- **练习 A:** `AVG rd, rs1, rs2` — 求平均 (A+B)/2, R-type, opcode=0001011, funct3=000, funct7=0000000
 - **练习 B:** `NEGI rd, rs1, imm` — 立即数取负, I-type, opcode=0010011, funct3=001
 - **练习 C:** LUI 功能但 opcode 改成 `7'b1110111` — 需要改 CPUTop.v 的 ALU_A mux!

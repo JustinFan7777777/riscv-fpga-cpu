@@ -87,9 +87,9 @@ def assemble_line(line, labels, pc):
     a = parts[1:]
 
     # R-type
-    if op in ('add','sub','sll','slt','sltu','xor','srl','sra','or','and'):
-        f3 = {'add':0,'sub':0,'sll':1,'slt':2,'sltu':3,'xor':4,'srl':5,'sra':5,'or':6,'and':7}[op]
-        f7 = 0x20 if op == 'sub' else (0x20 if op == 'sra' else 0)
+    if op in ('add','sub','mul','sll','slt','sltu','xor','srl','sra','or','and'):
+        f3 = {'add':0,'sub':0,'mul':0,'sll':1,'slt':2,'sltu':3,'xor':4,'srl':5,'sra':5,'or':6,'and':7}[op]
+        f7 = 1 if op == 'mul' else (0x20 if op == 'sub' else (0x20 if op == 'sra' else 0))
         return (f7 << 25) | (reg(a[2]) << 20) | (reg(a[1]) << 15) | (f3 << 12) | (reg(a[0]) << 7) | 0x33
 
     # I-type ALU
@@ -104,16 +104,18 @@ def assemble_line(line, labels, pc):
         shamt = int(a[2].strip(), 0) & 0x1F
         return (f7 << 25) | (shamt << 20) | (reg(a[1]) << 15) | (f3 << 12) | (reg(a[0]) << 7) | 0x13
 
-    # LW
-    if op == 'lw':
+    # Loads
+    if op in ('lb', 'lh', 'lw', 'lbu', 'lhu'):
+        f3 = {'lb':0,'lh':1,'lw':2,'lbu':4,'lhu':5}[op]
         off, rs = a[1].split('('); rs = rs.replace(')', '')
-        return (imm12(off) << 20) | (reg(rs) << 15) | (2 << 12) | (reg(a[0]) << 7) | 0x03
+        return (imm12(off) << 20) | (reg(rs) << 15) | (f3 << 12) | (reg(a[0]) << 7) | 0x03
 
-    # SW
-    if op == 'sw':
+    # Stores
+    if op in ('sb', 'sh', 'sw'):
+        f3 = {'sb':0,'sh':1,'sw':2}[op]
         off, rs = a[1].split('('); rs = rs.replace(')', '')
         o = int(off.strip(), 0) & 0xFFF
-        return ((o >> 5) << 25) | (reg(a[0]) << 20) | (reg(rs) << 15) | (2 << 12) | ((o & 0x1F) << 7) | 0x23
+        return ((o >> 5) << 25) | (reg(a[0]) << 20) | (reg(rs) << 15) | (f3 << 12) | ((o & 0x1F) << 7) | 0x23
 
     # LUI (immediate is the U-immediate value, placed in bits[31:12])
     if op == 'lui':

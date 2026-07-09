@@ -24,10 +24,10 @@ module tb_pipeline_control;
         .dmem_dbg_en(1'b0), .dmem_wr_en(1'b0),
         .dmem_dbg_addr(32'd0), .dmem_wr_data(32'd0), .dmem_rd_data(dmem_rd_data),
         .dbg_pc(dbg_pc),
-        .SwitchIn(16'd0), .ButtonIn(5'd0),
+        .SwitchIn(16'd0), .ButtonIn(5'd0), .SeedIn(1'b0),
         .LEDOut(LEDOut), .seg_cs(seg_cs),
         .seg_data_0(seg_data_0), .seg_data_1(seg_data_1),
-        .clk_vga(clk_vga), .vga_fb_addr(12'd0), .vga_fb_data(vga_fb_data)
+        .clk_vga(clk_vga), .vga_fb_addr(13'd0), .vga_fb_data(vga_fb_data)
     );
 
     reg [31:0] pc_hold, ifid_hold, idex_hold, exmem_hold, memwb_hold;

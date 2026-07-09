@@ -26,6 +26,9 @@ CMD_READ_INST = b"\x23"
 CMD_READ_DMEM = b"\x24"
 CMD_WRITE_INST = b"\x40"
 CMD_WRITE_DMEM = b"\x41"
+VGA_BASE = 0xFFFF_0100
+VGA_CELLS = 80 * 60
+VGA_BLANK = 0x0020
 
 RESP_PONG = 0x80
 RESP_ACK = 0x81
@@ -133,6 +136,10 @@ class UartDebugClient:
 
     def write_dmem(self, addr: int, value: int) -> None:
         self._ack(CMD_WRITE_DMEM + pack_u32(addr) + pack_u32(value))
+
+    def clear_vga(self) -> None:
+        for i in range(VGA_CELLS):
+            self.write_dmem(VGA_BASE + i * 2, VGA_BLANK)
 
 
 class DebuggerApp(tk.Tk):
@@ -346,6 +353,7 @@ class DebuggerApp(tk.Tk):
             words = read_hex_words(self.hex_path_var.get())
             base = parse_u32(self.imem_base_var.get())
             client.halt()
+            client.clear_vga()
             for i, word in enumerate(words):
                 client.write_inst(base + i * 4, word)
             client.reset()

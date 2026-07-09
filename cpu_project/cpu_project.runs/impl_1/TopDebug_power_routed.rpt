@@ -1,7 +1,7 @@
 Copyright 1986-2017 Xilinx, Inc. All Rights Reserved.
 ----------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version     : Vivado v.2017.4 (win64) Build 2086221 Fri Dec 15 20:55:39 MST 2017
-| Date             : Tue Jul  7 15:01:20 2026
+| Date             : Thu Jul  9 13:23:18 2026
 | Host             : WIN-JS24ECESSM5 running 64-bit major release  (build 9200)
 | Command          : report_power -file TopDebug_power_routed.rpt -pb TopDebug_power_summary_routed.pb -rpx TopDebug_power_routed.rpx
 | Design           : TopDebug
@@ -30,10 +30,10 @@ Table of Contents
 ----------
 
 +--------------------------+--------------+
-| Total On-Chip Power (W)  | 0.116        |
+| Total On-Chip Power (W)  | 0.119        |
 | Design Power Budget (W)  | Unspecified* |
 | Power Budget Margin (W)  | NA           |
-| Dynamic (W)              | 0.042        |
+| Dynamic (W)              | 0.045        |
 | Device Static (W)        | 0.074        |
 | Effective TJA (C/W)      | 4.8          |
 | Max Ambient (C)          | 84.4         |
@@ -52,19 +52,20 @@ Table of Contents
 +--------------------------+-----------+----------+-----------+-----------------+
 | On-Chip                  | Power (W) | Used     | Available | Utilization (%) |
 +--------------------------+-----------+----------+-----------+-----------------+
-| Clocks                   |     0.006 |        5 |       --- |             --- |
-| Slice Logic              |     0.003 |    11179 |       --- |             --- |
+| Clocks                   |     0.005 |        5 |       --- |             --- |
+| Slice Logic              |     0.003 |    11219 |       --- |             --- |
 |   LUT as Logic           |     0.003 |     4533 |     20800 |           21.79 |
-|   CARRY4                 |    <0.001 |      202 |      8150 |            2.48 |
-|   Register               |    <0.001 |     3118 |     41600 |            7.50 |
-|   F7/F8 Muxes            |    <0.001 |     1890 |     32600 |            5.80 |
-|   Others                 |     0.000 |       26 |       --- |             --- |
+|   CARRY4                 |    <0.001 |      175 |      8150 |            2.15 |
+|   Register               |    <0.001 |     3122 |     41600 |            7.50 |
+|   F7/F8 Muxes            |    <0.001 |     1850 |     32600 |            5.67 |
+|   Others                 |     0.000 |       34 |       --- |             --- |
 |   LUT as Distributed RAM |     0.000 |     1024 |      9600 |           10.67 |
-| Signals                  |     0.005 |     6888 |       --- |             --- |
-| Block RAM                |     0.012 |     38.5 |        50 |           77.00 |
-| I/O                      |     0.017 |       79 |       210 |           37.62 |
+| Signals                  |     0.004 |     7177 |       --- |             --- |
+| Block RAM                |     0.015 |     42.5 |        50 |           85.00 |
+| DSPs                     |    <0.001 |        6 |        90 |            6.67 |
+| I/O                      |     0.018 |       80 |       210 |           38.10 |
 | Static Power             |     0.074 |          |           |                 |
-| Total                    |     0.116 |          |           |                 |
+| Total                    |     0.119 |          |           |                 |
 +--------------------------+-----------+----------+-----------+-----------------+
 
 
@@ -74,7 +75,7 @@ Table of Contents
 +-----------+-------------+-----------+-------------+------------+
 | Source    | Voltage (V) | Total (A) | Dynamic (A) | Static (A) |
 +-----------+-------------+-----------+-------------+------------+
-| Vccint    |       1.000 |     0.035 |       0.024 |      0.010 |
+| Vccint    |       1.000 |     0.037 |       0.027 |      0.011 |
 | Vccaux    |       1.800 |     0.013 |       0.001 |      0.013 |
 | Vcco33    |       3.300 |     0.006 |       0.005 |      0.001 |
 | Vcco25    |       2.500 |     0.000 |       0.000 |      0.000 |
@@ -145,15 +146,17 @@ Table of Contents
 +-------------------------------+-----------+
 | Name                          | Power (W) |
 +-------------------------------+-----------+
-| TopDebug                      |     0.042 |
-|   uCPUPipe                    |     0.010 |
-|     uDataMemory               |     0.006 |
+| TopDebug                      |     0.045 |
+|   uCPUPipe                    |     0.013 |
+|     uALU                      |    <0.001 |
+|     uDataMemory               |     0.008 |
 |     uIfetch                   |    <0.001 |
 |     uPipeRegs                 |     0.003 |
 |     uRegFile                  |     0.001 |
-|   uCPUTop                     |     0.009 |
-|     uDataMemory               |     0.006 |
-|     uIfetch                   |     0.002 |
+|   uCPUTop                     |     0.010 |
+|     uALU                      |    <0.001 |
+|     uDataMemory               |     0.007 |
+|     uIfetch                   |     0.001 |
 |       mem_reg_0_255_0_0       |    <0.001 |
 |       mem_reg_0_255_10_10     |    <0.001 |
 |       mem_reg_0_255_11_11     |    <0.001 |

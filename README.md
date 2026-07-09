@@ -1,7 +1,7 @@
 # RISC-V RV32I 单周期 & 五级流水线 CPU 设计与实现
 
 > 计算机组成原理 CPU Project — 小组 Tue34_w_10
-> Difftest 33/33 PASS | 6 项 Bonus 全部完成
+> Difftest 33/33 PASS
 
 ---
 
@@ -23,10 +23,9 @@
 
 | Bonus | 分值 | 说明 |
 |-------|------|------|
-| VGA 文本显示 | 5 | 640×480@60Hz, 80×30 彩色字符, 双端口 BRAM 帧缓冲 |
-| 贪吃蛇游戏 | 5 | 纯 RV32I 汇编, MMIO 按键 + VGA 渲染, 416 条指令 |
+| VGA 文本显示 | 5 | 640×480@60Hz, 80×60 彩色字符, 双端口 BRAM 帧缓冲 |
+| 贪吃蛇游戏 | 5 | RV32I+MUL 汇编, MMIO 按键 + VGA 渲染 + HUD + 障碍 + 暂停/加速, 813 条指令 |
 | 五级流水线 | 6 | IF→ID→EX→MEM→WB, 转发+Load-Use stall+分支 flush |
-| ISA 扩展 | 4 | POPCNT / CLZ / CTZ 硬件加速指令, ~100x 软件加速比 |
 | 可视化工具 | 4 | 浏览器内 CPU 数据通路动画, 纯 HTML 单文件 |
 | 软件乘法 | — | 移位相加, 32-bit 有符号/无符号, 溢出展示 |
 
@@ -114,16 +113,7 @@ SwitchIn[15] 拨上 → LED 和数码管切换到流水线 CPU 输出
 5. 预期: 蛇移动、吃食物增长、撞墙 Game Over、btn[4] 重启
 ```
 
-#### Bonus 3: ISA 硬件加速指令
-
-```
-1. 烧录 TopDebug.bit (默认 batch_test.txt 已包含标准指令)
-2. 通过 UART 加载 other/isa/isa_test.txt 到 IMem
-3. 运行测试 → Debug 命令读 DMem 0x0000-0x0043
-4. 预期: 18 组 POPCNT/CLZ/CTZ 边界值测试全部 PASS
-```
-
-#### Bonus 4: 五级流水线
+#### Bonus 3: 五级流水线
 
 ```
 1. 烧录 TopDebug.bit (含单周期+流水线双 CPU)
@@ -133,7 +123,7 @@ SwitchIn[15] 拨上 → LED 和数码管切换到流水线 CPU 输出
 5. 预期: 转发正确, Load-Use stall 触发, 分支 flush 正确
 ```
 
-#### Bonus 5: CPU 数据通路可视化
+#### Bonus 4: CPU 数据通路可视化
 
 ```
 1. 双击 other/cpu_viz/visualizer.html
@@ -142,7 +132,7 @@ SwitchIn[15] 拨上 → LED 和数码管切换到流水线 CPU 输出
 4. 预期: SVG 数据通路逐级点亮, 控制信号表实时更新
 ```
 
-#### Bonus 6: 软件乘法
+#### Bonus 5: 软件乘法
 
 ```
 1. 通过 UART 加载 other/mul/soft_mul.txt 到 IMem
@@ -185,7 +175,6 @@ SwitchIn[15] 拨上 → LED 和数码管切换到流水线 CPU 输出
 ├── other/                    # Bonus 代码
 │   ├── vga/                  # VGA 字模ROM + 生成/测试脚本
 │   ├── snake/                # 贪吃蛇汇编
-│   ├── isa/                  # ISA 扩展测试
 │   ├── mul/                  # 软件乘法
 │   └── cpu_viz/              # 数据通路可视化工具
 ├── Final_Report.md           # 项目总结报告

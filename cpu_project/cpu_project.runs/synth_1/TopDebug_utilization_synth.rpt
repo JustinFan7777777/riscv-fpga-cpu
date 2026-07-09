@@ -1,7 +1,7 @@
 Copyright 1986-2017 Xilinx, Inc. All Rights Reserved.
 -----------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2017.4 (win64) Build 2086221 Fri Dec 15 20:55:39 MST 2017
-| Date         : Tue Jul  7 14:58:03 2026
+| Date         : Thu Jul  9 13:18:23 2026
 | Host         : WIN-JS24ECESSM5 running 64-bit major release  (build 9200)
 | Command      : report_utilization -file TopDebug_utilization_synth.rpt -pb TopDebug_utilization_synth.pb
 | Design       : TopDebug
@@ -30,16 +30,16 @@ Table of Contents
 +----------------------------+------+-------+-----------+-------+
 |          Site Type         | Used | Fixed | Available | Util% |
 +----------------------------+------+-------+-----------+-------+
-| Slice LUTs*                | 5563 |     0 |     20800 | 26.75 |
-|   LUT as Logic             | 4539 |     0 |     20800 | 21.82 |
+| Slice LUTs*                | 5552 |     0 |     20800 | 26.69 |
+|   LUT as Logic             | 4528 |     0 |     20800 | 21.77 |
 |   LUT as Memory            | 1024 |     0 |      9600 | 10.67 |
 |     LUT as Distributed RAM | 1024 |     0 |           |       |
 |     LUT as Shift Register  |    0 |     0 |           |       |
-| Slice Registers            | 3150 |     0 |     41600 |  7.57 |
-|   Register as Flip Flop    | 3150 |     0 |     41600 |  7.57 |
+| Slice Registers            | 3154 |     0 |     41600 |  7.58 |
+|   Register as Flip Flop    | 3154 |     0 |     41600 |  7.58 |
 |   Register as Latch        |    0 |     0 |     41600 |  0.00 |
-| F7 Muxes                   | 1346 |     0 |     16300 |  8.26 |
-| F8 Muxes                   |  544 |     0 |      8150 |  6.67 |
+| F7 Muxes                   | 1316 |     0 |     16300 |  8.07 |
+| F8 Muxes                   |  534 |     0 |      8150 |  6.55 |
 +----------------------------+------+-------+-----------+-------+
 * Warning! The Final LUT count, after physical optimizations and full implementation, is typically lower. Run opt_design after synthesis, if not already completed, for a more realistic count.
 
@@ -57,9 +57,9 @@ Table of Contents
 | 0     |            _ |       Reset |            - |
 | 0     |          Yes |           - |            - |
 | 9     |          Yes |           - |          Set |
-| 3043  |          Yes |           - |        Reset |
+| 3046  |          Yes |           - |        Reset |
 | 0     |          Yes |         Set |            - |
-| 98    |          Yes |       Reset |            - |
+| 99    |          Yes |       Reset |            - |
 +-------+--------------+-------------+--------------+
 
 
@@ -69,9 +69,9 @@ Table of Contents
 +-------------------+------+-------+-----------+-------+
 |     Site Type     | Used | Fixed | Available | Util% |
 +-------------------+------+-------+-----------+-------+
-| Block RAM Tile    | 38.5 |     0 |        50 | 77.00 |
-|   RAMB36/FIFO*    |   38 |     0 |        50 | 76.00 |
-|     RAMB36E1 only |   38 |       |           |       |
+| Block RAM Tile    | 42.5 |     0 |        50 | 85.00 |
+|   RAMB36/FIFO*    |   42 |     0 |        50 | 84.00 |
+|     RAMB36E1 only |   42 |       |           |       |
 |   RAMB18          |    1 |     0 |       100 |  1.00 |
 |     RAMB18E1 only |    1 |       |           |       |
 +-------------------+------+-------+-----------+-------+
@@ -81,11 +81,12 @@ Table of Contents
 3. DSP
 ------
 
-+-----------+------+-------+-----------+-------+
-| Site Type | Used | Fixed | Available | Util% |
-+-----------+------+-------+-----------+-------+
-| DSPs      |    0 |     0 |        90 |  0.00 |
-+-----------+------+-------+-----------+-------+
++----------------+------+-------+-----------+-------+
+|    Site Type   | Used | Fixed | Available | Util% |
++----------------+------+-------+-----------+-------+
+| DSPs           |    6 |     0 |        90 |  6.67 |
+|   DSP48E1 only |    6 |       |           |       |
++----------------+------+-------+-----------+-------+
 
 
 4. IO and GT Specific
@@ -94,7 +95,7 @@ Table of Contents
 +-----------------------------+------+-------+-----------+-------+
 |          Site Type          | Used | Fixed | Available | Util% |
 +-----------------------------+------+-------+-----------+-------+
-| Bonded IOB                  |   79 |     0 |       210 | 37.62 |
+| Bonded IOB                  |   80 |     0 |       210 | 38.10 |
 | Bonded IPADs                |    0 |     0 |         2 |  0.00 |
 | PHY_CONTROL                 |    0 |     0 |         5 |  0.00 |
 | PHASER_REF                  |    0 |     0 |         5 |  0.00 |
@@ -150,22 +151,23 @@ Table of Contents
 +----------+------+---------------------+
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
-| FDCE     | 3043 |        Flop & Latch |
+| FDCE     | 3046 |        Flop & Latch |
 | LUT6     | 2817 |                 LUT |
-| MUXF7    | 1346 |               MuxFx |
+| MUXF7    | 1316 |               MuxFx |
 | RAMS64E  | 1024 |  Distributed Memory |
-| LUT5     |  683 |                 LUT |
-| LUT4     |  634 |                 LUT |
-| MUXF8    |  544 |               MuxFx |
-| LUT3     |  455 |                 LUT |
-| LUT2     |  311 |                 LUT |
-| CARRY4   |  202 |          CarryLogic |
-| FDRE     |   98 |        Flop & Latch |
+| LUT4     |  668 |                 LUT |
+| LUT3     |  621 |                 LUT |
+| LUT5     |  555 |                 LUT |
+| MUXF8    |  534 |               MuxFx |
+| LUT2     |  343 |                 LUT |
+| CARRY4   |  175 |          CarryLogic |
+| FDRE     |   99 |        Flop & Latch |
 | OBUF     |   55 |                  IO |
-| RAMB36E1 |   38 |        Block Memory |
-| LUT1     |   35 |                 LUT |
-| IBUF     |   24 |                  IO |
+| RAMB36E1 |   42 |        Block Memory |
+| IBUF     |   25 |                  IO |
+| LUT1     |   12 |                 LUT |
 | FDPE     |    9 |        Flop & Latch |
+| DSP48E1  |    6 |    Block Arithmetic |
 | BUFG     |    3 |               Clock |
 | RAMB18E1 |    1 |        Block Memory |
 +----------+------+---------------------+

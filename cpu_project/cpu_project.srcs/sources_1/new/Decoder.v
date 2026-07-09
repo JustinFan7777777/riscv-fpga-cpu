@@ -38,6 +38,7 @@
 // 【指令编码速查 (RISC-V RV32I opcode)】
 //   opcode[6:0] | 指令类型    | 举例
 //   0110011      | R-type     | ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU
+//                                MUL (RV32M subset)
 //   0010011      | I-type ALU | ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU
 //   0000011      | I-type Load| LW, LH, LHU, LB, LBU
 //   0100011      | S-type     | SW, SH, SB
@@ -59,6 +60,7 @@
 //   111    | AND     | AND        | ANDI
 //
 //   SPECIAL: funct7[5]=1 时 ADD→SUB, SRL→SRA, SRLI→SRAI
+//            funct7=0000001 且 funct3=000 时 ADD→MUL
 // =============================================================================
 `timescale 1ns / 1ps
 
@@ -81,8 +83,7 @@ module Decoder (
     wire [6:0] opcode = inst[6:0];
     wire [2:0] funct3 = inst[14:12];
     wire       funct7_5 = inst[30]; // funct7第5位,用于区分ADD/SUB, SRL/SRA
-    wire       custom_op = inst[25]; // funct7第0位, 用于区分自定义指令(POPCNT/CLZ/CTZ)
-                                      // RV32I所有R-type的funct7[0]=0, 自定义用funct7=0000001
+    wire       is_mul = (inst[31:25] == 7'b0000001) && (funct3 == 3'b000);
 
     // ===========================
     // 主译码器
@@ -102,7 +103,7 @@ module Decoder (
 
     always @(*) begin
         case (opcode)
-            // R-type: ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU
+            // R-type: ADD, SUB, MUL, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU
             // 数据流: RegFile(rs1,rs2) → ALU → RegFile(rd)
             // ALUSrc=0 → ALU_B=rs2; ALUOp=10 → 查funct3+funct7
             7'b0110011: begin
@@ -276,11 +277,10 @@ module Decoder (
                 // ===== INCLASS_ALU_R: 现场设计 — R-type新运算改此funct3表中对应行 =====
                 // 模式: 3'bXXX: alucontrol_r = funct7_5 ? 4'b新编码 : 4'b旧编码;
                 case (funct3)
-                    3'b000: alucontrol_r = funct7_5 ? 4'b0001 : 4'b0000; // SUB : ADD (无funct7_5区分时可复用此行)
-                    // ===== ISA 扩展: custom_op=1 → 硬件加速指令 =====
-                    3'b001: alucontrol_r = custom_op ? 4'b1010 : 4'b0101; // POPCNT : SLL
-                    3'b010: alucontrol_r = custom_op ? 4'b1011 : 4'b1000; // CLZ : SLT
-                    3'b011: alucontrol_r = custom_op ? 4'b1100 : 4'b1001; // CTZ : SLTU
+                    3'b000: alucontrol_r = is_mul ? 4'b1010 : (funct7_5 ? 4'b0001 : 4'b0000); // MUL : SUB : ADD
+                    3'b001: alucontrol_r = 4'b0101; // SLL
+                    3'b010: alucontrol_r = 4'b1000; // SLT
+                    3'b011: alucontrol_r = 4'b1001; // SLTU
                     3'b100: alucontrol_r = 4'b0100; // XOR
                     3'b101: alucontrol_r = funct7_5 ? 4'b0111 : 4'b0110; // SRA : SRL
                     3'b110: alucontrol_r = 4'b0011; // OR

@@ -69,7 +69,7 @@
 //   ImmGen       : 立即数生成 (复用)
 //   PipeRegs     : 4 组流水线寄存器 (新增)
 //   HazardUnit   : 转发控制 + Load-Use 检测 (新增)
-//   ALU          : 算术逻辑单元 (复用, 含 POPCNT/CLZ/CTZ)
+//   ALU          : 算术逻辑单元 (复用)
 //   DataMemory   : 数据内存 + MMIO + VGA 帧缓冲 (复用)
 //
 // 【调试接口】
@@ -91,10 +91,11 @@ module CPUTopPipeline (
     output [31:0] dbg_pc,
     input  [15:0] SwitchIn,
     input  [4:0]  ButtonIn,
+    input         SeedIn,
     output [15:0] LEDOut,
     output [7:0]  seg_cs, seg_data_0, seg_data_1,
     input         clk_vga,
-    input  [11:0] vga_fb_addr,
+    input  [12:0] vga_fb_addr,
     output [15:0] vga_fb_data
 );
 
@@ -159,6 +160,7 @@ module CPUTopPipeline (
     // MEM
     wire [31:0] mem_aluresult, mem_writedata, mem_readdata;
     wire [4:0]  mem_rd_addr;
+    wire [2:0]  mem_funct3;
     wire        mem_regwrite, mem_memtoreg, mem_memwrite;
 
     // WB
@@ -232,6 +234,7 @@ module CPUTopPipeline (
         // EX → EX/MEM
         .ex_aluresult(ex_alu_result), .ex_writedata(ex_writedata),
         .ex_rd_addr(ex_rd_addr),
+        .ex_funct3(ex_funct3),
         .ex_regwrite(ex_regwrite), .ex_memtoreg(ex_memtoreg), .ex_memwrite(ex_memwrite),
         // MEM → MEM/WB
         .mem_readdata(mem_readdata), .mem_aluresult(mem_aluresult),
@@ -249,6 +252,7 @@ module CPUTopPipeline (
         // EX/MEM → MEM
         .mem_o_aluresult(mem_aluresult), .mem_o_writedata(mem_writedata),
         .mem_o_rd_addr(mem_rd_addr),
+        .mem_o_funct3(mem_funct3),
         .mem_o_regwrite(mem_regwrite), .mem_o_memtoreg(mem_memtoreg),
         .mem_o_memwrite(mem_memwrite),
         // MEM/WB → WB
@@ -325,8 +329,8 @@ module CPUTopPipeline (
     DataMemory uDataMemory (
         .clk(clk), .rst_n(pipe_rst_n), .clk_vga(clk_vga),
         .MemWrite(mem_memwrite && cpu_write_enable), .Addr(mem_aluresult),
-        .WriteData(mem_writedata), .ReadData(mem_readdata),
-        .SwitchIn(SwitchIn), .ButtonIn(ButtonIn),
+        .MemFunct3(mem_funct3), .WriteData(mem_writedata), .ReadData(mem_readdata),
+        .SwitchIn(SwitchIn), .ButtonIn(ButtonIn), .SeedIn(SeedIn),
         .LEDOut(LEDOut), .seg_cs(seg_cs),
         .seg_data_0(seg_data_0), .seg_data_1(seg_data_1),
         .dmem_dbg_en(dmem_dbg_en), .dmem_wr_en(dmem_wr_en),

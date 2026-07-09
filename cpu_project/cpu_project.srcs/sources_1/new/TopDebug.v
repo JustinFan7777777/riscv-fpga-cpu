@@ -74,6 +74,7 @@ module TopDebug (
     // 外设 IO (宽度匹配 EGO1 开发板实际硬件)
     input  [15:0] SwitchIn,     // 拨码开关: [7:0]=sw_pin(左8), [15:8]=dip_pin(右8)
     input  [4:0]  ButtonIn,     // 按键: btn_pin[4:0] (5个按键)
+    input         seed_pin1,     // J5-1 输入, 用作贪吃蛇随机种子
     output [15:0] LEDOut,       // LED: led_pin[15:0] (16个LED)
     output [7:0]  seg_cs,       // 数码管位选: seg_cs_pin[7:0] (8位, 共阳极=低有效)
     output [7:0]  seg_data_0,   // 数码管段选组0: seg_data_0_pin[7:0] (对应左4位)
@@ -237,7 +238,7 @@ module TopDebug (
     // ===========================
     // VGA 帧缓冲互连线 (声明在 CPU 实例之前, 避免 implicit wire)
     // ===========================
-    wire [11:0] vga_fb_addr;          // VGA → DataMemory: 帧缓冲读地址 (0~2399)
+    wire [12:0] vga_fb_addr;          // VGA → DataMemory: 帧缓冲读地址 (0~4799)
     wire [15:0] vga_fb_single;        // 单周期CPU → VGA: 帧缓冲读数据
     wire [15:0] vga_fb_pipe;          // 流水线CPU → VGA: 帧缓冲读数据
     wire [15:0] vga_fb_data;          // MUX后 → VGA: 帧缓冲读数据
@@ -284,6 +285,7 @@ module TopDebug (
         .dbg_pc        (single_dbg_pc),
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
+        .SeedIn        (seed_pin1),
         .LEDOut        (single_LED),
         .seg_cs        (single_sc),
         .seg_data_0    (single_s0),
@@ -308,7 +310,7 @@ module TopDebug (
         .dmem_dbg_addr(dmem_dbg_addr), .dmem_wr_data(dmem_wr_data),
         .dmem_rd_data(pipe_dmem_rd),           // 流水线Debug读
         .dbg_pc(pipe_dbg_pc),                  // 流水线Debug读
-        .SwitchIn(SwitchIn), .ButtonIn(ButtonIn),
+        .SwitchIn(SwitchIn), .ButtonIn(ButtonIn), .SeedIn(seed_pin1),
         .LEDOut(pipe_LED), .seg_cs(pipe_sc),
         .seg_data_0(pipe_s0), .seg_data_1(pipe_s1),
         .clk_vga(vga_clk), .vga_fb_addr(vga_fb_addr), .vga_fb_data(vga_fb_pipe)

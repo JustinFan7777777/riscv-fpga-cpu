@@ -23,7 +23,7 @@ module tb_VGA;
     reg        rst_n;
     wire       vga_hs, vga_vs;
     wire [3:0] vga_r, vga_g, vga_b;
-    wire [11:0] fb_addr;
+    wire [12:0] fb_addr;
     reg  [15:0] fb_data;
 
     // 25MHz 像素时钟 (周期 = 40ns)
@@ -37,13 +37,13 @@ module tb_VGA;
     //   [1] = 亮红 'i' (0x0C69)  — 旁边显示 'i'
     //   [79]= 白色 '>' (0x0F3E)  — 第0行最后一列
     //   [80]= 青色 'V' (0x0B56)  — 第1行第0列
-    reg [15:0] mock_fb [0:2399];
+    reg [15:0] mock_fb [0:4799];
     integer i;
 
     // 用可识别字符填满测试帧缓冲 (在复位期间预填充)
     reg [7:0] ascii_val;
     initial begin
-        for (i = 0; i < 2400; i = i + 1) begin
+        for (i = 0; i < 4800; i = i + 1) begin
             ascii_val = 8'h20 + (i % 95);  // 可打印 ASCII
             mock_fb[i] = {i[3:0], i[7:4], ascii_val};
         end
@@ -274,15 +274,15 @@ module tb_VGA;
 
             repeat (800 * 525) begin
                 @(posedge clk_pix);
-                if (fb_addr >= 2400) begin
+                if (fb_addr >= 4800) begin
                     fb_out_of_range = fb_out_of_range + 1;
                 end
             end
 
             if (fb_out_of_range == 0) begin
-                $display("  [PASS] fb_addr 始终在 0..2399 范围内");
+                $display("  [PASS] fb_addr 始终在 0..4799 范围内");
             end else begin
-                $display("  [FAIL] fb_addr 越界 %0d 次 (max=2399)", fb_out_of_range);
+                $display("  [FAIL] fb_addr 越界 %0d 次 (max=4799)", fb_out_of_range);
                 test_errors = test_errors + 1;
             end
         end

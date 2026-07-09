@@ -1,11 +1,11 @@
 // =============================================================================
 // Module      : VGA.v
-// Description : VGA 文本模式显示控制器 — 80列×30行，8×16像素字符，640×480@60Hz
+// Description : VGA 文本模式显示控制器 — 80列×60行，8×8像素字符，640×480@60Hz
 // =============================================================================
 //
 // ================================ 中文说明 ================================
 // 【功能】VGA 文本模式显示控制器，输出 640×480@60Hz 模拟 VGA 信号。
-//         内嵌 128 字符 × 8×16 像素的字模 ROM（分布式 RAM，组合逻辑读出），
+//         内嵌 128 字符 × 8×16 像素的字模 ROM，显示时取主要 8 行，
 //         通过外部帧缓冲 BRAM（位于 DataMemory.v 中，双端口）读取待显示字符
 //         的 ASCII 码和颜色属性。
 //
@@ -19,9 +19,9 @@
 // 【显示规格】
 //   分辨率:     640×480@60Hz
 //   像素时钟:   25MHz (100MHz / 4, 来自 TopDebug 的 clk_div[1])
-//   字符网格:   80 列 × 30 行
-//   字符大小:   8×16 像素
-//   帧缓冲:     2400 × 16-bit (4800 字节)
+//   字符网格:   80 列 × 60 行
+//   字符大小:   8×8 像素
+//   帧缓冲:     4800 × 16-bit (9600 字节)
 //               [7:0]   = ASCII 码 (低7位有效, 128字符)
 //               [11:8]  = 前景色 (I+R+G+B, 共16色)
 //               [15:12] = 背景色 (I+R+G+B, 共16色)
@@ -84,9 +84,9 @@ module VGA #(
 
     // 字符网格
     parameter CHAR_W   = 4'd8,      // 字符宽度 (像素, 8需要4-bit)
-    parameter CHAR_H   = 5'd16,     // 字符高度 (像素, 16需要5-bit)
+    parameter CHAR_H   = 4'd8,      // 字符高度 (像素)
     parameter COLS     = 7'd80,     // 列数
-    parameter ROWS     = 5'd30,     // 行数
+    parameter ROWS     = 6'd60,     // 行数
 
     // 字模 ROM 初始化文件路径 (相对于本 Verilog 源文件所在目录)
     parameter FONT_FILE = "../../../../other/vga/font_rom.txt"
@@ -96,7 +96,7 @@ module VGA #(
     input         rst_n,           // 异步复位 (低有效)
 
     // ===== 帧缓冲读口 (连接 DataMemory.v 内的双端口 BRAM Port B) =====
-    output [11:0] fb_addr,         // 帧缓冲字地址 (0~2399, 对应 80×30 字符网格)
+    output [12:0] fb_addr,         // 帧缓冲字地址 (0~4799, 对应 80×60 字符网格)
     input  [15:0] fb_data,         // 帧缓冲读数据: [7:0]=ASCII, [15:8]=颜色属性
 
     // ===== VGA 物理输出 =====
@@ -218,7 +218,7 @@ module VGA #(
     //     h_d1/v_d1:   延迟 1 拍 (字模 ROM 地址阶段)
     //     h_d2/v_d2:   延迟 2 拍 (像素输出阶段)
 
-    reg [11:0] fb_addr_reg;      // fb_addr 输出寄存器
+    reg [12:0] fb_addr_reg;      // fb_addr 输出寄存器
     reg [15:0] char_data;        // 锁存的帧缓冲数据 (ASCII + 颜色), 1 周期延迟
     reg [7:0]  font_data;        // 锁存的字模位图行, 2 周期延迟
     reg [9:0]  h_d1,  v_d1;     // 延迟 1 拍的计数器 (字模 ROM 地址阶段)
@@ -228,7 +228,7 @@ module VGA #(
 
     always @(posedge clk_pix or negedge rst_n_synced) begin
         if (!rst_n_synced) begin
-            fb_addr_reg <= 12'd0;
+            fb_addr_reg <= 13'd0;
             char_data    <= 16'd0;
             font_data    <= 8'd0;
             h_d1         <= 10'd0;
@@ -240,7 +240,9 @@ module VGA #(
             char_data <= fb_data;
 
             // ---- 第 2 级: 字模 ROM 读出 (BRAM, 1 周期延迟) ----
-            font_data <= font_rom[{char_data[6:0], v_d1[3:0]}];
+            // 8x16 字模大多落在 row 2..10，共 9 行；这里保留顶部和底部，跳过 row 8。
+            font_data <= font_rom[{char_data[6:0], ({1'b0, v_d1[2:0]} + 4'd2 +
+                          (v_d1[2:0] >= 3'd6 ? 4'd1 : 4'd0))}];
 
             // ---- 延迟计数器: 用于像素输出阶段, 与 char_data / font_data 对齐 ----
             h_d1 <= h_cnt;
@@ -254,16 +256,14 @@ module VGA #(
             if (h_cnt == H_PREFETCH) begin
                 if (v_cnt < (V_ACTIVE - 1)) begin
                     // 不是最后一行: 指向下一行的第 0 列
-                    // v_cnt 即将递增为 v_cnt+1, 新字符行号 = (v_cnt+1) >> 4
-                    // 只有当 v_cnt[3:0]==15 (字符行边界) 时才进入下一字符行,
-                    // 其余 15 条扫描线保持在同一字符行内。
-                    fb_addr_reg <= ((v_cnt[3:0] == 4'd15)
-                                    ? (v_cnt[9:4] + 5'd1)   // 字符行边界 → 下一行
-                                    : v_cnt[9:4])            // 同字符行内 → 不动
+                    // v_cnt 即将递增为 v_cnt+1, 新字符行号 = (v_cnt+1) >> 3
+                    fb_addr_reg <= ((v_cnt[2:0] == 3'd7)
+                                    ? (v_cnt[9:3] + 7'd1)   // 字符行边界 → 下一行
+                                    : v_cnt[9:3])            // 同字符行内 → 不动
                                    * COLS + 7'd0;
                 end else begin
                     // 最后一行或垂直消隐: 回到第 0 行第 0 列 (准备下一帧)
-                    fb_addr_reg <= 12'd0;
+                    fb_addr_reg <= 13'd0;
                 end
             end
             // 情况 2: 当前字符的倒数第 3 个像素 (h_cnt[2:0]==CHAR_SWITCH_PIX),
@@ -273,10 +273,10 @@ module VGA #(
                 if (h_cnt[9:3] == (COLS - 1)) begin
                     // 当前已是最后一列: 指向同行的第 0 列
                     // (实际显示时已进入消隐, 不会用到此数据)
-                    fb_addr_reg <= v_cnt[9:4] * COLS + 7'd0;
+                    fb_addr_reg <= v_cnt[9:3] * COLS + 7'd0;
                 end else begin
                     // 正常情况: 指向同一行的下一个字符列
-                    fb_addr_reg <= v_cnt[9:4] * COLS + (h_cnt[9:3] + 7'd1);
+                    fb_addr_reg <= v_cnt[9:3] * COLS + (h_cnt[9:3] + 7'd1);
                 end
             end
         end

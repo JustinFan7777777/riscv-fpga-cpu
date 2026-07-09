@@ -21,6 +21,7 @@ def load_hex(path: str, port: str, baud: int, base: int, run: bool) -> int:
     client = UartDebugClient(port, baud)
     try:
         client.halt()
+        client.clear_vga()
         for i, word in enumerate(words):
             client.write_inst(base + i * 4, word)
         client.reset()

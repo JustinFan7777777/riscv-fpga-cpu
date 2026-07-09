@@ -285,9 +285,6 @@
                     <option value="JAL">JAL (跳转 & Link)</option>
                     <option value="JALR">JALR (跳转 & Link Reg)</option>
                 </optgroup>
-                <optgroup label="ISA 扩展 (自定义硬件加速)">
-                    <option value="POPCNT">POPCNT (统计1的个数)</option>
-                </optgroup>
             </select>
         </div>
 
@@ -737,12 +734,6 @@
                     wb: ["p_adder_wbmux","p_wbmux_reg"]
                 },
                 ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0', ALUSrcB:'1 (Imm)', MemtoReg:'2 (PC+4)', MemWrite:'0', MemRead:'0', Branch:'跳转', ALUOp:'ADD' } }
-            },
-            "POPCNT": {
-                meta: "R-类型 (自定义) | 0000001 00000 rs1 001 rd 0110011",
-                desc: "统计 rs1 中 '1' 的个数，结果写入 rd。纯组合逻辑 (5级加法树)，1 周期完成。funct7=0000001 区分标准指令。",
-                comps: R_COMPS, paths: R_PATHS, stages: ACTIVE_ALL,
-                ctrl: { active: R_ACTIVE, vals: { RegWrite:'1', ALUSrcA:'0 (rs1)', ALUSrcB:'X (无关)', MemtoReg:'0 (ALU)', MemWrite:'0', MemRead:'0', Branch:'0', ALUOp:'POPCNT' } }
             }
         };
 

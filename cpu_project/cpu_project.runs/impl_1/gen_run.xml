@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<GenRun Id="impl_1" LaunchPart="xc7a35tcsg324-1" LaunchTime="1783407552">
-  <File Type="PWROPT-DCP" Name="TopDebug_pwropt.dcp"/>
+<GenRun Id="impl_1" LaunchPart="xc7a35tcsg324-1" LaunchTime="1783574423">
+  <File Type="OPT-HWDEF" Name="TopDebug.hwdef"/>
+  <File Type="PA-DCP" Name="TopDebug.dcp"/>
+  <File Type="OPT-DCP" Name="TopDebug_opt.dcp"/>
   <File Type="ROUTE-PWR" Name="TopDebug_power_routed.rpt"/>
   <File Type="PA-TCL" Name="TopDebug.tcl"/>
   <File Type="ROUTE-PWR-SUM" Name="TopDebug_power_summary_routed.pb"/>
@@ -8,10 +10,9 @@
   <File Type="BG-DRC" Name="TopDebug.drc"/>
   <File Type="OPT-METHODOLOGY-DRC" Name="TopDebug_methodology_drc_opted.rpt"/>
   <File Type="INIT-TIMING" Name="TopDebug_timing_summary_init.rpt"/>
-  <File Type="OPT-HWDEF" Name="TopDebug.hwdef"/>
-  <File Type="OPT-DCP" Name="TopDebug_opt.dcp"/>
   <File Type="OPT-DRC" Name="TopDebug_drc_opted.rpt"/>
   <File Type="OPT-TIMING" Name="TopDebug_timing_summary_opted.rpt"/>
+  <File Type="PWROPT-DCP" Name="TopDebug_pwropt.dcp"/>
   <File Type="PWROPT-DRC" Name="TopDebug_drc_pwropted.rpt"/>
   <File Type="PWROPT-TIMING" Name="TopDebug_timing_summary_pwropted.rpt"/>
   <File Type="PLACE-DCP" Name="TopDebug_placed.dcp"/>

@@ -89,6 +89,7 @@ module CPUTop (
     // 外设 IO (宽度匹配 EGO1 开发板)
     input  [15:0] SwitchIn,         // 拨码开关: [7:0]=左8, [15:8]=右8
     input  [4:0]  ButtonIn,         // 按键: [4:0]=5个按键
+    input         SeedIn,           // J5-1 输入, 用作随机种子
     output [15:0] LEDOut,           // LED: [15:0]=16个LED
     output [7:0]  seg_cs,           // 数码管位选 (8位, 共阳极=低有效)
     output [7:0]  seg_data_0,       // 数码管段选组0 (左4位数字)
@@ -98,7 +99,7 @@ module CPUTop (
     input         clk_vga,          // 25MHz VGA 像素时钟
 
     // VGA 帧缓冲接口 (直通 DataMemory ↔ VGA)
-    input  [11:0] vga_fb_addr,      // VGA → DataMemory: 帧缓冲读地址
+    input  [12:0] vga_fb_addr,      // VGA → DataMemory: 帧缓冲读地址
     output [15:0] vga_fb_data       // DataMemory → VGA: 帧缓冲读数据
 );
 
@@ -246,11 +247,13 @@ module CPUTop (
         .rst_n         (rst_n),
         .clk_vga       (clk_vga),
         .MemWrite      (MemWrite && cpu_write_enable),
+        .MemFunct3     (inst[14:12]),
         .Addr          (ALUResult),
         .WriteData     (rs2_val),
         .ReadData      (ReadData),
         .SwitchIn      (SwitchIn),
         .ButtonIn      (ButtonIn),
+        .SeedIn        (SeedIn),
         .LEDOut        (LEDOut),
         .seg_cs        (seg_cs),
         .seg_data_0    (seg_data_0),

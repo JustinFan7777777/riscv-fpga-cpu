@@ -1,13 +1,12 @@
 """Write text to the EGO1 VGA text buffer through the UART debug protocol.
 
-This script now loads a tiny CPU program into IMem, because UART debug writes
-to DMem do not reach the VGA frame buffer. The CPU program performs the actual
-`sw` instructions to 0xFFFF0100..0xFFFF13BF.
+This script loads a tiny CPU program into IMem. The CPU program writes the VGA
+frame buffer at 0xFFFF0100..0xFFFF267F.
 
 Usage examples:
   python test.py --port COM3 --text "Hello EGO1"
   python test.py --port COM3 --row 5 --col 20 --text "VGA"
-  python test.py --port COM3 --clear --text "Hello" --fg A --bg 0
+  python test.py --port COM3 --text "Hello" --fg A --bg 0
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ RESP_ACK = 0x81
 
 VGA_BASE = 0xFFFF_0100
 VGA_COLS = 80
-VGA_ROWS = 30
+VGA_ROWS = 60
 
 
 def pack_u32(value: int) -> bytes:
@@ -73,7 +72,7 @@ def build_program_asm(row: int, col: int, text: str, fg: int, bg: int, clear: bo
 		lines.extend(load_immediate("t1", 0x0020))
 		lines.extend(load_immediate("t2", VGA_ROWS * VGA_COLS))
 		lines.append("clear_loop:")
-		lines.append("    sw t1, 0(t0)")
+		lines.append("    sh t1, 0(t0)")
 		lines.append("    addi t0, t0, 2")
 		lines.append("    addi t2, t2, -1")
 		lines.append("    bnez t2, clear_loop")
@@ -84,7 +83,7 @@ def build_program_asm(row: int, col: int, text: str, fg: int, bg: int, clear: bo
 	for ch in text:
 		cell = encode_cell(ch, fg, bg)
 		lines.extend(load_immediate("t1", cell))
-		lines.append("    sw t1, 0(t0)")
+		lines.append("    sh t1, 0(t0)")
 		lines.append("    addi t0, t0, 2")
 
 	lines.append("done:")
@@ -129,12 +128,13 @@ def main() -> None:
 	parser = argparse.ArgumentParser(description="Write text to the EGO1 VGA text buffer")
 	parser.add_argument("--port", default="COM3", help="Serial port, e.g. COM3 or /dev/ttyUSB0")
 	parser.add_argument("--baud", type=int, default=115200, help="UART baud rate")
-	parser.add_argument("--row", type=int, default=0, help="Target row [0..29]")
+	parser.add_argument("--row", type=int, default=0, help="Target row [0..59]")
 	parser.add_argument("--col", type=int, default=0, help="Target column [0..79]")
 	parser.add_argument("--text", default="Hello EGO1", help="Text to display")
 	parser.add_argument("--fg", default="F", help="Foreground color nibble (0-F)")
 	parser.add_argument("--bg", default="0", help="Background color nibble (0-F)")
-	parser.add_argument("--clear", action="store_true", help="Clear screen before writing text")
+	parser.add_argument("--no-clear", dest="clear", action="store_false", help="Keep existing screen contents")
+	parser.set_defaults(clear=True)
 	parser.add_argument("--keep-running", action="store_true", help="Do not send RUN at the end")
 	args = parser.parse_args()
 

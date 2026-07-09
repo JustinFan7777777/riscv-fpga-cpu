@@ -1,7 +1,7 @@
 # RISC-V RV32I 单周期 & 五级流水线 CPU — 项目总结报告
 
 > 计算机组成原理 CPU Project · 小组 Tue34_w_10 · 范晓乐 / 陈俊希 / 刘一骏
-> Difftest 33/33 PASS · 6 项 Bonus 全部完成 · 2026 年 5 月
+> Difftest 33/33 PASS · 2026 年 5 月
 
 ---
 
@@ -9,7 +9,7 @@
 
 在 EGO1 (XC7A35T-1CSG324C) FPGA 开发板上实现完整的 RISC-V RV32I CPU，支持**单周期**和**五级流水线**双模式，通过 SwitchIn[15] 拨码开关一键切换。使用 Vivado 2017.4 综合实现，Difftest v1.4 差分测试框架 33/33 全部通过。
 
-**技术指标：** 31 条标准 RV32I 指令 + 3 条自定义 ISA 扩展 | CPU 时钟 12.5MHz | 哈佛架构 | MMIO 外设 | UART Debug 接口 | VGA 640×480@60Hz
+**技术指标：** 37 条标准 RV32I 指令 + MUL | CPU 时钟 12.5MHz | 哈佛架构 | MMIO 外设 | UART Debug 接口 | VGA 640×480@60Hz
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 2.1 ISA 与寄存器
 
-**指令集：** RISC-V RV32I (基础整数指令集)，参考 RISC-V Unprivileged ISA Specification v2.2。31 条标准指令覆盖 R/I/S/B/U/J 全部六种格式 (ADD/SUB/SLL/SLT/SLTU/XOR/SRL/SRA/OR/AND, ADDI/SLLI/SLTI/SLTIU/XORI/SRLI/SRAI/ORI/ANDI, LW/SW, BEQ/BNE/BLT/BGE/BLTU/BGEU, LUI/AUIPC, JAL/JALR)。
+**指令集：** RISC-V RV32I (基础整数指令集) + RV32M 的 MUL 子集，参考 RISC-V Unprivileged ISA Specification v2.2。37 条标准 RV32I 指令覆盖 R/I/S/B/U/J 全部六种格式 (ADD/SUB/SLL/SLT/SLTU/XOR/SRL/SRA/OR/AND, ADDI/SLLI/SLTI/SLTIU/XORI/SRLI/SRAI/ORI/ANDI, LB/LH/LW/LBU/LHU, SB/SH/SW, BEQ/BNE/BLT/BGE/BLTU/BGEU, LUI/AUIPC, JAL/JALR)，并额外支持 MUL。
 
 **寄存器：** 32 个 32-bit 通用寄存器 (x0–x31)，x0 硬连线为 0。
 
@@ -43,7 +43,7 @@ IF→ID→EX→MEM→WB。Forwarding (EX/MEM & MEM/WB→EX, EX/MEM 优先) 解�
 |------|------|---------|
 | IMem | 8KB (2048×32-bit) | PC 0x4000–0x5FFF → 物理 0x000–0x7FF |
 | DMem | 64KB (16384×32-bit) | 0x00000000–0x0000FFFF |
-| MMIO | — | 0xFFFF_0000–0xFFFF_13BF |
+| MMIO | — | 0xFFFF_0000–0xFFFF_267F |
 | 栈基址 | — | 0x0000F000 |
 
 ### 2.5 外设 IO (MMIO + 轮询)
@@ -54,7 +54,8 @@ IF→ID→EX→MEM→WB。Forwarding (EX/MEM & MEM/WB→EX, EX/MEM 优先) 解�
 | 按键 | 0xFFFF_0004 | 5-bit | 只读 |
 | LED | 0xFFFF_0008 | 16-bit | 读/写 |
 | 数码管位选/段选 | 0xFFFF_000C–0xFFFF_0014 | 8-bit | 读/写 |
-| VGA 帧缓冲 | 0xFFFF_0100–0xFFFF_13BF | 16-bit/字 (2400字) | 读/写 |
+| J5-1 随机种子输入 | 0xFFFF_0018 | 1-bit | 只读 |
+| VGA 帧缓冲 | 0xFFFF_0100–0xFFFF_267F | 16-bit/字 (4800字) | 读/写 |
 
 Debug 接口: UART 115200/8N1, 11 条命令 (PING/RESET/RUN/HALT/STEP/READ_REG/READ_PC/READ_INST/READ_DMEM/WRITE_INST/WRITE_DMEM)。DebugController @100MHz, CPU @12.5MHz, 跨时钟域同步。
 
@@ -67,11 +68,11 @@ Debug 接口: UART 115200/8N1, 11 条命令 (PING/RESET/RUN/HALT/STEP/READ_REG/R
 | CPUTopPipeline.v | 流水线 CPU 顶层: 5 级流水+冒险处理 | ~340 |
 | Ifetch.v | 单周期取指: PC+IMem 分布式 RAM+组合读 | ~175 |
 | Ifetch_Pipe.v | 流水线取指: PC+IMem BRAM+寄存器读 | ~120 |
-| Decoder.v | 译码: Main Decoder + ALU Decoder (含 ISA 扩展) | ~315 |
+| Decoder.v | 译码: Main Decoder + ALU Decoder | ~315 |
 | ImmGen.v | 立即数: I/S/B/U/J 六种格式 | ~110 |
 | RegFile.v | 寄存器堆: 32×32, x0=0 | ~80 |
 | RegFile_Pipe.v | 流水线寄存器堆: negedge 写+bypass | ~65 |
-| ALU.v | ALU: 10 种标准运算+3 条 ISA 扩展 | ~125 |
+| ALU.v | ALU: 10 种标准运算 | ~125 |
 | DataMemory.v | 数据内存: DMem BRAM+MMIO+VGA 帧缓冲 | ~235 |
 | PipeRegs.v | 流水线寄存器: IF/ID, ID/EX, EX/MEM, MEM/WB | ~230 |
 | HazardUnit.v | 冒险检测: 转发+Load-Use stall+分支 flush | ~95 |
@@ -111,19 +112,18 @@ Debug 接口: UART 115200/8N1, 11 条命令 (PING/RESET/RUN/HALT/STEP/READ_REG/R
 | Bonus | 类别 | 最高分 | 核心文件 |
 |-------|------|--------|---------|
 | VGA 文本显示 | 复杂外设接口 | 5 | VGA.v, DataMemory.v (帧缓冲) |
-| 贪吃蛇游戏 | 软硬件协同应用 | 5 | other/snake/snake.asm (416 指令) |
+| 贪吃蛇游戏 | 软硬件协同应用 | 5 | other/snake/snake.asm (813 指令) |
 | 五级流水线 | 架构优化 | 6 | CPUTopPipeline.v, PipeRegs.v, HazardUnit.v |
-| ISA 硬件加速 | ISA 扩展 | 4 | ALU.v (3 function), Decoder.v (custom_op) |
 | 可视化工具 | 教学效率工具 | 4 | other/cpu_viz/visualizer.html |
 | 软件乘法 | 溢出展示 | — | other/mul/soft_mul.asm (62 指令) |
 
 ### 4.2 VGA 文本显示控制器
 
-640×480@60Hz 文本模式。CPU 通过 MMIO (0xFFFF_0100–0xFFFF_13BF) 写帧缓冲，VGA 控制器以 25MHz 独立时钟扫描显示。128 字符 × 8×16 字模 ROM (BRAM, `$readmemh` 加载)。帧缓冲为 2400×16-bit 双端口 BRAM (Port A CPU@12.5MHz, Port B VGA@25MHz)。2 级像素流水线 (fb_addr 预取提前 5 像素)。12-bit 色彩 (I+R+G+B 每通道 4-bit)。纯 Verilog, 零 IP 核。
+640×480@60Hz 文本模式。CPU 通过 MMIO (0xFFFF_0100–0xFFFF_267F) 写帧缓冲，VGA 控制器以 25MHz 独立时钟扫描显示。128 字符 × 8×16 字模 ROM (BRAM, `$readmemh` 加载)，显示时取 8×8 字符高度，形成 80×60 文本网格。帧缓冲为 4800×16-bit 双端口 BRAM (Port A CPU@12.5MHz, Port B VGA@25MHz)。2 级像素流水线 (fb_addr 预取提前 5 像素)。12-bit 色彩 (I+R+G+B 每通道 4-bit)。纯 Verilog, 零 IP 核。
 
 ### 4.3 贪吃蛇游戏
 
-纯 RISC-V RV32I 汇编实现。环形缓冲区 (512 元素, HEAD/TAIL, & 0x1FF 取模) O(1) 蛇身移动。16-bit LFSR (x^16+x^15+x^14+x^13+x^4+1, 含 x^0 项) 伪随机食物。增量渲染 (每帧仅 3 处写入)。移位替代乘法 (row×80 = row×64 + row×16)。自碰撞 O(n)。方向反跳保护。按键 btn[0–3] 方向, btn[4] 重开。
+RISC-V RV32I+MUL 汇编实现。环形缓冲区 (512 元素, HEAD/TAIL, & 0x1FF 取模) O(1) 蛇身移动。16-bit LFSR 伪随机食物和 8 个随机障碍，种子混入 J5-1 数字输入。增量渲染。MUL 计算 VGA 行偏移 (row×80)。顶边框显示 SNAKE/SCORE/LVL，底边框显示操作提示。分数越高速度越快。自碰撞/障碍碰撞检测。btn[2] 短按暂停/继续、长按重开。
 
 ### 4.4 五级流水线
 
@@ -131,15 +131,11 @@ IF→ID→EX→MEM→WB。复用单周期全部模块。TopDebug 双 CPU 共存,
 
 **性能对比 (同一 batch_test 程序, 12.5MHz 同频):** 单周期每条指令固定 1 周期 (80ns); 流水线理想 CPI≈1, 5 条指令同时在流水线中重叠执行。以 Fibonacci (n=10, 约 50 条指令) 为例: 单周期需 50 周期, 流水线需约 54 周期 (含 4 周期流水线填充 + Load-Use/NOP 开销)。Load-Use stall 仅在 `lw + use` 紧邻时触发 (1 拍), 分支 flush 仅在跳转成立时触发 (1 拍)。通过 forwarding 消除大部分 RAW 冒险后, 实际 CPI≈1.08, 相比单周期吞吐量提升约 4.6× (5 级流水线理论最大值 5×, 扣除冒险开销)。若流水线 CPU 单独优化时钟至 25MHz (将单周期关键路径拆为 5 段), 性能差距将进一步拉大。
 
-### 4.5 ISA 硬件加速指令
+### 4.5 CPU 数据通路可视化工具
 
-POPCNT (分治法 5 级加法树), CLZ (二分查找优先编码器), CTZ (位反转复用 CLZ)。funct7=0000001, funct7[0]=1 区分自定义指令 (全部标准 RV32I 该位为 0)。纯组合逻辑单周期, ~100x 软件加速比。18 组边界值全部 PASS。
+纯 HTML+CSS+JS+SVG 单文件 (~900 行), 双击即用。支持 11 条指令数据通路动画。5 阶段着色, 7 条控制信号实时显示。声明式配置 (每指令一 JS 对象)。CSS 类驱动激活。主干路径消除视觉缺口。透明度策略 (非活跃 opacity:0.18)。断网可用。
 
-### 4.6 CPU 数据通路可视化工具
-
-纯 HTML+CSS+JS+SVG 单文件 (~900 行), 双击即用。支持 12 条指令数据通路动画。5 阶段着色, 7 条控制信号实时显示。声明式配置 (每指令一 JS 对象)。CSS 类驱动激活。主干路径消除视觉缺口。透明度策略 (非活跃 opacity:0.18)。断网可用。
-
-### 4.7 软件乘法
+### 4.6 软件乘法
 
 移位相加, 32 轮迭代。无符号 + 有符号 (绝对值→无符号乘→恢复符号)。8 组自测试全部 PASS。软件 200 周期 vs 硬件 MUL 1 周期, ~200x 加速比, 直观展示硬件加速价值。
 
@@ -166,7 +162,7 @@ POPCNT (分治法 5 级加法树), CLZ (二分查找优先编码器), CTZ (位�
 
 ## 六、测试汇总
 
-全部 8 类测试共 169 组数据通过：Difftest 33/33, RARS 33/33, Pipeline 模拟器 33/33, 传统 IO 9/9, ISA 扩展 18/18, 软件乘法 8/8, VGA 显示测试, 贪吃蛇系统测试。基础功能 80 分 + 6 项 Bonus 全部可复现。
+基础测试通过：Difftest 33/33, RARS 33/33, Pipeline 模拟器 33/33, 传统 IO 9/9, 软件乘法 8/8, VGA 显示测试, 贪吃蛇系统测试。
 
 ---
 
@@ -187,7 +183,6 @@ cpu_project/cpu_project.srcs/sources_1/new/  # 17 个 Verilog 模块
 assembly/                                     # 基础功能汇编 + 流水线版
 other/vga/                                    # VGA 字模 + 脚本
 other/snake/                                  # 贪吃蛇汇编
-other/isa/                                    # ISA 扩展测试
 other/mul/                                    # 软件乘法
 other/cpu_viz/                                # 可视化工具
 project_log/                                  # 详细开发文档 (0_video ~ 10_todo)
