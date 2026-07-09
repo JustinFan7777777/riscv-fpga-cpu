@@ -99,12 +99,15 @@ module CPUTopPipeline (
 );
 
     wire cpu_halt_effective = cpu_halt & ~cpu_step;
+    wire cpu_write_enable = ~cpu_halt_effective;
+    wire pipe_rst_n = rst_n & ~cpu_reset;
+    wire ctrl_flush;
 
     // 复位预热: 复位后 inst_reg=0(NOP), 需 1 拍从 BRAM 加载首条指令,
     // 此期间冻结 IF/ID 防止捕获 NOP。
     reg reset_stall;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+    always @(posedge clk or negedge pipe_rst_n) begin
+        if (!pipe_rst_n)
             reset_stall <= 1'b1;
         else
             reset_stall <= 1'b0;
@@ -116,8 +119,8 @@ module CPUTopPipeline (
     // inst_reg 中且 1 拍后才出现在 inst 输出, 此时 ctrl_flush 已结束。
     // flush_ifid_delay 将 flush 延长 1 拍兜底清除。
     reg flush_ifid_delay;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+    always @(posedge clk or negedge pipe_rst_n) begin
+        if (!pipe_rst_n)
             flush_ifid_delay <= 1'b0;
         else
             flush_ifid_delay <= ctrl_flush;
@@ -128,7 +131,7 @@ module CPUTopPipeline (
     // ========================================================================
     // IF
     wire [31:0] if_pc, if_inst, if_pcplus4;
-    wire        stall, flush_ifid, flush_idex, ctrl_flush;
+    wire        stall, flush_ifid, flush_idex;
     wire        ex_branch_taken, ex_jump, ex_jalrsrc;
     wire [31:0] ex_branch_target, ex_jump_target, ex_jalr_target;
 
@@ -150,7 +153,7 @@ module CPUTopPipeline (
     wire        ex_branch, ex_jump_wire, ex_jalrsrc_wire;
     wire        ex_lui, ex_auipc;      // LUI/AUIPC 标志 (经ID/EX传入)
     wire [3:0]  ex_alucontrol; wire [2:0] ex_funct3;
-    wire [31:0] ex_alu_raw, ex_writedata;
+    wire [31:0] ex_alu_raw, ex_alu_result, ex_writedata;
     wire [1:0]  forward_a, forward_b;  // ALU输入选择: 00=rs值, 01=EX/MEM转发, 10=MEM/WB转发
 
     // MEM
@@ -168,7 +171,7 @@ module CPUTopPipeline (
     // ========================================================================
 
     Ifetch_Pipe uIfetch (
-        .clk(clk), .rst_n(rst_n), .stall(stall | cpu_halt_effective | reset_stall),
+        .clk(clk), .rst_n(pipe_rst_n), .stall(stall | cpu_halt_effective | reset_stall),
         .flush_ifid(flush_ifid_ext), .branch_taken(ex_branch_taken),
         .jump(ex_jump), .jalrsrc(ex_jalrsrc),
         .branch_target(ex_branch_target), .jump_target(ex_jump_target),
@@ -188,6 +191,7 @@ module CPUTopPipeline (
         .inst(id_inst), .RegWrite(id_regwrite), .ALUSrc(id_alusrc),
         .MemtoReg(id_memtoreg), .MemWrite(id_memwrite),
         .Branch(id_branch), .Jump(id_jump), .JALRSrc(id_jalrsrc),
+        .ALUOp(),
         .ALUControl(id_alucontrol)
     );
     assign id_funct3 = id_inst[14:12];
@@ -197,7 +201,7 @@ module CPUTopPipeline (
     assign id_rd_addr  = id_inst[11:7];
 
     RegFile_Pipe uRegFile (
-        .clk(clk), .rst_n(rst_n), .RegWrite(wb_regwrite),
+        .clk(clk), .rst_n(pipe_rst_n), .RegWrite(wb_regwrite && cpu_write_enable),
         .rs1_addr(id_rs1_addr), .rs2_addr(id_rs2_addr),
         .rd_addr(wb_rd_addr), .WD3(wb_wd3),
         .rs1_val(id_rs1_val), .rs2_val(id_rs2_val),
@@ -214,7 +218,7 @@ module CPUTopPipeline (
     // PipeRegs — 4组流水线寄存器
     // ========================================================================
     PipeRegs uPipeRegs (
-        .clk(clk), .rst_n(rst_n), .stall(stall), .flush_ifid(flush_ifid_ext), .flush_idex(flush_idex),
+        .clk(clk), .rst_n(pipe_rst_n), .freeze(cpu_halt_effective), .stall(stall), .flush_ifid(flush_ifid_ext), .flush_idex(flush_idex),
         // IF → IF/ID
         .if_pc(if_pc), .if_pcplus4(if_pcplus4), .if_inst(if_inst),
         // ID → ID/EX
@@ -289,7 +293,7 @@ module CPUTopPipeline (
               .ALUResult(ex_alu_raw), .Zero());
 
     // JAL/JALR 的写回值是 PC+4 (返回地址), 而非 ALU 算出的跳转目标
-    wire [31:0] ex_alu_result = (ex_jump_wire | ex_jalrsrc_wire) ? ex_pcplus4 : ex_alu_raw;
+    assign ex_alu_result = (ex_jump_wire | ex_jalrsrc_wire) ? ex_pcplus4 : ex_alu_raw;
 
     // 分支/跳转目标
     assign ex_branch_target = ex_pc + ex_imm;
@@ -319,8 +323,8 @@ module CPUTopPipeline (
     // MEM — 数据内存
     // ========================================================================
     DataMemory uDataMemory (
-        .clk(clk), .rst_n(rst_n), .clk_vga(clk_vga),
-        .MemWrite(mem_memwrite), .Addr(mem_aluresult),
+        .clk(clk), .rst_n(pipe_rst_n), .clk_vga(clk_vga),
+        .MemWrite(mem_memwrite && cpu_write_enable), .Addr(mem_aluresult),
         .WriteData(mem_writedata), .ReadData(mem_readdata),
         .SwitchIn(SwitchIn), .ButtonIn(ButtonIn),
         .LEDOut(LEDOut), .seg_cs(seg_cs),

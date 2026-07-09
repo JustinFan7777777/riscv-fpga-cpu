@@ -40,6 +40,8 @@ module Ifetch_Pipe #(
     // Debug 同步
     reg        inst_dbg_en_sync, inst_wr_en_sync;
     reg [31:0] inst_dbg_addr_sync, inst_wr_data_sync;
+    // PC 寄存器: pc_reg=超前取指地址, pc_prev=与 inst_reg 对齐的指令PC
+    reg [31:0] pc_reg, pc_prev;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -74,9 +76,6 @@ module Ifetch_Pipe #(
             inst_reg <= imem[imem_phys];
         end
     end
-
-    // PC 寄存器: pc_reg=超前取指地址, pc_prev=与 inst_reg 对齐的指令PC
-    reg [31:0] pc_reg, pc_prev;
 
     // Debug 读使用 inst_reg (同步寄存器读), 避免组合读破坏 BRAM 推断
     assign inst_rd_data = inst_reg;

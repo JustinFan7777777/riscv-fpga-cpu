@@ -141,6 +141,7 @@ module CPUTop (
     wire [31:0] jalr_sum;               // JALR加法中间结果
     wire        PCSrc;
     wire        cpu_halt_effective;  // 实际生效的 halt 信号
+    wire        cpu_write_enable;    // halt 时禁止重复写回同一条指令
 
     // ===========================
     // 子模块实例化
@@ -194,7 +195,7 @@ module CPUTop (
     RegFile uRegFile (
         .clk           (clk),
         .rst_n         (rst_n),
-        .RegWrite      (RegWrite),
+        .RegWrite      (RegWrite && cpu_write_enable),
         .rs1_addr      (inst[19:15]),
         .rs2_addr      (inst[24:20]),
         .rd_addr       (inst[11:7]),
@@ -244,7 +245,7 @@ module CPUTop (
         .clk           (clk),
         .rst_n         (rst_n),
         .clk_vga       (clk_vga),
-        .MemWrite      (MemWrite),
+        .MemWrite      (MemWrite && cpu_write_enable),
         .Addr          (ALUResult),
         .WriteData     (rs2_val),
         .ReadData      (ReadData),
@@ -322,6 +323,7 @@ module CPUTop (
     //   cpu_halt=1, step=0  → cpu_halt_effective=1, PC冻结   (暂停)
     // 注: cpu_step是一个持续8个100MHz周期的脉冲, 刚好覆盖1个12.5MHz CPU周期
     assign cpu_halt_effective = cpu_halt & ~cpu_step;
+    assign cpu_write_enable = ~cpu_halt_effective;
 
     // ===========================
     // Debug PC 输出

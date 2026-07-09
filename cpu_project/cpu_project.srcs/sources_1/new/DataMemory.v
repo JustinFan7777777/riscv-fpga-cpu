@@ -165,20 +165,20 @@ module DataMemory (
     // MMIO 地址译码 — 两级译码
     // ===========================
     // 第一级: Addr[31:16]==0xFFFF → 外设区域, 否则→DMem BRAM
-    // 第二级: Addr[3:0] 选具体外设, 见下方映射表
+    // 第二级: Addr[15:0] 精确选具体外设, 见下方映射表
     wire isMMIO_CPU = (Addr[31:16] == 16'hFFFF);
     wire isMMIO_DBG = (dmem_dbg_addr_sync[31:16] == 16'hFFFF);
 
     // CPU 侧 MMIO 读 (返回32bit值, 外设位宽不足的零扩展填满)
     // 注: LW指令始终取32-bit, 所以需要将窄外设零扩展
-    // 优先级: 传统外设 (Addr[3:0]) > VGA 帧缓冲 (Addr[15:0] in 0x0100~0x13BF) > 0
+    // 优先级: 传统外设 (Addr[15:0]) > VGA 帧缓冲 (Addr[15:0] in 0x0100~0x13BF) > 0
     wire [31:0] mmio_read_cpu;
-    assign mmio_read_cpu = (Addr[3:0] == 4'h0)  ? {16'b0, SwitchIn}         :  // 0xFFFF0000: 开关
-                           (Addr[3:0] == 4'h4)  ? {27'b0, ButtonIn}         :  // 0xFFFF0004: 按键
-                           (Addr[3:0] == 4'h8)  ? {16'b0, led_reg}          :  // 0xFFFF0008: LED
-                           (Addr[3:0] == 4'hC)  ? {24'b0, seg_cs_reg}       :  // 0xFFFF000C: 数码管位选
-                           (Addr[3:0] == 4'h10) ? {24'b0, seg_data0_reg}    :  // 0xFFFF0010: 数码管段选0
-                           (Addr[3:0] == 4'h14) ? {24'b0, seg_data1_reg}    :  // 0xFFFF0014: 数码管段选1
+    assign mmio_read_cpu = (Addr[15:0] == 16'h0000) ? {16'b0, SwitchIn}         :  // 0xFFFF0000: 开关
+                           (Addr[15:0] == 16'h0004) ? {27'b0, ButtonIn}         :  // 0xFFFF0004: 按键
+                           (Addr[15:0] == 16'h0008) ? {16'b0, led_reg}          :  // 0xFFFF0008: LED
+                           (Addr[15:0] == 16'h000C) ? {24'b0, seg_cs_reg}       :  // 0xFFFF000C: 数码管位选
+                           (Addr[15:0] == 16'h0010) ? {24'b0, seg_data0_reg}    :  // 0xFFFF0010: 数码管段选0
+                           (Addr[15:0] == 16'h0014) ? {24'b0, seg_data1_reg}    :  // 0xFFFF0014: 数码管段选1
                            isVGA_CPU             ? {16'b0, vga_fb_cpu_rdata} :  // VGA帧缓冲 (CPU读)
                            32'd0;
 
@@ -193,10 +193,10 @@ module DataMemory (
             seg_data1_reg <= 8'd0;
         end else begin
             if (mmio_we_cpu) begin
-                if (Addr[3:0] == 4'h8)  led_reg       <= WriteData[15:0];
-                if (Addr[3:0] == 4'hC)  seg_cs_reg    <= WriteData[7:0];
-                if (Addr[3:0] == 4'h10) seg_data0_reg <= WriteData[7:0];
-                if (Addr[3:0] == 4'h14) seg_data1_reg <= WriteData[7:0];
+                if (Addr[15:0] == 16'h0008) led_reg       <= WriteData[15:0];
+                if (Addr[15:0] == 16'h000C) seg_cs_reg    <= WriteData[7:0];
+                if (Addr[15:0] == 16'h0010) seg_data0_reg <= WriteData[7:0];
+                if (Addr[15:0] == 16'h0014) seg_data1_reg <= WriteData[7:0];
             end
         end
     end

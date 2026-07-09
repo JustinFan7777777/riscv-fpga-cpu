@@ -10,6 +10,7 @@
 
 module PipeRegs (
     input         clk, rst_n,
+    input         freeze,      // 1=冻结整条流水线 (Debug halt)
     input         stall,       // 1=冻结IF/ID + PC (Load-Use)
     input         flush_ifid,  // 1=清零IF/ID (分支/跳转, 清除错误取指)
     input         flush_idex,  // 1=清零ID/EX (插入气泡: Load-Use或分支/跳转)
@@ -70,7 +71,7 @@ module PipeRegs (
             ifid_pc      <= 32'd0;
             ifid_pcplus4 <= 32'd0;
             ifid_inst    <= 32'd0;  // NOP after flush
-        end else begin
+        end else if (!freeze) begin
             if (flush_ifid) begin
                 ifid_inst    <= 32'd0;  // NOP (all zeros → default case in decoder)
                 ifid_pc      <= 32'd0;
@@ -120,7 +121,7 @@ module PipeRegs (
             idex_funct3    <= 3'd0;
             idex_lui       <= 1'b0;
             idex_auipc     <= 1'b0;
-        end else begin
+        end else if (!freeze) begin
             idex_pc        <= id_pc;
             idex_pcplus4   <= id_pcplus4;
             idex_rs1_val   <= id_rs1_val;
@@ -178,7 +179,7 @@ module PipeRegs (
             exmem_regwrite  <= 1'b0;
             exmem_memtoreg  <= 1'b0;
             exmem_memwrite  <= 1'b0;
-        end else begin
+        end else if (!freeze) begin
             exmem_aluresult <= ex_aluresult;
             exmem_writedata <= ex_writedata;
             exmem_rd_addr   <= ex_rd_addr;
@@ -209,7 +210,7 @@ module PipeRegs (
             memwb_rd_addr   <= 5'd0;
             memwb_regwrite  <= 1'b0;
             memwb_memtoreg  <= 1'b0;
-        end else begin
+        end else if (!freeze) begin
             memwb_readdata  <= mem_readdata;
             memwb_aluresult <= mem_aluresult;
             memwb_rd_addr   <= mem_rd_addr;

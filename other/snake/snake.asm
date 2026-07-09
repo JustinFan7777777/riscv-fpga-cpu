@@ -13,11 +13,11 @@
 #            0xFFFF_0100 = VGA 帧缓冲基址 (2400字 × 16-bit)
 #
 # ==== 按键映射 ====
-#   btn[0] (R11) = 上 (Up)
-#   btn[1] (R17) = 下 (Down)
-#   btn[2] (R15) = 左 (Left)
-#   btn[3] (V1)  = 右 (Right)
-#   btn[4] (U4)  = 复位/重开 (Reset)
+#   btn[0] (R11) = 右 (Right), 按下=1
+#   btn[1] (R17) = 下 (Down), 按下=1
+#   btn[2] (R15) = 复位/重开 (Reset), 按下=1
+#   btn[3] (V1)  = 左 (Left), 按下=1
+#   btn[4] (U4)  = 上 (Up), 按下=1
 #
 # ==== 颜色编码 (I+R+G+B, 16色) ====
 #   前景色 [11:8]:  [11]=I(亮度) [10]=R [9]=G [8]=B
@@ -146,11 +146,11 @@ game_over_screen:
     li a2, 0xC52
     jal  ra, write_char
 
-# ---- 等待 btn[4] 按下以重新开始 (含消抖) ----
+# ---- 等待 btn[2] 按下以重新开始 (含消抖) ----
 game_over_loop:
-    lw   t0, 0(s1)               # 读按键
-    xori t0, t0, 0x1F            # 取反低5位 (EGO1按键按下=0)
-    andi t0, t0, 0x10            # 检查 btn[4]
+    lw   t0, 0(s1)               # 读按键 (EGO1通用按键按下=1)
+    andi t0, t0, 0x1F            # 只保留低5位按钮
+    andi t0, t0, 0x04            # 检查 btn[2]
     beqz t0, game_over_loop      # 未按下 → 继续等待
 
     # 消抖: 延迟 ~10ms 后重新确认 (0xFFFF * 2 cycle ≈ 10.5ms @ 12.5MHz)
@@ -160,8 +160,8 @@ debounce_delay:
     bnez t6, debounce_delay
 
     lw   t0, 0(s1)               # 重新读取按键
-    xori t0, t0, 0x1F
-    andi t0, t0, 0x10
+    andi t0, t0, 0x1F
+    andi t0, t0, 0x04
     beqz t0, game_over_loop      # 抖动 → 回到等待
 
     # 确认按下 → 重新开始
@@ -247,24 +247,24 @@ seed_loop:
     # ---- 放置第一个食物 ----
     jal  ra, place_food
 
-    jalr x0, ra, 0
+    j    game_loop
 
 # ==============================================================================
 # read_input — 读取按键并更新蛇的方向
 # ==============================================================================
 # 防止反向 (不能从 Up 直接变 Down，Left 不能变 Right)
 read_input:
-    lw   t0, 0(s1)               # t0 = ButtonIn
-    xori t0, t0, 0x1F            # 取反低5位 (EGO1按键按下=0, 松开=1)
+    lw   t0, 0(s1)               # t0 = ButtonIn (EGO1通用按键按下=1)
+    andi t0, t0, 0x1F            # 只保留低5位按钮
 
-    # 检查 btn[4] (复位) → 跳到游戏结束循环
-    andi t1, t0, 0x10
+    # 检查 btn[2] (复位) → 跳到游戏结束循环
+    andi t1, t0, 0x04
     bnez t1, game_over_screen
 
     lw   t1, 0xC(s4)          # t1 = 当前方向
 
-    # ---- btn[0] (上) ----
-    andi t2, t0, 0x01
+    # ---- btn[4] (上) ----
+    andi t2, t0, 0x10
     beqz t2, check_down
     li t3, 0x1
     beq  t1, t3, check_down      # 当前是 DOWN → 忽略 UP
@@ -283,8 +283,8 @@ check_down:
     jalr x0, ra, 0
 
 check_left:
-    # ---- btn[2] (左) ----
-    andi t2, t0, 0x04
+    # ---- btn[3] (左) ----
+    andi t2, t0, 0x08
     beqz t2, check_right
     li t3, 0x3
     beq  t1, t3, check_right     # 当前是 RIGHT → 忽略 LEFT
@@ -293,8 +293,8 @@ check_left:
     jalr x0, ra, 0
 
 check_right:
-    # ---- btn[3] (右) ----
-    andi t2, t0, 0x08
+    # ---- btn[0] (右) ----
+    andi t2, t0, 0x01
     beqz t2, read_done
     li t3, 0x2
     beq  t1, t3, read_done       # 当前是 LEFT → 忽略 RIGHT

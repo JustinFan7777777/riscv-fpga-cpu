@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenRun Id="impl_1" LaunchPart="xc7a35tcsg324-1" LaunchTime="1783407552">
+  <File Type="PWROPT-DCP" Name="TopDebug_pwropt.dcp"/>
+  <File Type="ROUTE-PWR" Name="TopDebug_power_routed.rpt"/>
+  <File Type="PA-TCL" Name="TopDebug.tcl"/>
+  <File Type="ROUTE-PWR-SUM" Name="TopDebug_power_summary_routed.pb"/>
+  <File Type="REPORTS-TCL" Name="TopDebug_reports.tcl"/>
+  <File Type="BG-DRC" Name="TopDebug.drc"/>
+  <File Type="OPT-METHODOLOGY-DRC" Name="TopDebug_methodology_drc_opted.rpt"/>
+  <File Type="INIT-TIMING" Name="TopDebug_timing_summary_init.rpt"/>
+  <File Type="OPT-HWDEF" Name="TopDebug.hwdef"/>
+  <File Type="OPT-DCP" Name="TopDebug_opt.dcp"/>
+  <File Type="OPT-DRC" Name="TopDebug_drc_opted.rpt"/>
+  <File Type="OPT-TIMING" Name="TopDebug_timing_summary_opted.rpt"/>
+  <File Type="PWROPT-DRC" Name="TopDebug_drc_pwropted.rpt"/>
+  <File Type="PWROPT-TIMING" Name="TopDebug_timing_summary_pwropted.rpt"/>
+  <File Type="PLACE-DCP" Name="TopDebug_placed.dcp"/>
+  <File Type="PLACE-IO" Name="TopDebug_io_placed.rpt"/>
+  <File Type="PLACE-CLK" Name="TopDebug_clock_utilization_placed.rpt"/>
+  <File Type="PLACE-UTIL" Name="TopDebug_utilization_placed.rpt"/>
+  <File Type="PLACE-UTIL-PB" Name="TopDebug_utilization_placed.pb"/>
+  <File Type="PLACE-CTRL" Name="TopDebug_control_sets_placed.rpt"/>
+  <File Type="PLACE-SIMILARITY" Name="TopDebug_incremental_reuse_placed.rpt"/>
+  <File Type="PLACE-PRE-SIMILARITY" Name="TopDebug_incremental_reuse_pre_placed.rpt"/>
+  <File Type="PLACE-TIMING" Name="TopDebug_timing_summary_placed.rpt"/>
+  <File Type="POSTPLACE-PWROPT-DCP" Name="TopDebug_postplace_pwropt.dcp"/>
+  <File Type="POSTPLACE-PWROPT-TIMING" Name="TopDebug_timing_summary_postplace_pwropted.rpt"/>
+  <File Type="PHYSOPT-DCP" Name="TopDebug_physopt.dcp"/>
+  <File Type="PHYSOPT-DRC" Name="TopDebug_drc_physopted.rpt"/>
+  <File Type="BG-BIT" Name="TopDebug.bit"/>
+  <File Type="PHYSOPT-TIMING" Name="TopDebug_timing_summary_physopted.rpt"/>
+  <File Type="ROUTE-ERROR-DCP" Name="TopDebug_routed_error.dcp"/>
+  <File Type="ROUTE-DCP" Name="TopDebug_routed.dcp"/>
+  <File Type="ROUTE-BLACKBOX-DCP" Name="TopDebug_routed_bb.dcp"/>
+  <File Type="ROUTE-DRC" Name="TopDebug_drc_routed.rpt"/>
+  <File Type="ROUTE-DRC-PB" Name="TopDebug_drc_routed.pb"/>
+  <File Type="BITSTR-MSK" Name="TopDebug.msk"/>
+  <File Type="ROUTE-DRC-RPX" Name="TopDebug_drc_routed.rpx"/>
+  <File Type="BG-BGN" Name="TopDebug.bgn"/>
+  <File Type="ROUTE-METHODOLOGY-DRC" Name="TopDebug_methodology_drc_routed.rpt"/>
+  <File Type="BITSTR-RBT" Name="TopDebug.rbt"/>
+  <File Type="ROUTE-METHODOLOGY-DRC-RPX" Name="TopDebug_methodology_drc_routed.rpx"/>
+  <File Type="BG-BIN" Name="TopDebug.bin"/>
+  <File Type="ROUTE-METHODOLOGY-DRC-PB" Name="TopDebug_methodology_drc_routed.pb"/>
+  <File Type="ROUTE-PWR-RPX" Name="TopDebug_power_routed.rpx"/>
+  <File Type="ROUTE-STATUS" Name="TopDebug_route_status.rpt"/>
+  <File Type="ROUTE-STATUS-PB" Name="TopDebug_route_status.pb"/>
+  <File Type="ROUTE-TIMINGSUMMARY" Name="TopDebug_timing_summary_routed.rpt"/>
+  <File Type="ROUTE-TIMING-PB" Name="TopDebug_timing_summary_routed.pb"/>
+  <File Type="ROUTE-TIMING-RPX" Name="TopDebug_timing_summary_routed.rpx"/>
+  <File Type="ROUTE-SIMILARITY" Name="TopDebug_incremental_reuse_routed.rpt"/>
+  <File Type="RDI-RDI" Name="TopDebug.vdi"/>
+  <File Type="ROUTE-CLK" Name="TopDebug_clock_utilization_routed.rpt"/>
+  <File Type="POSTROUTE-PHYSOPT-DCP" Name="TopDebug_postroute_physopt.dcp"/>
+  <File Type="POSTROUTE-PHYSOPT-BLACKBOX-DCP" Name="TopDebug_postroute_physopt_bb.dcp"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING" Name="TopDebug_timing_summary_postroute_physopted.rpt"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING-PB" Name="TopDebug_timing_summary_postroute_physopted.pb"/>
+  <File Type="POSTROUTE-PHYSOPT-TIMING-RPX" Name="TopDebug_timing_summary_postroute_physopted.rpx"/>
+  <File Type="BITSTR-NKY" Name="TopDebug.nky"/>
+  <File Type="BITSTR-BMM" Name="TopDebug_bd.bmm"/>
+  <File Type="BITSTR-MMI" Name="TopDebug.mmi"/>
+  <File Type="BITSTR-LTX" Name="debug_nets.ltx"/>
+  <File Type="BITSTR-LTX" Name="TopDebug.ltx"/>
+  <File Type="BITSTR-SYSDEF" Name="TopDebug.sysdef"/>
+  <File Type="WBT-USG" Name="usage_statistics_webtalk.html"/>
+  <FileSet Name="sources" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1">
+    <Filter Type="Srcs"/>
+    <File Path="$PSRCDIR/sources_1/new/ALU.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/CPUTop.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/CPUTopPipeline.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/DataMemory.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/DebugController.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/Decoder.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/HazardUnit.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/Ifetch.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/Ifetch_Pipe.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/ImmGen.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/PipeRegs.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/RegFile.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/RegFile_Pipe.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/UartRx.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/UartTx.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/VGA.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <File Path="$PSRCDIR/sources_1/new/TopDebug.v">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="DesignMode" Val="RTL"/>
+      <Option Name="TopModule" Val="TopDebug"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="constrs_in" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1">
+    <Filter Type="Constrs"/>
+    <File Path="$PSRCDIR/constrs_1/ego1.xdc">
+      <FileInfo>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="TargetConstrsFile" Val="$PSRCDIR/constrs_1/ego1.xdc"/>
+      <Option Name="ConstrsType" Val="XDC"/>
+    </Config>
+  </FileSet>
+  <Strategy Version="1" Minor="2">
+    <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2017"/>
+    <Step Id="init_design"/>
+    <Step Id="opt_design"/>
+    <Step Id="power_opt_design"/>
+    <Step Id="place_design"/>
+    <Step Id="post_place_power_opt_design"/>
+    <Step Id="phys_opt_design"/>
+    <Step Id="route_design"/>
+    <Step Id="post_route_phys_opt_design"/>
+    <Step Id="write_bitstream"/>
+  </Strategy>
+</GenRun>
