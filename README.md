@@ -198,3 +198,7 @@ SwitchIn[15] 拨上 → LED 和数码管切换到流水线 CPU 输出
 ## AI 工具声明
 
 本项目使用 Claude Code (Anthropic) 辅助代码审查与文档优化，Gemini (Google) 辅助可视化页面 HTML 设计。所有 AI 生成内容均经人工审查和验证修正。
+
+## License
+
+Code is released under the [MIT License](LICENSE). Copyright is shared by the project contributors.
